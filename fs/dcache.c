@@ -2578,8 +2578,8 @@ global_root:
 	if (!slash)
 		error = prepend(buffer, buflen, "/", 1);
 	if (!error)
-		error = real_mount(vfsmnt)->mnt_ns ? 1 : 2;
-	return error;
+		error = is_mounted(vfsmnt) ? 1 : 2;
+	goto out;
 }
 
 /**
