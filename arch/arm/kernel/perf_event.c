@@ -893,8 +893,6 @@ static int __cpuinit pmu_cpu_notify(struct notifier_block *b,
 						 hcpu, 1);
 		break;
 	case CPU_STARTING:
-		if (cpu_pmu && cpu_pmu->reset)
-			cpu_pmu->reset(NULL);
 		if (cpu_pmu && cpu_pmu->restore_pm_registers)
 			smp_call_function_single(cpu,
 						 cpu_pmu->restore_pm_registers,
