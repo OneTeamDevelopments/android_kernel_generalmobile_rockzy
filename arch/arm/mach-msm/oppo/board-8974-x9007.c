@@ -14,6 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/ion.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
 #include <linux/of.h>
@@ -32,7 +33,7 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #ifdef CONFIG_ION_MSM
-#include <mach/ion.h>
+#include <linux/msm_ion.h>
 #endif
 #include <mach/msm_memtypes.h>
 #include <mach/msm_smd.h>
@@ -49,6 +50,25 @@
 #include "modem_notifier.h"
 #include "platsmp.h"
 
+#include <linux/persistent_ram.h>
+#include <linux/gpio.h>
+
+static struct platform_device *ram_console_dev;
+
+static struct persistent_ram_descriptor msm_prd[] __initdata = {
+	{
+		.name = "ram_console",
+		.size = SZ_1M,
+	},
+};
+
+static struct persistent_ram msm_pr __initdata = {
+	.descs = msm_prd,
+	.num_descs = ARRAY_SIZE(msm_prd),
+	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_512M,
+	.size = SZ_1M,
+};
+
 void __init msm_8974_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
@@ -57,6 +77,7 @@ void __init msm_8974_reserve(void)
 static void __init msm8974_early_memory(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
+	persistent_ram_early_init(&msm_pr);
 }
 
 /*
@@ -81,6 +102,60 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+}
+
+#define DISP_ESD_GPIO 28
+static void __init oppo_config_display(void)
+{
+	int rc;
+
+	rc = gpio_request(DISP_ESD_GPIO, "disp_esd");
+	if (rc) {
+		pr_err("%s: request DISP_ESD GPIO failed, rc: %d",
+				__func__, rc);
+		goto cfg_disp_err;
+	}
+
+	rc = gpio_tlmm_config(GPIO_CFG(DISP_ESD_GPIO, 0,
+				GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+	if (rc) {
+		pr_err("%s: unable to configure DISP_ESD GPIO, rc: %d",
+				__func__, rc);
+		goto cfg_disp_err;
+	}
+
+	rc = gpio_direction_input(DISP_ESD_GPIO);
+	if (rc) {
+		pr_err("%s: set direction for DISP_ESD GPIO failed, rc: %d",
+				__func__, rc);
+		goto cfg_disp_err;
+	}
+
+	return;
+
+cfg_disp_err:
+	gpio_free(DISP_ESD_GPIO);
+}
+
+static void __init oppo_config_ramconsole(void)
+{
+	int ret;
+
+	ram_console_dev = platform_device_alloc("ram_console", -1);
+	if (!ram_console_dev) {
+		pr_err("%s: Unable to allocate memory for RAM console device",
+				__func__);
+		return;
+	}
+
+	ret = platform_device_add(ram_console_dev);
+	if (ret) {
+		pr_err("%s: Unable to add RAM console device", __func__);
+		return;
+	}
 }
 
 static struct of_dev_auxdata msm_hsic_host_adata[] = {
@@ -149,6 +224,8 @@ void __init msm8974_init(void)
 	regulator_has_full_constraints();
 	board_dt_populate(adata);
 	msm8974_add_drivers();
+	oppo_config_display();
+	oppo_config_ramconsole();
 }
 
 void __init msm8974_init_very_early(void)
