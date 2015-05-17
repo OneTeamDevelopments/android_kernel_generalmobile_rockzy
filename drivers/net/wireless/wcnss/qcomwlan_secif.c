@@ -60,4 +60,3 @@ void wcnss_wlan_crypto_free_ablkcipher(struct crypto_ablkcipher *tfm)
 	crypto_free_ablkcipher(tfm);
 }
 EXPORT_SYMBOL(wcnss_wlan_crypto_free_ablkcipher);
-
