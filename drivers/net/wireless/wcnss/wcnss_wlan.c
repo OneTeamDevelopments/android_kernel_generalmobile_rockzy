@@ -353,7 +353,7 @@ static struct {
 	struct resource	*gpios_5wire;
 	const struct dev_pm_ops *pm_ops;
 	int		triggered;
-        u8                is shutdown;
+        u8                is_shutdown;
 	int		smd_channel_ready;
 	u32		wlan_rx_buff_count;
 	smd_channel_t	*smd_ch;
