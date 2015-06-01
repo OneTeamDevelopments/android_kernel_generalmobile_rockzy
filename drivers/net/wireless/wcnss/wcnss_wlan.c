@@ -1139,14 +1139,30 @@ struct wcnss_wlan_config *wcnss_get_wlan_config(void)
 }
 EXPORT_SYMBOL(wcnss_get_wlan_config);
 
+int wcnss_is_hw_pronto_ver3(void)
+{
+	if (penv && penv->pdev)
+		return penv->wlan_config.is_pronto_v3;
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_is_hw_pronto_ver3);
+
 int wcnss_device_ready(void)
 {
-	if (penv && penv->pdev && penv->nv_downloaded)
+	if (penv && penv->pdev && penv->nv_downloaded &&
+	    !wcnss_device_is_shutdown())
 		return 1;
 	return 0;
 }
 EXPORT_SYMBOL(wcnss_device_ready);
 
+int wcnss_device_is_shutdown(void)
+{
+	if (penv && penv->is_shutdown)
+		return 1;
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_device_is_shutdown);
 
 struct resource *wcnss_wlan_get_memory_map(struct device *dev)
 {
