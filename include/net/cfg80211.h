@@ -542,10 +542,10 @@ struct station_parameters {
 	u16 capability;
 	u8 *ext_capab;
 	u8 ext_capab_len;
-     const u8 *supported_channels;
-     u8 supported_channels_len;
-     const u8 *supported_oper_classes;
-     u8 supported_oper_classes_len;
+        const u8 *supported_channels;
+        u8 supported_channels_len;
+        const u8 *supported_oper_classes;
+        u8 supported_oper_classes_len;
         
 };
 
