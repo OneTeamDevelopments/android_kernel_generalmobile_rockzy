@@ -519,7 +519,7 @@ static int subsys_start(struct subsys_device *subsys)
 	}
 
 	ret = wait_for_err_ready(subsys);
-	if (ret)
+	if (ret) {
 		/* pil-boot succeeded but we need to shutdown
 		 * the device because error ready timed out.
 		 */
