@@ -3015,6 +3015,9 @@ static int rt_fill_info(struct net *net,
 	if (rt->rt_mark)
 		NLA_PUT_BE32(skb, RTA_MARK, rt->rt_mark);
 
+	if (rt->rt_uid != (uid_t) -1)
+		NLA_PUT_BE32(skb, RTA_UID, rt->rt_uid);
+		
 	error = rt->dst.error;
 	if (peer) {
 		inet_peer_refcheck(rt->peer);
@@ -3134,6 +3137,8 @@ static int inet_rtm_getroute(struct sk_buff *in_skb, struct nlmsghdr* nlh, void 
 			.flowi4_tos = rtm->rtm_tos,
 			.flowi4_oif = tb[RTA_OIF] ? nla_get_u32(tb[RTA_OIF]) : 0,
 			.flowi4_mark = mark,
+			.flowi4_uid = tb[RTA_UID] ? nla_get_u32(tb[RTA_UID]) : current_uid(),
+
 		};
 		rt = ip_route_output_key(net, &fl4);
 
