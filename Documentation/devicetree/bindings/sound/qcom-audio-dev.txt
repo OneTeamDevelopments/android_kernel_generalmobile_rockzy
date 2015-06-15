@@ -436,6 +436,8 @@ Required properties:
 - qcom,cdc-mclk-gpios : GPIO on which mclk signal is comming.
 - qcom,taiko-mclk-clk-freq : Taiko mclk Freq in Hz. currently only 9600000Hz
 				is supported.
+Optional properties:				
+- qcom,hdmi-audio-rx: specifies if HDMI audio support is enabled or not.				
 - qcom,prim-auxpcm-gpio-clk  : GPIO on which Primary AUXPCM clk signal is coming.
 - qcom,prim-auxpcm-gpio-sync : GPIO on which Primary AUXPCM SYNC signal is coming.
 - qcom,prim-auxpcm-gpio-din  : GPIO on which Primary AUXPCM DIN signal is coming.
