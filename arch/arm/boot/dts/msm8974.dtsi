@@ -12,7 +12,7 @@
 
 /include/ "skeleton.dtsi"
 
-/ {es
+/ {
 	model = "Qualcomm MSM 8974";
 	compatible = "qcom,msm8974";
 	interrupt-parent = <&intc>;
