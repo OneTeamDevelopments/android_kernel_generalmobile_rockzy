@@ -12,7 +12,7 @@
 
 /include/ "skeleton.dtsi"
 
-/ {
+/ {es
 	model = "Qualcomm MSM 8974";
 	compatible = "qcom,msm8974";
 	interrupt-parent = <&intc>;
@@ -755,51 +755,6 @@
 			qcom,cdc-slim-ifd = "taiko-slim-ifd";
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
 			qcom,cdc-dmic-sample-rate = <2400000>; 
-		};
-		es325_codec_gen0 {
-			compatible = "adnc,es325-codec-gen0";
-			elemental-addr = [00 01 02 00 BE 02];
-
-			adnc,es325-codec-gen0 = "es325-codec-gen0";
-			adnc,es325-codec-gen0-eaddr = [00 01 02 00 BE 02];
-
-			adnc,reset-gpio  = <&msmgpio 47 0>; /* DEFINED BY CUSTOMER */
-			adnc,wakeup-gpio = <&msmgpio 53 0>; /* DEFINED BY CUSTOMER */
-			adnc,power-gpio  = <&msmgpio 57 0>;
-
-			adnc,es325-mclk-gpios = <&pm8941_gpios 16 0>;	/* DEFINED BY audience */
-			es325-mclk-clk = <&pm8941_clkdiv2>;
-			adnc,es325-mclk-clk-freq = <19200000>;
-
-			es325_vdig-supply = <&pm8941_l3>;
-			adnc,es325-vreg-name = "es325_vdig";
-			adnc,es325-vreg-type = <0>;
-			adnc,es325-vreg-min-voltage = <1225000>;
-			adnc,es325-vreg-max-voltage = <1225000>;
-			adnc,es325-vreg-op-mode = <105000>;			
-		};
-
-		es325_codec_intf {
-			compatible = "adnc,es325-codec-intf";
-			elemental-addr = [00 00 02 00 BE 02];
-			
-			adnc,es325-codec-intf = "es325-codec-intf";
-			adnc,es325-codec-intf-eaddr = [00 01 02 00 BE 02];
-
-			adnc,reset-gpio  = <&msmgpio 47 0>; /* DEFINED BY CUSTOMER */
-			adnc,wakeup-gpio = <&msmgpio 53 0>; /* DEFINED BY CUSTOMER */		
-			adnc,power-gpio  = <&msmgpio 57 0>;
-
-			adnc,es325-mclk-gpios = <&pm8941_gpios 16 0>;	/* DEFINED BY audience */
-			es325-mclk-clk = <&pm8941_clkdiv2>;
-			adnc,es325-mclk-clk-freq = <19200000>;
-
-			es325_vdig-supply = <&pm8941_l3>;
-			adnc,es325-vreg-name = "es325_vdig";
-			adnc,es325-vreg-type = <0>;
-			adnc,es325-vreg-min-voltage = <1225000>;
-			adnc,es325-vreg-max-voltage = <1225000>;
-			adnc,es325-vreg-op-mode = <105000>;
 		};
 	};
 
