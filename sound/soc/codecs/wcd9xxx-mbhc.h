@@ -336,7 +336,8 @@ struct wcd9xxx_mbhc {
 	struct notifier_block nblock;
 
 	bool micbias_enable;
-	int (*micbias_enable_cb) (struct snd_soc_codec*,  bool);
+	int (*micbias_enable_cb) (struct snd_soc_codec*,  bool,
+				  enum wcd9xxx_micbias_num);
 
 	bool impedance_detect;
 	/* impedance of hphl and hphr */
