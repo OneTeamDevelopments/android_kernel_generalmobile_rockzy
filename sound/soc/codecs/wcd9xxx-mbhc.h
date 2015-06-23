@@ -269,6 +269,8 @@ struct wcd9xxx_mbhc_cb {
 	int (*enable_mb_source) (struct snd_soc_codec *, bool);
 	void (*setup_int_rbias) (struct snd_soc_codec *, bool);
 	void (*pull_mb_to_vddio) (struct snd_soc_codec *, bool);
+	struct firmware_cal * (*get_hwdep_fw_cal) (struct snd_soc_codec *,
+				enum wcd_cal_type);
 };
 
 struct wcd9xxx_mbhc {
