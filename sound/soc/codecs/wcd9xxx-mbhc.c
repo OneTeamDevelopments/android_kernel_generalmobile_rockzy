@@ -820,8 +820,9 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 
 		if (mbhc->micbias_enable && mbhc->micbias_enable_cb) {
 			pr_debug("%s: Disabling micbias\n", __func__);
-			mbhc->micbias_enable_cb(mbhc->codec, false);
 			mbhc->micbias_enable = false;
+			mbhc->micbias_enable_cb(mbhc->codec, false,
+						mbhc->mbhc_cfg->micbias);
 		}
 		mbhc->zl = mbhc->zr = 0;
 		pr_debug("%s: Reporting removal %d(%x)\n", __func__,
@@ -846,8 +847,9 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 			if (mbhc->micbias_enable && mbhc->micbias_enable_cb &&
 			    mbhc->hph_status == SND_JACK_HEADSET) {
 				pr_debug("%s: Disabling micbias\n", __func__);
-				mbhc->micbias_enable_cb(mbhc->codec, false);
 				mbhc->micbias_enable = false;
+				mbhc->micbias_enable_cb(mbhc->codec, false,
+						mbhc->mbhc_cfg->micbias);
 			}
 
 			pr_debug("%s: Reporting removal (%x)\n",
@@ -875,7 +877,8 @@ static void wcd9xxx_report_plug(struct wcd9xxx_mbhc *mbhc, int insertion,
 
 		if (mbhc->micbias_enable && mbhc->micbias_enable_cb) {
 			pr_debug("%s: Enabling micbias\n", __func__);
-			mbhc->micbias_enable_cb(mbhc->codec, true);
+			mbhc->micbias_enable_cb(mbhc->codec, true,
+						mbhc->mbhc_cfg->micbias);
 		}
 
 		if (mbhc->impedance_detect && impedance_detect_en)
