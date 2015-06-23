@@ -297,6 +297,7 @@ struct wcd9xxx_mbhc {
 	const struct firmware *mbhc_fw;
 
 	struct delayed_work mbhc_insert_dwork;
+	struct firmware_cal *mbhc_cal;
 
 	u8 current_plug;
 	struct work_struct correct_plug_swch;
