@@ -76,6 +76,7 @@ static int cpufreq_stats_update(unsigned int cpu)
 		spin_unlock(&cpufreq_stats_lock);
 		return 0;
 	}
+
 	if (stat->time_in_state)
 		stat->time_in_state[stat->last_index] +=
 			cur_time - stat->last_time;
@@ -176,6 +177,7 @@ static ssize_t show_overall_time_in_state(struct kobject *kobj,
 #endif
 	return len;
 }
+
 
 #ifdef CONFIG_CPU_FREQ_STAT_DETAILS
 static ssize_t show_trans_table(struct cpufreq_policy *policy, char *buf)
@@ -523,9 +525,9 @@ static int __init cpufreq_stats_init(void)
 	for_each_online_cpu(cpu) {
 		cpufreq_update_policy(cpu);
 	}
-	
+
 	ret = sysfs_create_group(cpufreq_global_kobject, &overall_stats_attr_group);
-	
+
 	return 0;
 }
 static void __exit cpufreq_stats_exit(void)
