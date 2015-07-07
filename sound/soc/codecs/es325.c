@@ -45,12 +45,7 @@
 #include "es325-export.h"
 #include <linux/qpnp/clkdiv.h>
 #include <linux/of_gpio.h>
-//liuyan add for dvt
-#ifdef CONFIG_VENDOR_EDIT
-#include <mach/sps.h>
-#include"../../../drivers/slimbus/slim-msm.h"
-#include <linux/pcb_version.h>
-#endif
+
 
 
 #if defined(ES325_QCOM_V1)
@@ -90,14 +85,14 @@ enum {
 	ES325_SLIM_3_PB,
 	ES325_SLIM_3_CAP,
 };
-
+#ifdef SLEEP_WAKEUP_FIX
 enum es325_power_state {
 ES325_POWER_BOOT,
 ES325_POWER_SLEEP,
 ES325_POWER_SLEEP_PENDING,
 ES325_POWER_AWAKE
 };
-
+#endif
 #define ES325_SLIM_1_PB_MAX_CHANS	2
 #define ES325_SLIM_1_CAP_MAX_CHANS	2
 #define ES325_SLIM_2_PB_MAX_CHANS	2
@@ -114,8 +109,7 @@ ES325_POWER_AWAKE
 
 #define ES325_NUM_CODEC_SLIM_DAIS	6
 
-static unsigned int es325_fw_ready = 0;
-/*add for the Lenovo K6 EVT board*/	
+
 
 #if 0
 #undef CDBG
@@ -126,7 +120,7 @@ static unsigned int es325_fw_ready = 0;
 #endif
 #else
 #undef CDBG
-#define CDBG(fmt, args...)  do { } while (0)
+#define CDBG(fmt, args...) pr_err(fmt, ##args)
 #endif
 
 
@@ -156,10 +150,12 @@ struct es325_priv {
 	struct slim_device *gen0_client;
 	struct es325_slim_dai_data dai[ES325_NUM_CODEC_SLIM_DAIS];
 	struct es325_slim_ch slim_rx[ES325_SLIM_RX_PORTS];
-    struct es325_slim_ch slim_tx[ES325_SLIM_TX_PORTS];
+	struct es325_slim_ch slim_tx[ES325_SLIM_TX_PORTS];
+#ifdef SLEEP_WAKEUP_FIX
     struct delayed_work sleep_work;
     enum es325_power_state power_state;
     struct mutex power_lock;
+#endif
 } es325_priv;
 
 enum es325_vreg_type {
@@ -178,12 +174,15 @@ struct es325_vreg_t {
 	uint32_t delay;
 };
 
-#define ES325_SLEEP_DELAY 300
-static unsigned int es325_ap_tx1_ch_cnt = 2;
 unsigned int es325_rx1_route_enable = 0;
 unsigned int es325_rx2_route_enable = 0;
 unsigned int es325_tx1_route_enable = 0;
+static unsigned int es325_ap_tx1_ch_cnt = 2;
+#ifdef SLEEP_WAKEUP_FIX
+#define ES325_SLEEP_DELAY 300
+
 static unsigned int es325_power_state = 1;
+#endif
 
 #if defined(CONFIG_SND_SOC_WCD9310)
 static int es325_slim_rx_port_to_ch[ES325_SLIM_RX_PORTS] = {
@@ -215,46 +214,64 @@ static int es325_slim_be_id[ES325_NUM_CODEC_SLIM_DAIS] = {
 #define ES325_CUSTOMER_PROFILE_MAX 4
 static u8 es325_audio_custom_profiles[ES325_CUSTOMER_PROFILE_MAX][100] = {
 	{
-        //Softness
 		0x80, 0x2f, 0x00, 0x3e,
-        0x04, 0x11, 0x00, 0x01,
-        0x00, 0x04, 0x00, 0x00,
-        0xe3, 0xdc, 0xef, 0xea,
-        0xe0, 0xea, 0xd0, 0xd7,
-        0x9e, 0xc0, 0x9e, 0x92,
-        0xb2, 0xa9, 0xb7, 0xb3,
-        0xbb, 0xba, 0xd7, 0xc6,
-        0xdc, 0xdf, 0xdd, 0xdc,
-        0xe4, 0xdf, 0xed, 0xeb,
-        0xf9, 0xf4, 0x02, 0xff,
-        0x07, 0x04, 0x0c, 0x08,
-        0x0e, 0x0e, 0x0d, 0x0f,
-        0x0f, 0x0f, 0x07, 0x0a,
-        0xdb, 0xfa, 0xac, 0xbb,
-        0x91, 0x9b, 0x00, 0x82,
-        0x94, 0x14,
-       	0xff		/* terminate */
-	}, 
-    {
-        //Brightness
+		0x04, 0x11, 0x00, 0x01,
+		0x00, 0x05, 0x00, 0x00,
+		0xb2, 0xb1, 0xb0, 0xb1,
+		0xc0, 0xb6, 0xcd, 0xca,
+		0xb2, 0xc4, 0xb4, 0xb0,
+		0xba, 0xb7, 0xc3, 0xbc,
+		0xcd, 0xc9, 0xd8, 0xd2,
+		0xde, 0xdc, 0xe1, 0xe0,
+		0xe0, 0xe0, 0xde, 0xe1,
+		0xeb, 0xe3, 0xf8, 0xf3,
+		0x00, 0xfb, 0x02, 0x01,
+		0x06, 0x05, 0x11, 0x0a,
+		0x1b, 0x16, 0x22, 0x20,
+		0x20, 0x21, 0x1c, 0x1c,
+		0x04, 0x12, 0x00, 0xf9,
+		0xf6, 0xe4,
+		0xff		/* terminate */
+	},
+	{
 		0x80, 0x2f, 0x00, 0x3e,
-        0x04, 0x11, 0x00, 0x01,
-        0x00, 0x05, 0x00, 0x00,
-        0x19, 0x17, 0x1c, 0x1b,
-        0x18, 0x1b, 0x13, 0x15,
-        0xf5, 0x09, 0xf6, 0xed,
-        0x02, 0xfe, 0x00, 0x00,
-        0x00, 0xff, 0xf9, 0xfe,
-        0xf6, 0xf7, 0xf4, 0xf5,
-        0xf2, 0xf3, 0xf0, 0xf1,
-        0xf1, 0xf1, 0xf2, 0xf2,
-        0xf3, 0xf2, 0xf1, 0xf2,
-        0xee, 0xef, 0xeb, 0xed,
-        0xe8, 0xea, 0xdf, 0xe4,
-        0xd4, 0xda, 0xc7, 0xcd,
-        0xbc, 0xc0, 0x00, 0xb6,
-        0x28, 0xbf,
-        0xff		/* terminate */
+		0x04, 0x11, 0x00, 0x01,
+		0x00, 0x04, 0x00, 0x00,
+		0x10, 0x08, 0x25, 0x1e,
+		0x05, 0x1b, 0xe4, 0xf1,
+		0xbe, 0xd6, 0xbc, 0xb4,
+		0xce, 0xc8, 0xc9, 0xcc,
+		0xc2, 0xc6, 0xdf, 0xcc,
+		0xe6, 0xe8, 0xe0, 0xe3,
+		0xd4, 0xdb, 0xcc, 0xcf,
+		0xd7, 0xd0, 0xe8, 0xde,
+		0xfa, 0xf1, 0x01, 0xfe,
+		0x0a, 0x06, 0x21, 0x13,
+		0x32, 0x2b, 0x3a, 0x38,
+		0x3a, 0x3b, 0x3c, 0x39,
+		0x06, 0x29, 0x00, 0xf2,
+		0xc8, 0x38,
+		0xff		/* terminate */
+	},
+	{
+		0x80, 0x2f, 0x00, 0x3e,
+		0x04, 0x11, 0x00, 0x01,
+		0x00, 0x04, 0x00, 0x00,
+		0x01, 0x02, 0xfd, 0xff,
+		0xf4, 0xf9, 0xe7, 0xee,
+		0xca, 0xda, 0xcb, 0xc3,
+		0xe0, 0xd9, 0xdf, 0xdf,
+		0xdf, 0xdf, 0xd3, 0xda,
+		0xd0, 0xcf, 0xd2, 0xd1,
+		0xd1, 0xd1, 0xd1, 0xd1,
+		0xdb, 0xd4, 0xeb, 0xe3,
+		0xfc, 0xf4, 0x05, 0x01,
+		0x0e, 0x09, 0x22, 0x17,
+		0x36, 0x2c, 0x42, 0x3f,
+		0x3e, 0x41, 0x35, 0x3a,
+		0x06, 0x22, 0x00, 0xf8,
+		0x6e, 0x48,
+		0xff		/* terminate */
 	},
 	{
 		0x80, 0x2f, 0x00, 0x3e,
@@ -277,115 +294,238 @@ static u8 es325_audio_custom_profiles[ES325_CUSTOMER_PROFILE_MAX][100] = {
 		0xff		/* terminate */
 	},
 };
-#define ES325_INTERNAL_ROUTE_MAX 20//12
+#define ES325_INTERNAL_ROUTE_MAX 13
 static long es325_internal_route_num;
-static u8 es325_internal_route_configs[ES325_INTERNAL_ROUTE_MAX][80] = {
+static u8 es325_internal_route_configs[ES325_INTERNAL_ROUTE_MAX][50] = {
+	/* [0]: 2-mic 1-ch_spk CT */
+	{
+		0x90, 0x31, 0x04, 0x1b, /*1051 Route Preset 2 MIC 1 FEIN 1 CSOUT 1 FEOUT BB */
+		0x90, 0x31, 0x02, 0x2a, /* 554; Voice Algo Preset 2 Mic CT NB */
+		0xff				/* terminate */
+	},
+	
+	/* [1]: 2-mic 1-ch_spk FT */
+	{
+		0x90, 0x31, 0x04, 0x1b, /*1051 Route Preset 2 MIC 1 FEIN 1 CSOUT 1 FEOUT BB */
+		0x90, 0x31, 0x02, 0x3c, /* 572; Voice Algo Preset Top-Top Back 2 Mic FT NB */	
+		0xff				/* terminate */
+	},
+	
+	/* [2]: 1-mic 1-ch_spk DV */
+	{
+		0x90, 0x31, 0x03, 0xe9, /*1001; Route Preset 1 MIC 1 FEIN 1 CSOUT 1 FEOUT BB */
+		0x90, 0x31, 0x02, 0x45, /*581; Voice Algo Preset Top 1 Mic DV NB*/
+
+		0xff			/* terminate */
+	},
+
+	/* [3]: 1-mic 2-ch_spk EAR */
+	{
+		0x90, 0x31, 0x03, 0xed, /*1005; Route Preset 1 MIC 1 FEIN 1 CSOUT 2 FEOUT BB */
+		0x90, 0x31, 0x02, 0x4e, /* 590; Voice Algo Preset 1 Mic MD NB  */
+	
+		0xff			/* terminate */
+	},
+
+	/* [4]: 1-ch_spk SPK PLAY*/
+	{
+	
+		0x90, 0x31, 0x04, 0x7f, /*1151; Route Preset 1 AUDIO 1 Ch PT Type1*/
+		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT)  */
+		0xff				/* terminate */
+	},
+
+	/* [5]: 2-ch_spk EAR PLAY*/
+	{
+	
+		0x90, 0x31, 0x04, 0x83, /*1155; Route Preset 2 AUDIO 2 Ch PT Type1*/
+		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT)  */
+		0xff				/* terminate */
+	},
+
+    /* [6]: 2-mic EAR REC*/
+    {
+        0x90, 0x31, 0x04, 0x80, /*1152; Route Preset 1 AUDIO 1 Ch PT Type2*/
+        0x90, 0x31, 0x03, 0x53, /*851; Passthrough Algo Preset 1 Ch Audio PT*/
+        0xff                                                        /* terminate */
+    },
+
+
+	/* [7]: 2-mic Directional REC (narrator)*/
+	{
+		0x90, 0x31, 0x0d, 0xd7, /* 3543; Route Preset 2 MIC 1 CSOUT BB*/
+		0x90, 0x31, 0x02, 0xef, /* 751; Dirac Algo Preset Narrator Mode */
+		0xff				/* terminate */
+	},
+
+	/* [8]: 2-mic Directional REC (scene+narrator)*/
+	{
+		0x90, 0x31, 0x0d, 0xd7, /* 3543; Route Preset 2 MIC 1 CSOUT BB*/
+		0x90, 0x31, 0x02, 0xf1, /*753; Dirac Algo Preset Narration Mode */
+		0xff				/* terminate */
+	},
+
+	/* [9]: 2-mic Stereo REC*/
+	{
+		0x90, 0x31, 0x04, 0x9a, /*1178; Route Preset 2 AUDIO AUDIO REC*/
+		0x90, 0x31, 0x02, 0x8d, /* 653; Avalon Algo Preset Record  */
+		0xff				/* terminate */
+	},
+    /* [10]: 2-mic REC*/
+    {
+        0x90, 0x31, 0x04, 0x84, /*1156; Route Preset 2 AUDIO 2 Ch PT Type2*/
+        0x90, 0x31, 0x03, 0x54, /*852; Passthrough Algo Preset 2 Ch Audio PT*/
+        0xff                                        /* terminate */
+    },
+
+	
+	/* [11]: 2-mic CT ASR */
+	{
+		0x90, 0x31, 0x04, 0xca, /*1226; Route Preset 2 MIC 1 CSOUT ASR*/
+		0x90, 0x31, 0x02, 0x58, /* 600; Voice Algo Preset 2 Mic AC WB   */	
+		0xff			/* terminate */
+	},
+
+	/* [12]: 2-mic FT ASR */
+	{
+		0x90, 0x31, 0x04, 0xca, /*1226; Route Preset 2 MIC 1 CSOUT ASR*/
+		0x90, 0x31, 0x02, 0x61, /* 609; Voice Algo Preset 2 Mic AF WB  */
+		0xff			
+		
+	}
+};
+#if 0
+static u8 es325_internal_route_configs_old[ES325_INTERNAL_ROUTE_MAX][50] = {
 	/* [0]: 1-mic Headset */
 	{
+
+#if 0
 		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing  */
 		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
 		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
 		0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
-		0xb0, 0x5a, 0x14, 0x60, /* Set  PORTD.Left -> FEIN (MDM..325) */
+		0xb0, 0x5a, 0x14, 0xa2, /* Set SBUS.Rx2 -> FEIN (MDM..325) */
 		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) */
-		0xb0, 0x5a, 0x40, 0x60, /* Set PORTD.Left <- CSOUT (325..MDM) */
-		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) */
-		0xb0, 0x5a, 0x48, 0xad, /* Set SBUS.Tx3 <- FEOUT2 (325..codec) */
-//		0xb0, 0x5a, 0x60, 0xaa, /* REC -> CSOUT */
-//	    0xb0, 0x23, 0x00, 0x03, /* Uplink + Downlink mix */
-//		0xb0, 0x17, 0x00, 0x02, /* Mic config = ...  */
-//		0xb0, 0x18, 0x00, 0x03, /*	... 1-MIC DV Need FIXED  */
-		0xb0, 0x15, 0x05, 0x0c, /* rx input gain up 12dB */
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) */
+		0xb0, 0x5a, 0x44, 0xae, /* Set SBUS.Tx4 <- FEOUT1 (325..codec) */
+		0xb0, 0x5a, 0x48, 0xaf, /* Set SBUS.Tx5 <- FEOUT2 (325..codec) */
 		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
+
+#endif 
+		/* earpiece 1 ch-in 2 ch-out*/
+		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing slim 4 --12/13*/
+		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
+		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
+	//	0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
+		0xb0, 0x5a, 0x14, 0xa0, /* Set SBUS.Rx0 -> FEIN (MDM..325) rx0*/
+		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) ok*/
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) ok*/
+		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) tx2*/
+		0xb0, 0x5a, 0x48, 0xad, /* Set SBUS.Tx3 <- FEOUT2 (325..codec) tx3*/
+		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
+
 		0xff			/* terminate */
 	},
 
 	/* [1]: 1-mic CS Voice (DV) */
 	{
+#if 0
 		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing */
 		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
 		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
 		0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
-		0xb0, 0x5a, 0x14, 0x60, /* Set  PORTD.Left -> FEIN (MDM..325) */
+		0xb0, 0x5a, 0x14, 0xa2, /* Set SBUS.Rx2 -> FEIN (MDM..325) */
 		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) */
-		0xb0, 0x5a, 0x40, 0x60, /* Set PORTD.Left <- CSOUT (325..MDM) */
-		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) */
-		0xb0, 0x5a, 0x60, 0xaa, /* REC -> CSOUT */
-		0xb0, 0x23, 0x00, 0x03, /* Uplink + Downlink mix */
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) */
+		0xb0, 0x5a, 0x44, 0xae, /* Set SBUS.Tx4 <- FEOUT1 (325..codec) */
 		0xb0, 0x17, 0x00, 0x02, /* Mic config = ...  */
 		0xb0, 0x18, 0x00, 0x02, /*	... 1-MIC DV  */
-//		0xb0, 0x15, 0x05, 0x06, /* rx input gain up 6dB */
 		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off  */
+#endif
+		/* CT 1 ch-in 2 ch-out*/
+		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing slim 4 --12*/
+		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
+		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
+	//	0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
+		0xb0, 0x5a, 0x14, 0xa0, /* Set SBUS.Rx0 -> FEIN (MDM..325) rx0*/
+		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) ok*/
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) ok*/
+		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) tx2*/
+	//	0xb0, 0x5a, 0x48, 0xad, /* Set SBUS.Tx3 <- FEOUT2 (325..codec) tx3*/
+		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
+
 		0xff				/* terminate */
 	},
 
 	/* [2]: 2-mic CS Voice (CT) */
 	{
+#if 0
 		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing */
 		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8 kHz */
 		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz */
 		0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
-		0xb0, 0x5a, 0x14, 0x60, /* Set  PORTD.Left -> FEIN (MDM..325) */
+		0xb0, 0x5a, 0x14, 0xa2, /* Set SBUS.Rx2 -> FEIN (MDM..325) */
 		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) */
 		0xb0, 0x5a, 0x08, 0xa5, /* Set SBUS.Rx5 -> SEC (codec..325) */
-		0xb0, 0x5a, 0x40, 0x60, /* Set PORTD.Left <- CSOUT (325..MDM) */
-		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) */
-		0xb0, 0x5a, 0x60, 0xaa, /* REC -> CSOUT */
-		0xb0, 0x23, 0x00, 0x03, /* Uplink + Downlink mix */
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) */
+		0xb0, 0x5a, 0x44, 0xae, /* Set SBUS.Tx4 <- FEOUT1 (325..codec) */
 		0xb0, 0x17, 0x00, 0x02, /* Mic config = ...  */
 		0xb0, 0x18, 0x00, 0x00, /*	... 2-MIC CT  */
-	//	0xb0, 0x15, 0x05, 0x0c, /* rx input gain up 12dB */
 		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
+#endif
+			0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing slim 4 --12/13*/
+			0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
+			0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
+		//	0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
+			0xb0, 0x5a, 0x14, 0xa0, /* Set SBUS.Rx0 -> FEIN (MDM..325) rx0*/
+			0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) ok*/
+			0xb0, 0x5a, 0x08, 0xa5, /* Set SBUS.Rx5 -> SEC (codec..325) ok*/
+			0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) ok*/
+			0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) tx2*/
+		//	0xb0, 0x5a, 0x48, 0xad, /* Set SBUS.Tx3 <- FEOUT2 (325..codec) tx3*/ 1 speaker
+			0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
+
 		0xff				/* terminate */
 	},
 
-	/* [3]: BT testing */ 
+	/* [3]: 1-mic VOIP (CT) */
 	{
-		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing  */
-		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
-		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
-		0xb0, 0x5a, 0x28, 0xa4, /* Set SBUS.Rx4 -> UITONE1 (APQ..325) */
-		0xb0, 0x5a, 0x14, 0x60, /* Set  PORTD.Left -> FEIN (MDM..325) */
-		0xb0, 0x5a, 0x04, 0xa0, /* Set SBUS.Rx4 -> PRI (codec..325) */
-		0xb0, 0x5a, 0x40, 0x60, /* Set PORTD.Left <- CSOUT (325..MDM) */
-		0xb0, 0x5a, 0x44, 0xaa, /* Set SBUS.Tx0 <- FEOUT1 (325..codec) */
-	//	0xb0, 0x15, 0x05, 0x12, /* rx input gain up 12dB */
+		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing */
+		0xb0, 0x4c, 0x00, 0x01, /* Algo rate = 16 kHz */
+		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz */
+		0xb0, 0x5a, 0x14, 0xa0, /* Set SBUS.Rx0 -> FEIN */
+		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) */
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) */
+		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1  */
+		0xb0, 0x17, 0x00, 0x02, /* Mic config = ...  */
+		0xb0, 0x18, 0x00, 0x02, /*	... 1-MIC CT  */
 		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
 		0xff			/* terminate */
-	}
-	, 
-    {
-		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing */
-		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz  */
-		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz  */
-		0xb0, 0x5a, 0x28, 0xa0, /* Set SBUS.Rx0 -> UITONE1 (APQ..325) */
-		0xb0, 0x5a, 0x14, 0x60, /* Set  PORTD.Left -> FEIN (MDM..325) */
-		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) */
-		0xb0, 0x5a, 0x40, 0x60, /* Set PORTD.Left <- CSOUT (325..MDM) */
-		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1 (325..codec) */
-		0xb0, 0x5a, 0x60, 0xaa, /* REC -> CSOUT */
-		0xb0, 0x23, 0x00, 0x03, /* Uplink + Downlink mix */
-		0xb0, 0x17, 0x00, 0x02, /* Mic config = ...  */
-		0xb0, 0x18, 0x00, 0x03, /*	... 1-MIC DV  */
-		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off  */
-		0xff				/* terminate */
-	}
-	,
+	},
 
-	/* [5]: Port D settings, 1 channel */
+	/* [4]: 2-mic VOIP (CT) */
 	{
-		0xb0, 0x4c, 0x00, 0x00, /* Algo rate = 8kHz NB */
-                0xb0, 0x0c, 0x0d,0x07, /* PORT D audio port mode, */
-		0xb0, 0x0d, 0x00,0x00, /* set device parm  pcm*/
-                0xb0, 0x0c, 0x0d,0x09, /* set PCM3 master, */
-                0xb0, 0x0d, 0x31,0x08, /* 8 kHz*/ 
-		0xb0,0x0C, 0x0D,0x01,
-		0xb0,0x0D, 0x00,0x00 ,// 0x800C:SetDeviceParmId, 0x0D01:PORTD TDM Time Slots, 0x800D:SetDeviceParm, 0x0000:1 Slots
+		0xb0, 0x5c, 0x00, 0x01, /* Algo = Voice processing */
+		0xb0, 0x4c, 0x00, 0x01, /* Algo rate = 16 kHz */
+		0xb0, 0x5e, 0x00, 0x01, /* Mix rate = 16 kHz */
+		0xb0, 0x5a, 0x14, 0xa0, /* Set SBUS.Rx0 -> FEIN */
+		0xb0, 0x5a, 0x04, 0xa4, /* Set SBUS.Rx4 -> PRI (codec..325) */
+		0xb0, 0x5a, 0x08, 0xa5, /* Set SBUS.Rx5 -> SEC (codec..325) */
+		0xb0, 0x5a, 0x40, 0xaa, /* Set SBUS.Tx0 <- CSOUT (325..MDM) */
+		0xb0, 0x5a, 0x44, 0xac, /* Set SBUS.Tx2 <- FEOUT1  */
+		0xb0, 0x17, 0x00, 0x02, /* Mic config = ...  */
+		0xb0, 0x18, 0x00, 0x00, /*	... 2-MIC CT  */
+		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
+		0xff			/* terminate */
+	},
 
-		0xb0,0x0C, 0x0D,0x02,
-		0xb0,0x0D, 0x00,0x01 ,// 0x800C:SetDeviceParmId, 0x0D02:PORTD Delay from Tx Frame sync, 0x800D:SetDeviceParm, 0x0001: 1 clock
-		0xb0,0x0C, 0x0D,0x03,
-		0xb0,0x0D, 0x00,0x01 ,// 0x800C:SetDeviceParmId, 0x0D03:PORTD Delay from Rx Frame sync, 0x800D:SetDeviceParm, 0x0001: 1 clock
+	/* [5]: Audio playback, 1 channel */
+	{
+		0xb0, 0x5c, 0x00, 0x04, /* Algo = 4 chan pass  */
+		0xb0, 0x4c, 0x00, 0x01, /* Algo rate = 16kHz  */
+		0xb0, 0x5a, 0x18, 0xa0, /* Set SBUS.Rx0 -> AUDIN1  */
+		0xb0, 0x5a, 0x4c, 0xac, /* Set SBUS.Tx2 <- AUDOUT1 */
+		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
 		0xff				/* terminate */
 	},
 
@@ -465,87 +605,13 @@ static u8 es325_internal_route_configs[ES325_INTERNAL_ROUTE_MAX][80] = {
 		0x90, 0x1c, 0x00, 0x00, /* Algo processing = off (COMMIT) */
 		0xff                    /* terminate */
 	},
-	/* [12]: Disable Port D clock */
-	{
-                0xb0, 0x0c, 0x0d,0x09, /* set PCM3 master, */
-                0x80, 0x0d, 0x30,0x08, /* 8 kHz*/ 
-		0xff				/* terminate */
-	},
-	/* [13]: 1MIC CT , PRI D MIC*/
-	{
-	/*
-		0x80,0x17,0x10,0x04,
-		0x80,0x18,0x00,0x04,
-		0x80,0x5c,0x00,0x04,
-		0xa0,0x5a,0x18,0xc0,
-		0x80,0x5a,0x4c,0xaa,
-
-		*/
-
-	      0x90, 0x52,0x00, 0x00,
-	      0x90, 0x5c, 0x00, 0x04,
-	      0xB0, 0x5a, 0x18, 0xc0,
-	      0x90, 0x5a, 0x4c, 0xaa,
-	      
-		/*0xb0, 0x52, 0x00, 0x00,*/  /* Disable PASS through */
-		/*0xb0, 0x5c, 0x00, 0x01,*/ /* Algo = Voice processing */
-             /* 0xb0, 0x5a, 0x14, 0xa0,*/ /* Set: SBUS.Rx0 -> FEIN */
-		/*0xb0, 0x5a, 0x04, 0xc3,*/ /* Set SBUS.Rx4 -> PRI (codec..325) */
-		/*0xb0, 0x5a, 0x08, 0xa4,*/ /* Set SBUS.Rx5 -> SEC (codec..325) */
-		/*0xb0, 0x5a, 0x40, 0xAA, *//* Set PORTD.Left <- CSOUT (325..MDM) */
-		/*0xb0, 0x5a, 0x44, 0xac,*/ /* Set SBUS.Tx2 <- FEOUT1 (325..codec) */
-		  
-		0xff				/* terminate */
-	},
-	/* [14]:  PRI D MIC and Slim Mic recording*/
-	{
-	      0x90, 0x52,0x00, 0x00, /* Disable PASS through */
-	      0x90, 0x5c, 0x00, 0x04, /* Algo = Pass through */
-	      0xB0, 0x5a, 0x18, 0xc0, /* Set data Path, PDMIO AUDIN1 */
-	      0xB0, 0x5a, 0x1c, 0xa5,  /* Set data Path, Slimbus Mic, Rx5 AUDIN2 */
-	      0xB0, 0x5a, 0x4C, 0xAA, /* Set data Path, Slimbus, Tx0 AUDOUT1 */
-             0x90, 0x5a, 0x50, 0xab, /* Set data Path, Slimbus , Tx1 AUDOUT2 */
-		  
-		0xff				/* terminate */
-	},
-	/* [15]:  CT voice call with 1 PDM MIC */
-	{
-	      0x90, 0x52,0x00, 0x00, /* Disable PASS through */
-	      0x90, 0x5c, 0x00, 0x01, /* Algo = Voice Processing */
-	      0xB0, 0x5a, 0x04, 0xc0, /* Set data Path, PDMIO PRI */
-	      0xB0, 0x5a, 0x14, 0xa0,  /* Set data Path, FEIN*/
-	      0xB0, 0x5a, 0x40, 0xAA, /* Set data Path,CSOUT */
-             0x90, 0x5a, 0x44, 0xac, /* Set data Path,FEOUT1*/
-		  
-		0xff				/* terminate */
-	},
-	/* [16]: One PRI D MIC recording*/
-	{
-	      0x90, 0x52,0x00, 0x00, /* Disable PASS through */
-	      0x90, 0x5c, 0x00, 0x04, /* Algo = Pass through */
-	      0xB0, 0x5a, 0x18, 0xc0, /* Set data Path, PDMIO AUDIN1 */
-	      
-	      0x90, 0x5a, 0x4C, 0xAA, /* Set data Path, Slimbus, Tx0 AUDOUT1 */
-             
-		  
-		0xff				/* terminate */
-	},
-	/* [17]: Gain max */
-	{
-
-		  0x90, 0x15, 0x06,0x1E, /* AUDIN1 30 db gAIN , mAX*/ 
-		  0x90, 0x15, 0x07,0x1E, /* AUDIN2 30 db gAIN , mAX*/ 
-	 	  0x90, 0x15, 0x13,0x1E, /*  AUDOUT1 30 db gAIN , mAX*/ 
-	 	  0x90, 0x15, 0x14,0x1E, /*  AUDOUT2 30 db gAIN , mAX*/ 
-		0xff				/* terminate */
-	},
-	
-
-
 };
+#endif
 
 static struct snd_soc_dai_driver es325_dai[];
 static struct q_clkdiv *codec_clk;
+
+int FW_success_flag =0;
 
 static void es325_fixed_config(struct es325_priv *es325);
 /* static void es325_ping(struct es325_priv *es325); */
@@ -564,10 +630,9 @@ static int es325_close_slim_tx(struct slim_device *sbdev, unsigned int *ch_num,
 static int es325_rx_ch_num_to_idx(int ch_num);
 static int es325_tx_ch_num_to_idx(int ch_num);
 static int es325_clk_ctl(int enable);
-
+#ifdef SLEEP_WAKEUP_FIX
 static void es325_sleep_request(struct es325_priv *es325);
-
-
+#endif
 unsigned int es325_presets = 0;
 static int es325_rx_ch_num_to_idx(int ch_num)
 {
@@ -954,11 +1019,6 @@ int es325_remote_cfg_slim_rx(int dai_id)
 
 	dev_info(&sbdev->dev, "GAC:%s(): ch_tot = %d\n", __func__,
 		 es325->dai[DAI_INDEX(dai_id)].ch_tot);
-	if (!es325_fw_ready){
-		pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-	}
-	
 	if (dai_id != ES325_SLIM_1_PB
 	    && dai_id != ES325_SLIM_2_PB)
 		return 0;
@@ -994,27 +1054,21 @@ int es325_remote_cfg_slim_tx(int dai_id)
 
 	dev_info(&sbdev->dev, "GAC:%s(): ch_tot = %d\n", __func__,
 		 es325->dai[DAI_INDEX(dai_id)].ch_tot);
-
-if (!es325_fw_ready){
-	      pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-}
-
-    if (dai_id != ES325_SLIM_1_CAP)
+	if (dai_id != ES325_SLIM_1_CAP)
 		return 0;
-
+#if 0
     //Phone call and recording conflict fix
 	if ((es325_tx1_route_enable == 1) && (es325->dai[DAI_INDEX(dai_id)].ch_tot == 0) ) 
 	{
 		 es325->dai[DAI_INDEX(dai_id)].ch_tot = 2;  
-	pr_info("GAC:%s(): phone call recording fix\n", __func__ );
+	pr_debug("GAC:%s(): phone call recording fix\n", __func__ );
 	}
-
+#endif
 	if (es325->dai[DAI_INDEX(dai_id)].ch_tot != 0) {
 		pr_info("%s: MDM ch_0=%d ch_1=%d\n", __func__, es325->dai[DAI_INDEX(dai_id)].ch_num[0], es325->dai[DAI_INDEX(dai_id)].ch_num[1]);
 		/* start slim channels associated with id */
 		if (dai_id == ES325_SLIM_1_CAP) {
-			pr_info("GAC:%s(): overwrite ch_cnt = %d\n",
+			pr_debug("GAC:%s(): overwrite ch_cnt = %d\n",
 				__func__, es325_ap_tx1_ch_cnt);
 			ch_cnt = es325_ap_tx1_ch_cnt;
 		}
@@ -1041,10 +1095,6 @@ int es325_remote_close_slim_rx(int dai_id)
 	int be_id;
 	int rc = 0;
 
-	if (!es325_fw_ready){
-		pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-	}
 	dev_info(&sbdev->dev, "GAC:%s(); entry\n", __func__);
 
 	dev_info(&sbdev->dev, "GAC:%s(): ch_tot = %d\n", __func__,
@@ -1075,10 +1125,7 @@ int es325_remote_close_slim_tx(int dai_id)
 	int be_id;
 	int ch_cnt;
 	int rc = 0;
-	if (!es325_fw_ready){
-		pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-	}
+
 	dev_info(&sbdev->dev, "GAC:%s(); entry\n", __func__);
 
 	dev_info(&sbdev->dev, "GAC:%s(): ch_tot = %d\n", __func__,
@@ -1089,6 +1136,7 @@ int es325_remote_close_slim_tx(int dai_id)
 	if (es325->dai[DAI_INDEX(dai_id)].ch_tot != 0) {
 		if (dai_id == ES325_SLIM_1_CAP)
 			ch_cnt = es325_ap_tx1_ch_cnt;
+	
 		es325_close_slim_tx(es325->gen0_client,
 				    es325->dai[DAI_INDEX(dai_id)].ch_num,
 				    ch_cnt);
@@ -1133,7 +1181,11 @@ static void msg_to_bus_order(char *msg, int msg_len)
  * ready" response. */
 #define ES325_RD_POLL_MAX 5
 /* Interval between attemps to read a VE in milliseconds. */
+#ifdef SLEEP_WAKEUP_FIX
 #define ES325_RD_POLL_INTV 30
+#else
+#define ES325_RD_POLL_INTV 29
+#endif
 
 #ifdef BUS_TRANSACTIONS
 #if defined(CONFIG_SND_SOC_ES325_I2C)
@@ -1166,13 +1218,9 @@ static int es325_write_block_api(struct es325_priv *es325, u8 *cmd_blk)
 {
 	int rc = 0;
 
-	if (!es325_fw_ready){
-		pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-	}
-
 	while (*cmd_blk != 0xff) {
 		u8 msg[4];
+	//	u8 ack_msg[4];
 		memcpy(msg, cmd_blk, 4);
 		es325_slim_write(es325, ES325_WRITE_VE_OFFSET,
 				 ES325_WRITE_VE_WIDTH, msg, 4, 1);
@@ -1180,20 +1228,20 @@ static int es325_write_block_api(struct es325_priv *es325, u8 *cmd_blk)
 			msg[0], msg[1], msg[2], msg[3]);
 		cmd_blk += 4;
 		msleep(20);
+	/*	usleep_range(10000, 10000);
+		es325_slim_read(es325, ES325_READ_VE_OFFSET,
+		ES325_READ_VE_WIDTH, ack_msg, 4, 1);
+		pr_info("%s: %02x%02x%02x%02x\n", __func__, ack_msg[0], ack_msg[1], ack_msg[2], ack_msg[3]);*/
+
 	}
 
 	return rc;
 }
 
 static int es325_write_block_len(struct es325_priv *es325, u8 *cmd_blk,
-				 int len)
+				 unsigned int len)
 {
 	int rc = 0;
-
-	if (!es325_fw_ready){
-		pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-	}
 
 	pr_info("GAC:%s(len = %d); entry\n", __func__, len);
 	while (len > 0) {
@@ -1434,7 +1482,7 @@ static int es325_slim_write(struct es325_priv *es325, unsigned int offset,
 		.comp = NULL,
 	};
 	int rc = 0;
-	
+
 	if (bus_order)
 		msg_to_bus_order(buf, len);
 	rc = slim_change_val_element(sbdev, &msg, buf, len);
@@ -1658,14 +1706,14 @@ static unsigned int es325_read(struct snd_soc_codec *codec,
 	rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
 			     ES325_WRITE_VE_WIDTH, req_msg, msg_len, 1);
 	if (rc < 0) {
-		pr_err("%s(): es325_xxxx_write() Failed \n", __func__);
+		pr_err("%s(): es325_xxxx_write()", __func__);
 		return rc;
 	}
 	msleep(20);
 	rc = ES325_BUS_READ(es325, ES325_READ_VE_OFFSET,
 			    ES325_READ_VE_WIDTH, ack_msg, 4, 1);
 	if (rc < 0) {
-		pr_err("%s(): es325_xxxx_read() Failed \n", __func__);
+		pr_err("%s(): es325_xxxx_read()", __func__);
 		return rc;
 	}
 	value = ack_msg[2] << 8 | ack_msg[3];
@@ -1711,14 +1759,14 @@ static int es325_write(struct snd_soc_codec *codec, unsigned int reg,
 		rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
 				     ES325_WRITE_VE_WIDTH, msg_ptr, 4, 1);
 		if (rc < 0) {
-			pr_err("%s(): es325_xxxx_write()  Failed \n", __func__);
+			pr_err("%s(): es325_xxxx_write()", __func__);
 			return rc;
 		}
 		msleep(20);
 		rc = ES325_BUS_READ(es325, ES325_READ_VE_OFFSET,
 				    ES325_READ_VE_WIDTH, msg_ptr, 4, 1);
 		if (rc < 0) {
-			pr_err("%s(): es325_xxxx_read()  Failed \n", __func__);
+			pr_err("%s(): es325_xxxx_read()", __func__);
 			return rc;
 		}
 		msg_ptr += 4;
@@ -2232,6 +2280,11 @@ static void es325_switch_route(long route_index)
 {
 	struct es325_priv *es325 = &es325_priv;
 	int ret;
+	if(FW_success_flag==0)
+	{
+		pr_err("es325 fw not ready\n");
+		return ;
+	}
 
 	if (route_index > ES325_INTERNAL_ROUTE_MAX) {
 		pr_info("%s(): new es325_internal_route = %ld is out of range\n",
@@ -2263,12 +2316,37 @@ static DEVICE_ATTR(route_config, 0644, es325_route_config_show,
 		   es325_route_config_set);
 /* /sys/devices/platform/msm_slim_ctrl.1/es325-codec-gen0/route_config */
 
+#if 0
+static long esxxx_clk_enable=0;
+static ssize_t esxxx_test_show(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf)
+{
+	pr_info("GAC:%s(): route=%ld\n", __func__,
+		esxxx_clk_enable);
+	return snprintf(buf, PAGE_SIZE, "clk=%ld\n",
+		       esxxx_clk_enable);
+}
 
+static ssize_t esxxx_test_set(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	int rc;
+
+	pr_info("GAC:%s():buf = %s\n", __func__, buf);
+	rc = kstrtol(buf, 10, &esxxx_clk_enable);
+	es325_clk_ctl(esxxx_clk_enable);
+	return count;
+}
+static DEVICE_ATTR(esxxx_test, 0644, esxxx_test_show,
+		   esxxx_test_set);
+#endif
 static ssize_t es325_reset_show(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf)
 {
-	pr_info("GAC:%s():\n", __func__);
+	pr_debug("GAC:%s():\n", __func__);
 	return 0;
 }
 
@@ -2294,32 +2372,13 @@ static DEVICE_ATTR(es325_reset, 0644, es325_reset_show,
 		   es325_reset_set);
 
 
-struct txhex_msg
-{
-    unsigned int size; 
-    u8 msg[256];
-} txhex_msg;
 
 static ssize_t es325_txhex_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
-    ssize_t ret = 0;
-    int i = 0;
-
-
-    if ( txhex_msg.size > 0)
-    { 
-        for(; i < txhex_msg.size; i++) 
-        {
-           ret  +=  snprintf(buf + ret, PAGE_SIZE - ret, "%02x",txhex_msg.msg[i]);
-        }
-
-    }
-
-	pr_info("%s exit with %d\n", __func__, ret);
-    txhex_msg.size = 0;
-	return ret;
+	pr_info("%s called\n", __func__);
+	return 0;
 }
 
 static ssize_t es325_txhex_set(struct device *dev,
@@ -2328,8 +2387,8 @@ static ssize_t es325_txhex_set(struct device *dev,
 {
 	struct es325_priv *es325 = &es325_priv;
 	u8 cmd[128];
-	int cmdlen = count / 2;
-	int offset = 0;
+	int cmdlen;
+	int offset;
 	u8 resp[4];
 	int rc = 0;
 
@@ -2337,19 +2396,16 @@ static ssize_t es325_txhex_set(struct device *dev,
 	pr_info("%s count=%i\n", __func__, count);
 
 	/* No command sequences larger than 128 bytes. */
-//	BUG_ON(count > (128 * 2) + 1);
+	BUG_ON(count > (128 * 2) + 1);
 	/* Expect a even number of hexadecimal digits terminated by a
 	 * newline. */
-//	BUG_ON(!(count & 1));
-    if ((count > (128 * 2) + 1) || !(count & 1)) {
-        pr_err("%s: size %d error\n", __func__, count - 1);
-        return -1;
-    }
+	BUG_ON(!(count & 1));
 
-	rc = hex2bin(cmd, buf, cmdlen);
-    if (rc != 0)
-        return -1;
-    txhex_msg.size = 0;
+	rc = hex2bin(cmd, buf, count / 2);
+	BUG_ON(rc != 0);
+	pr_info("%s rc==%i\n", __func__, rc);
+	cmdlen = count / 2;
+	offset = 0;
 	pr_info("%s cmdlen=%i\n", __func__, cmdlen);
 	while (offset < cmdlen) {
 		/* Commands must be written in 4 byte blocks. */
@@ -2359,44 +2415,15 @@ static ssize_t es325_txhex_set(struct device *dev,
 		usleep_range(10000, 10000);
 		es325_slim_read(es325, ES325_READ_VE_OFFSET,
 				ES325_READ_VE_WIDTH, resp, 4, 1);
-        memcpy(txhex_msg.msg + txhex_msg.size, resp, 4); 
-        txhex_msg.size += 4;
-		pr_info("%s %d: %02x%02x%02x%02x\n", __func__, txhex_msg.size, resp[0], resp[1], resp[2], resp[3]);
+		pr_info("%s: %02x%02x%02x%02x\n", __func__, resp[0], resp[1], resp[2], resp[3]);
 		offset += wrsize;
 	}
 
 	return count;
 }
-//liuyan 2013-12-19 modify for cta
-#ifndef CONFIG_VENDOR_EDIT
-static DEVICE_ATTR(txhex, 0777, es325_txhex_show, es325_txhex_set);
-#else
+
 static DEVICE_ATTR(txhex, 0644, es325_txhex_show, es325_txhex_set);
-#endif
 
-
-static int es325_present; 
-static ssize_t es325_live_show(struct device *dev,
-               struct device_attribute *attr,
-               char *buf)
-{
-    pr_info("%s called es325_present =%d \n", __func__,es325_present);
-    
-    if(es325_present == 1)
-        return snprintf(buf,PAGE_SIZE,"es325 present\n");
-    else
-        return snprintf(buf,PAGE_SIZE,"es325 not found\n");
-    
-}
-static ssize_t es325_live_set(struct device *dev,
-                  struct device_attribute *attr,
-                  const char *buf, size_t count)
-{
-   pr_info("%s called\n", __func__);
-   return 0;
-}
-
-static DEVICE_ATTR(es325_live, 0644, es325_live_show, es325_live_set);
 
 #define ES325_FW_LOAD_BUF_SZ 4
 static int es325_bootup(struct es325_priv *es325)
@@ -2408,16 +2435,16 @@ static int es325_bootup(struct es325_priv *es325)
 	int rc;
 
 	pr_info("%s(): entry\n", __func__);
-
+#ifdef SLEEP_WAKEUP_FIX
     mutex_lock(&es325->power_lock);
     es325->power_state = ES325_POWER_BOOT;
     mutex_unlock(&es325->power_lock);
-/*
+#endif
 	gpio_set_value(es325->pdata->reset_gpio, 0); 
 	mdelay(1); 
 	gpio_set_value(es325->pdata->reset_gpio, 1); 
 	mdelay(50);
-	*/
+	
 	msleep(100);
 	pr_info("%s(): write ES325_BOOT_CMD\n", __func__);
 	memset(msg, 0, 16);
@@ -2429,9 +2456,9 @@ static int es325_bootup(struct es325_priv *es325)
 	pr_info("%s(): msg[3] = 0x%02x\n", __func__, msg[3]);
 	rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
 			     ES325_WRITE_VE_WIDTH, msg, 4, 0);
-	if (rc < 0) {
+	if (rc < 0) {/* retry if fw download failed!!*/
 		pr_err("%s(): firmware load failed boot write\n", __func__);
-		return	0; /* rc; */
+		return	 rc; 
 	}
 	msleep(100);
 	pr_info("%s(): read boot cmd ack\n", __func__);
@@ -2463,6 +2490,7 @@ static int es325_bootup(struct es325_priv *es325)
 				     ES325_FW_LOAD_BUF_SZ, 0);
 		if (rc < 0) {
 			pr_err("%s(): firmware load failed\n", __func__);
+			pr_err("%s(): power_gpio_level = %d\n", __func__, __gpio_get_value(65));	
 			return -EIO;
 		}
 	}
@@ -2472,6 +2500,7 @@ static int es325_bootup(struct es325_priv *es325)
 				     es325->fw->size % ES325_FW_LOAD_BUF_SZ, 0);
 		if (rc < 0) {
 			pr_err("%s(): firmware load failed\n", __func__);
+			pr_err("%s(): power_gpio_level = %d\n", __func__, __gpio_get_value(65));	
 			return -EIO;
 		}
 	}
@@ -2496,6 +2525,7 @@ static int es325_bootup(struct es325_priv *es325)
 		pr_err("%s(): firmware load failed sync write\n", __func__);
 		return rc;
 	}
+
 	msleep(100);
 	pr_info("%s(): read sync cmd ack\n", __func__);
 	memset(msg, 0, 16);
@@ -2510,20 +2540,21 @@ static int es325_bootup(struct es325_priv *es325)
 		       __func__, rc);
 		return rc;
 	}
+
+	FW_success_flag=1;
 	if (memcmp(msg, sync_ok, 4) == 0) {
 		pr_info("%s(): firmware sync ack good=0x%02x%02x%02x%02x\n",
 			__func__, msg[0], msg[1], msg[2], msg[3]);
-		es325_fw_ready =1;
 	} else {
 		pr_err("%s(): firmware sync ack failed=0x%02x%02x%02x%02x\n",
 		       __func__, msg[0], msg[1], msg[2], msg[3]);
 		return -EIO;
 	}
-
+#ifdef SLEEP_WAKEUP_FIX
     mutex_lock(&es325->power_lock);
     es325->power_state = ES325_POWER_AWAKE;
     mutex_unlock(&es325->power_lock);
-
+#endif
 	pr_info("%s(): exit\n", __func__);
 	return 0;
 }
@@ -2540,11 +2571,12 @@ static int fw_download(void *arg)
 #ifdef BUS_TRANSACTIONS
 	rc = es325_bootup(priv);
 #endif
-    if (rc == 0)
-        es325_present = 1;
-    else
-        es325_present = 0;
-
+/* try again if download failed!
+	if(rc < 0) {
+		pr_err("%s(): es325_bootup failed! retry!", __func__);
+		rc = es325_bootup(priv);
+		}
+		*/
 	pr_info("%s(): bootup rc=%d\n", __func__, rc);
 	pr_info("%s(): would release firmware here...\n", __func__);
 	release_firmware(priv->fw);
@@ -2556,22 +2588,22 @@ static int fw_download(void *arg)
 #ifdef FIXED_CONFIG
 	es325_fixed_config(priv);
 #endif
-
-      es325_sleep_request(priv);
+#ifdef SLEEP_WAKEUP_FIX
+    es325_sleep_request(priv);
+#endif
 	pr_info("%s(): release module\n", __func__);
 	module_put(THIS_MODULE);
 	pr_info("%s(): exiting fw_download\n", __func__);
 	return 0;
 }
 
-
-
+#ifdef SLEEP_WAKEUP_FIX
 static int es325_sleep(struct es325_priv *es325)
 {
 	char msg[16];
 	int rc;
 
-	pr_info("%s(): entry\n", __func__);
+	pr_debug("%s(): entry\n", __func__);
 
 	memset(msg, 0, 16);
 	msg[0] = ES325_SET_SMOOTH >> 8;
@@ -2611,7 +2643,7 @@ static int es325_sleep(struct es325_priv *es325)
 
 	msleep(5);
 
-	pr_info("%s(): exit\n", __func__);
+	pr_debug("%s(): exit\n", __func__);
 	return 0;
 }
 
@@ -2628,7 +2660,7 @@ static void es325_delayed_sleep(struct work_struct *w)
     ch_tot += es325_priv.dai[ES325_SLIM_2_PB].ch_tot;
 
     ch_tot += es325_priv.dai[ES325_SLIM_1_CAP].ch_tot;
-    pr_info("%s %d active channels, ports_active: %d \n", __func__,
+    pr_debug("%s %d active channels, ports_active: %d \n", __func__,
 		    ch_tot, ports_active);
     mutex_lock(&es325_priv.power_lock);
     if ((ch_tot <= 0) && (ports_active == 0) && (es325_priv.power_state ==  ES325_POWER_SLEEP_PENDING)) 
@@ -2636,20 +2668,18 @@ static void es325_delayed_sleep(struct work_struct *w)
 	    es325_sleep(&es325_priv);
 	    es325_priv.power_state = ES325_POWER_SLEEP; 
 	    es325_power_state = 0;
-    } else {
-           es325_priv.power_state = ES325_POWER_AWAKE;
-           es325_power_state = 1;
-          
-    	}
+    } 
+	else if (es325_priv.power_state ==  ES325_POWER_SLEEP_PENDING)
+	{
+	    es325_priv.power_state = ES325_POWER_AWAKE; 
+	}
     mutex_unlock(&es325_priv.power_lock);
 }
-
-
 static void es325_sleep_request(struct es325_priv *es325)
 {
-    pr_info("%s \n", __func__);
+    pr_debug("%s \n", __func__);
     mutex_lock(&es325->power_lock); 
-    pr_info("%s power_state = %d\n", __func__, es325_priv.power_state);
+    pr_debug("%s power_state = %d\n", __func__, es325_priv.power_state);
     if (es325_priv.power_state == ES325_POWER_AWAKE)
     {
         schedule_delayed_work(&es325->sleep_work,
@@ -2667,7 +2697,6 @@ static void es325_sleep_request(struct es325_priv *es325)
 #define MAX_TRIALS	20
 #define SMB_DELAY	30000
 const char NOT_READY[4] = {0x00, 0x00, 0x00, 0x00};
-#if 0
 static int es325_request_response(struct es325_priv *es325,
 				  char *rqst_ptr, int rqst_len, int rqst_order,
 				  char *rspn_ptr, int rspn_len, int rspn_order,
@@ -2681,98 +2710,40 @@ static int es325_request_response(struct es325_priv *es325,
 	for (i = 0; i < MAX_TRIALS; i++)
     {
         rc = 0;
+        usleep_range(SMB_DELAY, SMB_DELAY + 1000);
         memcpy(msg, rqst_ptr, 4);
         rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
                 ES325_WRITE_VE_WIDTH, msg, 4, rqst_order);
         if (rc < 0) {
             dev_err(&sbdev->dev, "=[ES325]=%s: slim write fail, rc=%d\n", __func__, rc);
-            msleep(30); 
         }		
-        else 
-            break; 
-        usleep_range(SMB_DELAY, SMB_DELAY + 1000);
-    }
-    if (rc == 0) {
-        //es325_slim_read has 5 trials. 
-        for (i = 0; i <  MAX_TRIALS ; i++)
-        {
+        if (rc == 0) 
+        { 
+            msleep(5); 
             memset(msg, 0, 4);
             rc = ES325_BUS_READ(es325, ES325_READ_VE_OFFSET,
                     ES325_READ_VE_WIDTH, msg, rspn_len, rspn_order);
-            if (rc < 0) { 
+            if (rc < 0) 
+			{ 
                 dev_err(&sbdev->dev, "=[ES325]=%s: slim read fail, rc=%d\n", __func__, rc); 
                 usleep_range(SMB_DELAY, SMB_DELAY + 1000);
 
-            } else if (memcmp(msg, NOT_READY, 4) != 0) {
-                rc = -1;
-                memcpy(rspn_ptr, msg, rspn_len);
-                if (memcmp(rqst_ptr, msg, rspn_len) == 0)
-                {
-                    pr_info("%s():sync reply = 0x%02x%02x%02x%02x\n", __func__, msg[0], msg[1], msg[2], msg[3]);
-                    rc = 0;
-                    break;
-                }
-            }
+        	} else if (memcmp(msg, NOT_READY, 4) != 0) 
+					{
+            			rc = -1;
+            			memcpy(rspn_ptr, msg, rspn_len);
+            			if (memcmp(rqst_ptr, msg, rspn_len) == 0)
+            			{
+                			pr_debug("%s():sync reply = 0x%02x%02x%02x%02x\n", __func__, msg[0], msg[1], msg[2], msg[3]);
+                			rc = 0;
+                			break;
+                		}
+            		}
         }
     } 	
-     pr_info("%s: tries %d with %d\n", __func__, i, rc);
+     pr_debug("%s: tries %d with %d\n", __func__, i, rc);
     return rc;
 }
-
-
-#endif
-static int es325_request_response(struct es325_priv *es325,
-				  char *rqst_ptr, int rqst_len, int rqst_order,
-				  char *rspn_ptr, int rspn_len, int rspn_order,
-				  int match, int return_if_fail)
-{
-	int rc = 0;
-	int i = 0;
-	char msg[4];
-	struct slim_device *sbdev = es325->gen0_client;
-
-	pr_info("%s: Enter new \n", __func__);
-	for (i = 0; i < MAX_TRIALS; i++)
-    {
-        rc = 0;
-
-	usleep_range(SMB_DELAY, SMB_DELAY + 1000);
-        memcpy(msg, rqst_ptr, 4);
-		pr_info("%s: Sync Write \n", __func__);
-        rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
-                ES325_WRITE_VE_WIDTH, msg, 4, rqst_order);
-        if (rc < 0) {
-            dev_err(&sbdev->dev, "=[ES325]=%s: slim write fail, rc=%d\n", __func__, rc);
-           
-        }		
-        
-    	if (rc == 0) {
-        //es325_slim_read has 5 trials.
-            msleep(5);
-            memset(msg, 0, 4);
-			pr_info("%s: Sync Read \n", __func__);
-            rc = ES325_BUS_READ(es325, ES325_READ_VE_OFFSET,
-                    ES325_READ_VE_WIDTH, msg, rspn_len, rspn_order);
-            if (rc < 0) { 
-                dev_err(&sbdev->dev, "=[ES325]=%s: slim read fail, rc=%d\n", __func__, rc); 
-                //usleep_range(SMB_DELAY, SMB_DELAY + 1000);
-
-            } else if (memcmp(msg, NOT_READY, 4) != 0) {
-                rc = -1;
-                memcpy(rspn_ptr, msg, rspn_len);
-                if (memcmp(rqst_ptr, msg, rspn_len) == 0)
-                {
-                    pr_info("%s():sync reply = 0x%02x%02x%02x%02x\n", __func__, msg[0], msg[1], msg[2], msg[3]);
-                    rc = 0;
-                    break;
-                }
-            }
-        }
-    } 	
-     pr_info("%s: tries %d with %d\n", __func__, i, rc);
-    return rc;
-}
-
 
 #define SYNC_DELAY 30
 static int es325_wakeup(struct es325_priv *es325)
@@ -2780,7 +2751,7 @@ static int es325_wakeup(struct es325_priv *es325)
 	static char sync_ok[] = { 0x80, 0, 0, 0x0 };
   	char resp[4];
 	int rc;
-	pr_info("%s(): entry\n", __func__);
+	pr_debug("%s(): entry\n", __func__);
 	/* 1 - clocks on
 	 * 2 - wakeup 1 -> 0
 	 * 3 - sleep 30 ms
@@ -2793,7 +2764,7 @@ static int es325_wakeup(struct es325_priv *es325)
 
 	if (delayed_work_pending(&es325->sleep_work)) { 
 		rc = cancel_delayed_work_sync(&es325->sleep_work); 
-		pr_info("%s(): cancel delayed work\n", __func__);
+		pr_debug("%s(): cancel delayed work\n", __func__);
 		es325->power_state = ES325_POWER_AWAKE; 
 		es325_power_state = 1;
 		mutex_unlock(&es325->power_lock);
@@ -2810,9 +2781,12 @@ static int es325_wakeup(struct es325_priv *es325)
 		es325->pdata->es325_clk_cb(1); 
 		usleep_range(3000, 3100);
 	}
-	pr_info("%s(): gpio low\n", __func__);
+	pr_debug("%s(): gpio high\n", __func__);
+	gpio_set_value(es325->pdata->wakeup_gpio, 1);		
+	usleep_range(1000, 1100);
+	pr_debug("%s(): gpio low\n", __func__);
 	gpio_set_value(es325->pdata->wakeup_gpio, 0);		
-	pr_info("%s(): delay 30\n", __func__);
+	pr_debug("%s(): delay 30\n", __func__);
 	msleep(SYNC_DELAY);
 
 	rc = es325_request_response(es325, sync_ok, 4, 1, resp, 4, 1, 1, 0);
@@ -2824,7 +2798,7 @@ static int es325_wakeup(struct es325_priv *es325)
 			es325->pdata->es325_clk_cb(0); 
 			usleep_range(3000, 3100);
 		}
-		pr_info("%s(): gpio high\n", __func__);
+		pr_debug("%s(): gpio high\n", __func__);
 		gpio_set_value(es325->pdata->wakeup_gpio, 1);
 		usleep_range(5000, 5100);
 		mutex_unlock(&es325->power_lock);
@@ -2838,10 +2812,112 @@ static int es325_wakeup(struct es325_priv *es325)
 	es325_power_state = 1;
 	mutex_unlock(&es325->power_lock);
 
+	pr_debug("%s(): exit\n", __func__);
+	return 0;
+}
+#else
+static int es325_sleep(struct es325_priv *es325)
+{
+	char msg[16];
+	int rc;
+
+	pr_info("%s(): entry\n", __func__);
+	if(FW_success_flag==0)
+	{
+		pr_err("es325 fw not ready exit!\n");
+		return -1;
+	}
+	/* write 0x8000_0001
+	 * sleep 20 ms
+	 * clocks off
+	 */
+	memset(msg, 0, 16);
+	msg[0] = ES325_SET_POWER_STATE >> 8;
+	msg[1] = ES325_SET_POWER_STATE & 0x00ff;
+	msg[2] = ES325_SET_POWER_STATE_SLEEP >> 8;
+	msg[3] = ES325_SET_POWER_STATE_SLEEP & 0x00ff;
+	rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
+			     ES325_WRITE_VE_WIDTH, msg, 4, 1);
+	if (rc < 0) {
+		pr_err("%s(): es325_i2c_write()", __func__);
+		return rc;
+	}
+
+	msleep(20);
+
+	/* clocks off */
+
 	pr_info("%s(): exit\n", __func__);
 	return 0;
 }
 
+static int es325_wakeup(struct es325_priv *es325)
+{
+	static char sync_ok[] = { 0x80, 0, 0, 0 };
+	char msg[16];
+	int rc;
+
+	pr_info("%s(): entry\n", __func__);
+	if(FW_success_flag==0)
+	{
+		pr_err("es325 fw not ready exit!\n");
+		return -1;
+	}
+	/* 1 - clocks on
+	 * 2 - wakeup 1 -> 0
+	 * 3 - sleep 30 ms
+	 * 4 - Send sync command (0x8000, 0x0001)
+	 * 5 - Read sync ack
+	 * 6 - wakeup 0 -> 1
+	 */
+
+	gpio_set_value(es325->pdata->wakeup_gpio, 0);		
+	msleep(30);
+
+	memset(msg, 0, 16);
+	msg[0] = ES325_SYNC_CMD >> 8;
+	msg[1] = ES325_SYNC_CMD & 0x00ff;
+	msg[2] = ES325_SYNC_POLLING >> 8;
+	msg[3] = ES325_SYNC_POLLING & 0x00ff;
+	pr_info("%s(): msg[0] = 0x%02x\n", __func__, msg[0]);
+	pr_info("%s(): msg[1] = 0x%02x\n", __func__, msg[1]);
+	pr_info("%s(): msg[2] = 0x%02x\n", __func__, msg[2]);
+	pr_info("%s(): msg[3] = 0x%02x\n", __func__, msg[3]);
+	rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
+			     ES325_WRITE_VE_WIDTH, msg, 4, 1);
+	if (rc < 0) {
+		pr_err("%s(): firmware load failed sync write\n", __func__);
+		return rc;
+	}
+	msleep(100);
+	pr_info("%s(): read sync cmd ack\n", __func__);
+	memset(msg, 0, 16);
+	rc = ES325_BUS_READ(es325, ES325_READ_VE_OFFSET, ES325_READ_VE_WIDTH,
+			    msg, 4, 1);
+	pr_info("%s(): msg[0] = 0x%02x\n", __func__, msg[0]);
+	pr_info("%s(): msg[1] = 0x%02x\n", __func__, msg[1]);
+	pr_info("%s(): msg[2] = 0x%02x\n", __func__, msg[2]);
+	pr_info("%s(): msg[3] = 0x%02x\n", __func__, msg[3]);
+	if (rc < 0) {
+		pr_err("%s(): error reading firmware sync ack rc=%d\n",
+		       __func__, rc);
+		return rc;
+	}
+	if (memcmp(msg, sync_ok, 4) == 0) {
+		pr_info("%s(): firmware sync ack good=0x%02x%02x%02x%02x\n",
+			__func__, msg[0], msg[1], msg[2], msg[3]);
+	} else {
+		pr_err("%s(): firmware sync ack failed=0x%02x%02x%02x%02x\n",
+		       __func__, msg[0], msg[1], msg[2], msg[3]);
+		return -EIO;
+	}
+
+	gpio_set_value(es325->pdata->wakeup_gpio, 1);
+
+	pr_info("%s(): exit\n", __func__);
+	return 0;
+}
+#endif
 /* static const char *es325_algo_sample_rate_texts[] = { */
 /*      "Narrow band", "Wide band", "Super wide band" */
 /* }; */
@@ -2976,7 +3052,11 @@ static int es325_get_control_value(struct snd_kcontrol *kcontrol,
 	/* unsigned int max = mc->max; */
 	/* unsigned int invert = mc->invert; */
 	unsigned int value;
-
+	if(FW_success_flag==0) {
+		pr_err("%s(): fw not ready!! set 0\n", __func__);
+		ucontrol->value.integer.value[0] = 0;
+		return 0;
+	}
 	/* dev_dbg(codec->dev, "%s(): reg = %d\n", __func__, reg); */
 	/* dev_dbg(codec->dev, "%s(): shift = %d\n", __func__, shift); */
 	/* dev_dbg(codec->dev, "%s(): max = %d\n", __func__, max); */
@@ -3004,15 +3084,11 @@ static int es325_preset_put_control_value(struct snd_kcontrol *kcontrol,
 	char *msg_ptr;
 	int i;
 
-	if(!es325_fw_ready){
-		pr_err("%s(): ES325 Firmware is not ready\n", __func__);
-		return rc;
-	}
     if (es325->power_state == ES325_POWER_SLEEP)
         return -EINVAL;
 
 	value = ucontrol->value.integer.value[0]; 
-printk("%s:Enter , value = %d\n",__func__,value);
+
     rc = es325_build_preset_write_msg(msg, &msg_len, reg, value);
 
  	if (rc) {
@@ -3026,7 +3102,7 @@ printk("%s:Enter , value = %d\n",__func__,value);
 		rc = ES325_BUS_WRITE(es325, ES325_WRITE_VE_OFFSET,
 				     ES325_WRITE_VE_WIDTH, msg_ptr, 4, 1);
 		if (rc < 0) {
-			pr_err("%s(): es325_xxxx_write() Failed\n", __func__);
+			pr_err("%s(): es325_xxxx_write()", __func__);
 			return rc;
 		}
 		msg_ptr += 4;
@@ -3043,7 +3119,6 @@ static int es325_preset_get_control_value(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-
 static int es325_put_control_enum(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_value *ucontrol)
 {
@@ -3054,8 +3129,8 @@ static int es325_put_control_enum(struct snd_kcontrol *kcontrol,
 	unsigned int value;
 	int rc = 0;
 
-	pr_info("%s(): reg = %d\n", __func__, reg);
-	pr_info("%s(): max = %d\n", __func__, max);
+	pr_debug("%s(): reg = %d\n", __func__, reg);
+	pr_debug("%s(): max = %d\n", __func__, max);
 	value = ucontrol->value.enumerated.item[0];
 	rc = es325_write(NULL, reg, value);
 
@@ -3071,11 +3146,16 @@ static int es325_get_control_enum(struct snd_kcontrol *kcontrol,
 	unsigned int max = e->max;
 	unsigned int value;
 
-	pr_info("%s(): reg = %d\n", __func__, reg);
-	pr_info("%s(): max = %d\n", __func__, max);
+	pr_debug("%s(): reg = %d\n", __func__, reg);
+	pr_debug("%s(): max = %d\n", __func__, max);
+	if(FW_success_flag==0) {
+		pr_err("%s(): fw not ready!! set 0\n", __func__);
+		ucontrol->value.enumerated.item[0] = 0;
+		return 0;
+	}
 	value = es325_read(NULL, reg);
 	ucontrol->value.enumerated.item[0] = value;
-       pr_info("%s(): value = %x\n", __func__, value);
+
 	return 0;
 }
 
@@ -3092,11 +3172,12 @@ static int es325_get_rx1_route_enable_value(struct snd_kcontrol *kcontrol,
 static int es325_put_rx1_route_enable_value(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
-
-	if(!es325_fw_ready){
-		pr_err("%s():ES325 Firmware is not ready\n", __func__);
-		return 0;
+	if(FW_success_flag==0)
+	{
+		pr_err("es325 fw not ready exit!\n");
+		return -1;
 	}
+
 	es325_rx1_route_enable = ucontrol->value.integer.value[0];
 	pr_info("%s(): es325_rx1_route_enable = %d\n", __func__,
 		es325_rx1_route_enable);
@@ -3107,7 +3188,6 @@ static int es325_put_rx1_route_enable_value(struct snd_kcontrol *kcontrol,
 static int es325_get_tx1_route_enable_value(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
-	
 	ucontrol->value.integer.value[0] = es325_tx1_route_enable;
 	pr_info("%s(): es325_tx1_route_enable = %d\n", __func__,
 		es325_tx1_route_enable);
@@ -3118,10 +3198,12 @@ static int es325_get_tx1_route_enable_value(struct snd_kcontrol *kcontrol,
 static int es325_put_tx1_route_enable_value(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
-	if(!es325_fw_ready){
-		pr_err("%s():ES325 Firmware is not ready\n", __func__);
-		return 0;
+	if(FW_success_flag==0)
+	{
+		pr_err("es325 fw not ready exit!\n");
+		return -1;
 	}
+
 	es325_tx1_route_enable = ucontrol->value.integer.value[0];
 	pr_info("%s(): es325_tx1_route_enable = %d\n", __func__,
 		es325_tx1_route_enable);
@@ -3142,11 +3224,12 @@ static int es325_get_rx2_route_enable_value(struct snd_kcontrol *kcontrol,
 static int es325_put_rx2_route_enable_value(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
-	if(!es325_fw_ready){
-		pr_err("%s():ES325 Firmware is not ready\n", __func__);
-		return 0;
+	if(FW_success_flag==0)
+	{
+		pr_err("es325 fw not ready exit!\n");
+		return -1;
 	}
-	
+
 	es325_rx2_route_enable = ucontrol->value.integer.value[0];
 	pr_info("%s(): es325_rx2_route_enable = %d\n", __func__,
 		es325_rx2_route_enable);
@@ -3225,7 +3308,7 @@ static int es325_ap_get_tx1_ch_cnt(struct snd_kcontrol *kcontrol,
 {
 	pr_info("GAC:%s(): tx1 ch cnt = %d\n", __func__,
 		es325_ap_tx1_ch_cnt);
-	ucontrol->value.enumerated.item[0] = es325_ap_tx1_ch_cnt - 1;
+	ucontrol->value.enumerated.item[0] = es325_internal_route_num - 1;
 	pr_info("%s(): ucontrol = %d\n", __func__,
 		ucontrol->value.enumerated.item[0]);
 
@@ -3278,7 +3361,14 @@ static int es325_get_dereverb_gain_value(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
 	unsigned int value;
-
+	
+	if(FW_success_flag==0) {
+		pr_err("%s(): fw not ready!! set 0\n", __func__);
+		ucontrol->value.integer.value[0] = 0;
+		pr_info("GAC:%s() ucontrol = %ld\n", __func__,
+		ucontrol->value.integer.value[0]);
+		return 0;
+	}
 	value = es325_read(NULL, reg);
 	pr_info("GAC:%s() value = %d\n", __func__, value);
 	ucontrol->value.integer.value[0] = es325_gain_to_index(-12, 1, value);
@@ -3317,7 +3407,13 @@ static int es325_get_bwe_high_band_gain_value(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = mc->reg;
 	unsigned int value;
-
+	if(FW_success_flag==0) {
+		pr_err("%s(): fw not ready!! set 0\n", __func__);
+		ucontrol->value.integer.value[0] = 0;
+		pr_info("GAC:%s() ucontrol = %ld\n", __func__,
+		ucontrol->value.integer.value[0]);
+		return 0;
+	}
 	value = es325_read(NULL, reg);
 	pr_info("GAC:%s() value = %d\n", __func__, value);
 	ucontrol->value.integer.value[0] = es325_gain_to_index(-10, 1, value);
@@ -3357,6 +3453,13 @@ static int es325_get_bwe_max_snr_value(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int value;
 
+	if(FW_success_flag==0) {
+		pr_err("%s(): fw not ready!! set 0\n", __func__);
+		ucontrol->value.integer.value[0] = 0;
+		pr_info("GAC:%s() ucontrol = %ld\n", __func__,
+		ucontrol->value.integer.value[0]);
+		return 0;
+	}
 	value = es325_read(NULL, reg);
 	pr_info("GAC:%s() value = %d\n", __func__, value);
 	ucontrol->value.integer.value[0] = es325_gain_to_index(-20, 1, value);
@@ -3424,10 +3527,11 @@ static const struct soc_enum es325_algo_processing_enable_enum =
 			ARRAY_SIZE(es325_off_on_texts),
 			es325_off_on_texts);
 
+static unsigned int es325_power_state;
 static int es325_put_power_state_enum(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
-	int ret = 0;
+	int ret=0;
 	pr_info("GAC:%s():ucontrol = %d\n", __func__,
 		ucontrol->value.enumerated.item[0]);
 	pr_info("GAC:%s():power state= %d\n", __func__,
@@ -3437,11 +3541,6 @@ static int es325_put_power_state_enum(struct snd_kcontrol *kcontrol,
 		pr_info("GAC:%s():no power state change\n", __func__);
 //		return 0;
 	}
-	if(!es325_fw_ready){
-		pr_err("%s():ES325 Firmware is not ready\n", __func__);
-		return ret;
-	}
-
 //	es325_power_state = ucontrol->value.enumerated.item[0];
 	if (ucontrol->value.enumerated.item[0])
 		ret = es325_wakeup(&es325_priv);
@@ -3462,15 +3561,6 @@ static int es325_get_power_state_enum(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-
-static const char * const es325_route_change_status_texts[] = {
-	"Active", "Muting", "Switching", "Unmuting", "Inactive"
-};
-static const struct soc_enum es325_route_change_status_enum =
-	SOC_ENUM_SINGLE(ES325_CHANGE_STATUS, 0,
-			ARRAY_SIZE(es325_route_change_status_texts),
-			es325_route_change_status_texts);
-
 static const char * const es325_power_state_texts[] = {
 	"Sleep", "Active"
 };
@@ -3534,9 +3624,7 @@ static struct snd_kcontrol_new es325_digital_ext_snd_controls[] = {
 	SOC_ENUM_EXT("ES325-AP Tx Channels", es325_ap_tx1_ch_cnt_enum,
 		     es325_ap_get_tx1_ch_cnt, es325_ap_put_tx1_ch_cnt),
 	SOC_SINGLE_EXT("ES325 Presets",SND_SOC_NOPM, 0, 65535, 0,
-		       es325_preset_get_control_value, es325_preset_put_control_value),
-	SOC_ENUM_EXT("ES325 Get Route Change Status", es325_route_change_status_enum,
-		     es325_get_control_enum, es325_put_control_enum),
+		       es325_preset_get_control_value, es325_preset_put_control_value)
 
 };
 
@@ -4489,6 +4577,7 @@ int es325_slim_get_channel_map(struct snd_soc_dai *dai,
 		}
 	} else if (id == ES325_SLIM_1_CAP) {
 		*tx_num = es325_dai[DAI_INDEX(id)].capture.channels_max;
+		
 		dev_info(codec->dev, "GAC:%s(): *tx_num = %d\n", __func__, *tx_num);
 		for (i = 0; i < *tx_num; i++) {
 			tx_slot[i] = tx[ES325_SLIM_1_CAP_OFFSET + i].ch_num;
@@ -5093,7 +5182,7 @@ gpioa_request_irq_error:
 gpioa_gpio_direction_error:
 	gpio_free(pdata->gpioa_gpio);
 gpioa_gpio_request_error:
-wakeup_gpio_direction_error: 
+wakeup_gpio_direction_error:
 	gpio_free(pdata->wakeup_gpio);
 wakeup_gpio_request_error:
 reset_gpio_direction_error:
@@ -5238,12 +5327,7 @@ static int es325_clk_ctl(int enable)
 static struct esxxx_platform_data *es325_populate_dt_pdata(struct device *dev, struct slim_device *slim_ifd)
 {
 	struct esxxx_platform_data *pdata;
-	#ifdef CONFIG_VENDOR_EDIT
-	//liuyan 2013-9-11 add for es325
-	//static int count_mclk=0;
-	//int ret;
-	struct msm_slim_ctrl *parent_ctl=NULL;
-	#endif
+
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
 		dev_err(dev, "could not allocate memory for platform data\n");
@@ -5252,20 +5336,6 @@ static struct esxxx_platform_data *es325_populate_dt_pdata(struct device *dev, s
 
 	es325_dt_parse_slim_interface_dev_info(dev, slim_ifd);
 
-	#ifdef CONFIG_VENDOR_EDIT
-	//liuyan 2013-9-11 add for es325 reset gpio
-	if(dev->parent){
-	    parent_ctl=dev_get_drvdata(dev->parent);
-	    if(parent_ctl){
-               pdata->reset_gpio =parent_ctl->reset_gpio;
-	        printk("%s: reset gpio %d\n",__func__,pdata->reset_gpio);
-	    }else{
-               pdata->reset_gpio=0;
-	    }
-       }else{
-           pdata->reset_gpio=0;
-	}
-	#else
 	pdata->reset_gpio = of_get_named_gpio(dev->of_node,
 				"adnc,reset-gpio", 0);
 	if (pdata->reset_gpio < 0) {
@@ -5275,7 +5345,6 @@ static struct esxxx_platform_data *es325_populate_dt_pdata(struct device *dev, s
 		goto err;
 	}
 	dev_dbg(dev, "%s: reset gpio %d", __func__, pdata->reset_gpio);
-	#endif
 
 	pdata->wakeup_gpio= of_get_named_gpio(dev->of_node,
 				"adnc,wakeup-gpio", 0);
@@ -5286,7 +5355,7 @@ static struct esxxx_platform_data *es325_populate_dt_pdata(struct device *dev, s
 		goto err;
 	}
 	dev_dbg(dev, "%s: wakeup gpio %d", __func__, pdata->wakeup_gpio);
-/*
+
 	pdata->power_gpio= of_get_named_gpio(dev->of_node,
 				"adnc,power-gpio", 0);
 	if (pdata->power_gpio < 0) {
@@ -5296,32 +5365,7 @@ static struct esxxx_platform_data *es325_populate_dt_pdata(struct device *dev, s
 		goto err;
 	}
 	dev_dbg(dev, "%s: power gpio %d", __func__, pdata->power_gpio);
-*/
 
-	//liuyan 2013-9-11 add for es325
-	#ifndef CONFIG_VENDOR_EDIT
-	pdata->mclk_gpio= of_get_named_gpio(dev->of_node,
-				"adnc,es325-mclk-gpios", 0);
-	printk("ES325 gpio:%d\n",pdata->mclk_gpio);
-	if (pdata->mclk_gpio < 0) {
-		dev_err(dev, "Looking up %s property in node %s failed %d\n",
-			"adnc,power-gpio", dev->of_node->full_name,
-			pdata->mclk_gpio);
-		}
-	ret = of_property_read_u32(dev->of_node,
-			"adnc,es325-mclk-clk-freq", &pdata->mclk_freq);
-	printk("pdata->mclk_freq:%d\n", pdata->mclk_freq);
-	if (count_mclk<1) {
-		count_mclk++;
-		ret = gpio_request(pdata->mclk_gpio, "ES_CODEC_PMIC_MCLK");
-		if (ret) {
-			dev_err(dev,
-				"%s: Failed to request taiko mclk gpio %d\n",
-				__func__, pdata->mclk_gpio);
-		}
-	}
-	printk("pdata->mclk_gpio:%d\n", pdata->mclk_gpio);
-	#endif
 	codec_clk = qpnp_clkdiv_get(dev, "es325-mclk");
 	if (IS_ERR(codec_clk)) {
 		dev_err(dev,
@@ -5336,7 +5380,7 @@ err:
 	devm_kfree(dev, pdata);
 	return NULL;
 }
-#if 0
+
 int32_t es325_get_dt_vreg_data(struct device_node *of_node,
 	struct es325_vreg_t **es325_vreg, int *num_vreg)
 {
@@ -5508,21 +5552,18 @@ vreg_set_voltage_fail:
 vreg_get_fail:
 	return -ENODEV;
 }
-#endif
+
 
 
 static int es325_slim_probe(struct slim_device *sbdev)
 {
-	//struct es325_vreg_t *es325_vreg;
-	//int num_vreg;
+	struct es325_vreg_t *es325_vreg;
+	int num_vreg;
 	struct regulator *reg_ptr = reg_ptr;
 	struct esxxx_platform_data *pdata;
 	const char *filename = "audience-es325-fw.bin";
 	int rc;
 	struct task_struct *thread = NULL;
-
-
-	printk("es325_slim_probe...\n");
 
 	dev_dbg(&sbdev->dev, "%s(): entry\n", __func__);
 	dev_dbg(&sbdev->dev, "%s(): sbdev->name = %s\n", __func__, sbdev->name);
@@ -5555,11 +5596,12 @@ static int es325_slim_probe(struct slim_device *sbdev)
 	if (rc)
 		dev_err(&sbdev->dev, "%s(): error file sysfs create\n", __func__);
 	
+	//rc = device_create_file(&sbdev->dev, &dev_attr_esxxx_test);
 	rc = device_create_file(&sbdev->dev, &dev_attr_es325_reset);
 	if (rc)
 		dev_err(&sbdev->dev, "%s(): error file sysfs create\n", __func__);
 
-    rc = device_create_file(&sbdev->dev, &dev_attr_es325_live);
+
 	if (rc)
 		dev_err(&sbdev->dev, "%s(): error file sysfs create\n", __func__);
 
@@ -5580,7 +5622,7 @@ static int es325_slim_probe(struct slim_device *sbdev)
 			__func__);
 		return 0;
 	}
-/*
+
 	es325_get_dt_vreg_data(sbdev->dev.of_node, &es325_vreg, &num_vreg);
 	es325_config_single_vreg(&sbdev->dev, es325_vreg, &reg_ptr, 1);
 
@@ -5603,21 +5645,20 @@ static int es325_slim_probe(struct slim_device *sbdev)
 	gpio_set_value(pdata->power_gpio, 1);
 	
 	dev_dbg(&sbdev->dev, "%s(): power_gpio_level = %d\n", __func__, __gpio_get_value(pdata->power_gpio));	
-*/
+
 	if (pdata->es325_clk_cb)
 		pdata->es325_clk_cb(1);
 
 	dev_dbg(&sbdev->dev, "%s(): reset_gpio = %d\n", __func__,
 		pdata->reset_gpio);
-	#ifndef CONFIG_VENDOR_EDIT
-	//liuyan 2013-9-11 del for es325 gpio
+	
 	rc = gpio_request(pdata->reset_gpio, "es325_reset");
 	if (rc < 0) {
 		dev_err(&sbdev->dev, "%s(): es325_reset request failed",
 			__func__);
 		goto reset_gpio_request_error;
 	}
-	rc = gpio_direction_output(pdata->reset_gpio, 0);
+	rc = gpio_direction_output(pdata->reset_gpio, 1); //es325 reset pin output
 	if (rc < 0) {
 		dev_err(&sbdev->dev, "%s(): es325_reset direction failed",
 			__func__);
@@ -5625,7 +5666,7 @@ static int es325_slim_probe(struct slim_device *sbdev)
 	}
 	gpio_set_value(pdata->reset_gpio, 0);
 	dev_dbg(&sbdev->dev, "%s(): reset_gpio_level = %d\n", __func__, __gpio_get_value(pdata->reset_gpio));	
-       #endif	
+	
 
 	dev_dbg(&sbdev->dev, "%s(): wakeup_gpio = %d\n", __func__, pdata->wakeup_gpio);
 	rc = gpio_request(pdata->wakeup_gpio, "es325_wakeup");
@@ -5634,7 +5675,6 @@ static int es325_slim_probe(struct slim_device *sbdev)
 			__func__);
 		goto wakeup_gpio_request_error;
 	}
-
 	rc = gpio_direction_output(pdata->wakeup_gpio, 1);
 	if (rc < 0) {
 		dev_err(&sbdev->dev, "%s(): es325_wakeup direction failed",
@@ -5643,9 +5683,9 @@ static int es325_slim_probe(struct slim_device *sbdev)
 	}
 	gpio_set_value(pdata->wakeup_gpio, 1);
 	dev_dbg(&sbdev->dev, "%s(): wakeup_gpio_level = %d\n", __func__, __gpio_get_value(pdata->wakeup_gpio));	
-/*
+
 	dev_dbg(&sbdev->dev, "%s(): gpioa_gpio = %d\n", __func__, pdata->gpioa_gpio);
-	
+	/*
 	rc = gpio_request(pdata->gpioa_gpio, "es325_gpioa");
 	if (rc < 0) {
 		dev_err(&sbdev->dev, "%s(): es325_gpioa request failed",
@@ -5712,16 +5752,13 @@ gpioa_gpio_request_error:
 wakeup_gpio_direction_error:
 	gpio_free(pdata->wakeup_gpio);
 wakeup_gpio_request_error:
-//liuyan 2013-9-11 del for es325
-#ifndef CONFIG_VENDOR_EDIT
-//reset_gpio_direction_error:
-//	gpio_free(pdata->reset_gpio);
-//reset_gpio_request_error:
-//power_gpio_direction_error:
-//	gpio_free(pdata->reset_gpio);
-//power_gpio_request_error:
-//liuyan del end
-#endif
+reset_gpio_direction_error:
+	gpio_free(pdata->reset_gpio);
+reset_gpio_request_error:
+power_gpio_direction_error:
+	gpio_free(pdata->reset_gpio);
+power_gpio_request_error:
+
 pdata_error:
 	dev_dbg(&sbdev->dev, "%s(): exit with error\n", __func__);
 	return rc;
@@ -5815,7 +5852,7 @@ static int es325_slim_remove(struct slim_device *sbdev)
 
 	gpio_free(pdata->reset_gpio);
 	gpio_free(pdata->wakeup_gpio);
-	//gpio_free(pdata->gpioa_gpio);
+	gpio_free(pdata->gpioa_gpio);
 	//gpio_free(pdata->power_gpio);
 
 	snd_soc_unregister_codec(&sbdev->dev);
@@ -5874,11 +5911,7 @@ static struct slim_driver es325_slim_driver = {
 static __init int es325_init(void)
 {
 	int ret = 0;
-      //liuyan add for dvt
-     #ifdef CONFIG_VENDOR_EDIT
-     int pcb_version;
-     #endif
-     //liuyan add end
+
 	pr_info("%s(): entry", __func__);
 #if defined(CONFIG_SND_SOC_ES325_I2C)
 	ret = i2c_add_driver(&es325_i2c_driver);
@@ -5887,22 +5920,15 @@ static __init int es325_init(void)
 		       ret);
 #else
 	pr_info("%s(): slim_driver_register()", __func__);
-       //liuyan add for dvt
-      #ifdef CONFIG_VENDOR_EDIT
-      pcb_version=get_pcb_version();
-      printk("%s:pcb version:%d\n",__func__,pcb_version);
-      if(pcb_version==HW_VERSION__10){
-      #endif
-     //liuyan add end
+#ifdef SLEEP_WAKEUP_FIX
     mutex_init(&es325_priv.power_lock); 
     INIT_DELAYED_WORK(&es325_priv.sleep_work, es325_delayed_sleep);
     es325_priv.power_state = ES325_POWER_BOOT;
-
+#endif
 	ret = slim_driver_register(&es325_slim_driver);
 	if (ret)
 		pr_err("Error registering Audience eS325 SLIMbus driver: %d\n",
 		       ret);
-      	}
 #endif
 
 	pr_info("%s(): exit\n", __func__);

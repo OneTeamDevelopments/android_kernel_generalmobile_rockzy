@@ -44,6 +44,7 @@ snd-soc-tlv320aic26-objs := tlv320aic26.o
 snd-soc-tlv320aic3x-objs := tlv320aic3x.o
 snd-soc-tlv320aic32x4-objs := tlv320aic32x4.o
 snd-soc-tlv320dac33-objs := tlv320dac33.o
+snd-soc-es325-objs := es325.o
 snd-soc-twl4030-objs := twl4030.o
 snd-soc-twl6040-objs := twl6040.o
 snd-soc-uda134x-objs := uda134x.o
@@ -51,8 +52,8 @@ snd-soc-uda1380-objs := uda1380.o
 snd-soc-wcd9304-objs := wcd9304.o wcd9304-tables.o
 snd-soc-wcd9310-objs := wcd9310.o wcd9310-tables.o
 snd-soc-cs8427-objs := cs8427.o
-snd-soc-wcd9320-objs := wcd9xxx-resmgr.o wcd9320.o wcd9320-tables.o wcd9xxx-mbhc.o wcd9xxx-common.o wcdcal-hwdep.o
-snd-soc-wcd9306-objs := wcd9306.o wcd9306-tables.o wcd9xxx-common.o wcdcal-hwdep.o
+snd-soc-wcd9320-objs := wcd9xxx-resmgr.o wcd9320.o wcd9320-tables.o wcd9xxx-mbhc.o wcd9xxx-common.o
+snd-soc-wcd9306-objs := wcd9306.o wcd9306-tables.o wcd9xxx-common.o
 snd-soc-msm8x10-wcd-objs := msm8x10-wcd.o msm8x10-wcd-tables.o wcd9xxx-common.o
 snd-soc-wl1273-objs := wl1273.o
 snd-soc-wm1250-ev1-objs := wm1250-ev1.o
@@ -105,8 +106,7 @@ snd-soc-wm-hubs-objs := wm_hubs.o
 snd-soc-timpani-objs := timpani.o
 snd-soc-msm-stub-objs := msm_stub.o
 obj-$(CONFIG_SND_SOC_MSM_HDMI_CODEC_RX) := msm_hdmi_codec_rx.o
-#liuyan add for es325
-snd-soc-es325-objs:= es325.o
+
 # Amp
 snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
@@ -152,6 +152,7 @@ obj-$(CONFIG_SND_SOC_SPDIF)	+= snd-soc-spdif.o
 obj-$(CONFIG_SND_SOC_SSM2602)	+= snd-soc-ssm2602.o
 obj-$(CONFIG_SND_SOC_STA32X)   += snd-soc-sta32x.o
 obj-$(CONFIG_SND_SOC_STAC9766)	+= snd-soc-stac9766.o
+obj-$(CONFIG_SND_SOC_ES325)     += snd-soc-es325.o
 obj-$(CONFIG_SND_SOC_TLV320AIC23)	+= snd-soc-tlv320aic23.o
 obj-$(CONFIG_SND_SOC_TLV320AIC26)	+= snd-soc-tlv320aic26.o
 obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
@@ -216,8 +217,6 @@ obj-$(CONFIG_SND_SOC_WM9713)	+= snd-soc-wm9713.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_MSM_STUB)  += snd-soc-msm-stub.o
 
-#liuyan add for es325
-obj-$(CONFIG_SND_SOC_ES325) += snd-soc-es325.o
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o

@@ -37,9 +37,11 @@
 
 #define ES325_SET_POWER_STATE		0x8010
 #define ES325_SET_POWER_STATE_SLEEP	0x0001
-
+#define SLEEP_WAKEUP_FIX
+#ifdef SLEEP_WAKEUP_FIX
 #define ES325_SET_SMOOTH		0x904E
 #define ES325_SET_SMOOTH_RATE		0x0000
+#endif
 /*
  * bit15 - reserved
  * bit[14:12] - access type
