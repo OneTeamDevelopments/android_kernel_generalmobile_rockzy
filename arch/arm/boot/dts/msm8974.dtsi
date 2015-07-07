@@ -705,6 +705,7 @@
 				      30>;
 
 			qcom,cdc-reset-gpio = <&msmgpio 63 0>;
+			qcom,cdc-pa-gpio = <&pm8941_gpios 6 0>; 
 
 			cdc-vdd-buck-supply = <&pm8941_s2>;
 			qcom,cdc-vdd-buck-voltage = <2150000 2150000>;
@@ -748,12 +749,57 @@
 			qcom,cdc-micbias-cfilt3-mv = <1800>;
 			qcom,cdc-micbias1-cfilt-sel = <0x0>;
 			qcom,cdc-micbias2-cfilt-sel = <0x1>;
-			qcom,cdc-micbias3-cfilt-sel = <0x2>;
-			qcom,cdc-micbias4-cfilt-sel = <0x2>;
+			qcom,cdc-micbias3-cfilt-sel = <0x0>; 
+			qcom,cdc-micbias4-cfilt-sel = <0x0>; 
 			qcom,cdc-mclk-clk-rate = <9600000>;
 			qcom,cdc-slim-ifd = "taiko-slim-ifd";
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
-			qcom,cdc-dmic-sample-rate = <4800000>;
+			qcom,cdc-dmic-sample-rate = <2400000>; 
+		};
+		es325_codec_gen0 {
+			compatible = "adnc,es325-codec-gen0";
+			elemental-addr = [00 01 02 00 BE 02];
+
+			adnc,es325-codec-gen0 = "es325-codec-gen0";
+			adnc,es325-codec-gen0-eaddr = [00 01 02 00 BE 02];
+
+			adnc,reset-gpio  = <&msmgpio 47 0>; /* DEFINED BY CUSTOMER */
+			adnc,wakeup-gpio = <&msmgpio 53 0>; /* DEFINED BY CUSTOMER */
+			adnc,power-gpio  = <&msmgpio 57 0>;
+
+			adnc,es325-mclk-gpios = <&pm8941_gpios 16 0>;	/* DEFINED BY audience */
+			es325-mclk-clk = <&pm8941_clkdiv2>;
+			adnc,es325-mclk-clk-freq = <19200000>;
+
+			es325_vdig-supply = <&pm8941_l3>;
+			adnc,es325-vreg-name = "es325_vdig";
+			adnc,es325-vreg-type = <0>;
+			adnc,es325-vreg-min-voltage = <1225000>;
+			adnc,es325-vreg-max-voltage = <1225000>;
+			adnc,es325-vreg-op-mode = <105000>;			
+		};
+
+		es325_codec_intf {
+			compatible = "adnc,es325-codec-intf";
+			elemental-addr = [00 00 02 00 BE 02];
+			
+			adnc,es325-codec-intf = "es325-codec-intf";
+			adnc,es325-codec-intf-eaddr = [00 01 02 00 BE 02];
+
+			adnc,reset-gpio  = <&msmgpio 47 0>; /* DEFINED BY CUSTOMER */
+			adnc,wakeup-gpio = <&msmgpio 53 0>; /* DEFINED BY CUSTOMER */		
+			adnc,power-gpio  = <&msmgpio 57 0>;
+
+			adnc,es325-mclk-gpios = <&pm8941_gpios 16 0>;	/* DEFINED BY audience */
+			es325-mclk-clk = <&pm8941_clkdiv2>;
+			adnc,es325-mclk-clk-freq = <19200000>;
+
+			es325_vdig-supply = <&pm8941_l3>;
+			adnc,es325-vreg-name = "es325_vdig";
+			adnc,es325-vreg-type = <0>;
+			adnc,es325-vreg-min-voltage = <1225000>;
+			adnc,es325-vreg-max-voltage = <1225000>;
+			adnc,es325-vreg-op-mode = <105000>;
 		};
 	};
 
@@ -769,32 +815,30 @@
 			    "lpaif_tert_mode_muxsel",
 			    "lpaif_quat_mode_muxsel";
 
-                qcom,audio-routing =
-                        "AIF4 VI", "MCLK",
-                        "RX_BIAS", "MCLK",
-                        "LDO_H", "MCLK",
-                        "AIF4 MAD", "MCLK",
-                        "AMIC1", "MIC BIAS1 Internal1",
-                        "MIC BIAS1 Internal1", "Handset Mic",
-                        "AMIC2", "MIC BIAS2 External",
-                        "MIC BIAS2 External", "Headset Mic",
-                        "AMIC3", "MIC BIAS2 External",
-                        "MIC BIAS2 External", "ANCRight Headset Mic",
-                        "AMIC4", "MIC BIAS2 External",
-                        "MIC BIAS2 External", "ANCLeft Headset Mic",
-                        "DMIC1", "MIC BIAS1 External",
-                        "MIC BIAS1 External", "Digital Mic1",
-                        "DMIC2", "MIC BIAS1 External",
-                        "MIC BIAS1 External", "Digital Mic2",
-                        "DMIC3", "MIC BIAS3 External",
-                        "MIC BIAS3 External", "Digital Mic3",
-                        "DMIC4", "MIC BIAS3 External",
-                        "MIC BIAS3 External", "Digital Mic4",
-                        "DMIC5", "MIC BIAS4 External",
-                        "MIC BIAS4 External", "Digital Mic5",
-                        "DMIC6", "MIC BIAS4 External",
-                        "MIC BIAS4 External", "Digital Mic6";
-
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS1 Internal1",
+			"MIC BIAS1 Internal1", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS2 External",
+			"MIC BIAS2 External", "ANCLeft Headset Mic",
+			"DMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic4",
+			"DMIC5", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic5",
+			"DMIC6", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic6";
 
 		qcom,cdc-mclk-gpios = <&pm8941_gpios 15 0>;
 		qcom,taiko-mclk-clk-freq = <9600000>;
@@ -1890,6 +1934,10 @@
 
 	qcom,msm-adsp-sensors {
 		compatible = "qcom,msm-adsp-sensors";
+		qcom,src-id = <11>;
+		qcom,dst-id = <604>;
+		qcom,ab = <32505856>;
+		qcom,ib = <32505856>;
 	};
 
 	qcom,mss@fc880000 {
@@ -1963,7 +2011,6 @@
 		gpios = <&msmgpio 36 0>, <&msmgpio 37 0>, <&msmgpio 38 0>, <&msmgpio 39 0>, <&msmgpio 40 0>;
 		qcom,has-48mhz-xo;
 		qcom,has-pronto-hw;
-		qcom,wcnss-pm = <11 21 1200 1 1>;
 	};
 
 	qcom,ocmem@fdd00000 {
