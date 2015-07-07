@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -555,6 +555,7 @@ static const struct intr_data intr_tbl_v2[] = {
 	{WCD9XXX_IRQ_EAR_PA_OCPL_FAULT, false},
 	{WCD9XXX_IRQ_HPH_L_PA_STARTUP, false},
 	{WCD9XXX_IRQ_HPH_R_PA_STARTUP, false},
+	{WCD9320_IRQ_EAR_PA_STARTUP, false},
 	{WCD9XXX_IRQ_RESERVED_0, false},
 	{WCD9XXX_IRQ_RESERVED_1, false},
 	{WCD9XXX_IRQ_MAD_AUDIO, false},
@@ -604,7 +605,7 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx)
 				wcd9xxx->codec_type->num_irqs,
 				wcd9xxx_num_irq_regs(wcd9xxx),
 				wcd9xxx_reg_read, wcd9xxx_reg_write,
-				wcd9xxx_bulk_read, wcd9xxx_bulk_write);
+				wcd9xxx_bulk_read);
 
 	if (wcd9xxx_core_irq_init(&wcd9xxx->core_res))
 		goto err;
@@ -1421,7 +1422,17 @@ static struct wcd9xxx_pdata *wcd9xxx_populate_dt_pdata(struct device *dev)
 	ret = wcd9xxx_dt_parse_micbias_info(dev, &pdata->micbias);
 	if (ret)
 		goto err;
-
+#ifdef CONFIG_GN_Q_BSP_AUDIO_HEADSET_SUPPORT
+	pdata->pa_gpio = of_get_named_gpio(dev->of_node,
+				"qcom,cdc-pa-gpio", 0);
+	if (pdata->pa_gpio < 0) {
+		dev_err(dev, "Looking up %s property in node %s failed %d\n",
+			"qcom, cdc-pa-gpio", dev->of_node->full_name,
+			pdata->pa_gpio);
+		goto err;
+	}
+	dev_dbg(dev, "%s: pa gpio %d", __func__, pdata->pa_gpio);
+#endif
 	pdata->reset_gpio = of_get_named_gpio(dev->of_node,
 				"qcom,cdc-reset-gpio", 0);
 	if (pdata->reset_gpio < 0) {
@@ -1719,6 +1730,7 @@ static int wcd9xxx_slim_device_down(struct slim_device *sldev)
 {
 	struct wcd9xxx *wcd9xxx = slim_get_devicedata(sldev);
 
+	dev_info(wcd9xxx->dev, "%s: device down\n", __func__);
 	if (!wcd9xxx) {
 		pr_err("%s: wcd9xxx is NULL\n", __func__);
 		return -EINVAL;
