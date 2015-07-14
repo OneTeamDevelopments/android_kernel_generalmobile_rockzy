@@ -1279,6 +1279,80 @@ static struct msm_gpiomux_config msm_taiko_config[] __initdata = {
 	},
 };
 
+#ifdef CONFIG_SND_SOC_ES325_SLIM
+/* BSP_AUDIO
+ * gpio config for Audience eS325 ALSA SoC Audio driver
+ * 2013-01-28
+ */
+static struct gpiomux_setting audience_reset_cfg[] = {
+	{
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv = GPIOMUX_DRV_8MA,
+		.pull = GPIOMUX_PULL_UP,
+	},
+
+	{
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_NONE,
+	},
+};
+
+static struct gpiomux_setting audience_wakeup_cfg[] = {
+	{
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_DOWN,
+	},
+
+	{
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_NONE,
+	},
+};
+
+static struct gpiomux_setting audience_ldo_cfg[] = {
+	{
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv  = GPIOMUX_DRV_8MA,
+		.pull = GPIOMUX_PULL_UP,
+	},
+
+	{
+		.func = GPIOMUX_FUNC_GPIO,
+		.drv  = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_NONE,
+	},
+};
+
+static struct msm_gpiomux_config audience_configs[] = {
+	{
+		.gpio = 47,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &audience_reset_cfg[GPIOMUX_ACTIVE],
+			[GPIOMUX_SUSPENDED] = &audience_reset_cfg[GPIOMUX_SUSPENDED],
+		},
+	},
+
+	{
+		.gpio = 53,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &audience_wakeup_cfg[GPIOMUX_ACTIVE],
+			[GPIOMUX_SUSPENDED] = &audience_wakeup_cfg[GPIOMUX_SUSPENDED],
+		},
+	},
+
+	{
+		.gpio = 57,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &audience_ldo_cfg[GPIOMUX_ACTIVE],
+			[GPIOMUX_SUSPENDED] = &audience_ldo_cfg[GPIOMUX_SUSPENDED],
+		},
+	},
+};
+#endif /*CONFIG_SND_SOC_ES325_SLIM*/
+
 static struct gpiomux_setting sdc3_clk_actv_cfg = {
 	.func = GPIOMUX_FUNC_2,
 	.drv = GPIOMUX_DRV_8MA,
@@ -1472,6 +1546,13 @@ void __init msm_8974_init_gpiomux(void)
 		return;
 	}
 
+#ifdef CONFIG_SND_SOC_ES325_SLIM
+/* LGE_BSP_AUDIO
+ * gpio config for Audience eS325 ALSA SoC Audio driver
+ * 2013-01-28, bob.cho@lge.com
+ */
+	msm_gpiomux_install(audience_configs, ARRAY_SIZE(audience_configs));
+#endif /*CONFIG_SND_SOC_ES325_SLIM*/
 #ifdef CONFIG_GN_CAMERA_24M_MCLOCK_SUPPORT
        pr_err("%s:%d socinfo_get_version %x\n", __func__, __LINE__,
                socinfo_get_version());
