@@ -4901,6 +4901,10 @@ static struct clk_lookup msm_clocks_8974_only[] __initdata = {
 };
 
 static struct clk_lookup msm_clocks_8974_common[] __initdata = {
+#ifdef CONFIG_SND_SOC_ES325_SLIM
+	CLK_LOOKUP("es325_clk", cxo_a2.c, "es325-codec-intf"),
+	CLK_LOOKUP("es325_clk_pin", cxo_a2_pin.c, "es325-codec-intf"),
+#endif	
 	CLK_LOOKUP("xo",        cxo_otg_clk.c,                  "msm_otg"),
 	CLK_LOOKUP("xo",  cxo_pil_lpass_clk.c,      "fe200000.qcom,lpass"),
 	CLK_LOOKUP("xo",    cxo_pil_mss_clk.c,        "fc880000.qcom,mss"),
