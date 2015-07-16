@@ -40,7 +40,7 @@
 #include <sound/tlv.h>
 #include <linux/kthread.h>
 
-#include <linux/i2c/esxxx.h> /* TODO: common location for i2c and slimbus */
+#include "esxxx.h" 
 #include "es325.h"
 #include "es325-export.h"
 #include <linux/qpnp/clkdiv.h>
