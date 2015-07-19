@@ -2310,7 +2310,7 @@ u32 mdp4_allocate_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num)
 			if (mdp_iommu_split_domain) {
 				if (ion_map_iommu(mfd->iclient, buf->ihdl,
 					DISPLAY_READ_DOMAIN, GEN_POOL, SZ_4K,
-					0, &read_addr, &len, 0, 0)) {
+					buffer_size * 2, &read_addr, &len, 0, 0)) {
 					pr_err("ion_map_iommu() read failed\n");
 					return -ENOMEM;
 				}
