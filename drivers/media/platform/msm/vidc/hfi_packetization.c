@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -355,20 +355,20 @@ static int get_hfi_extradata_index(enum hal_extradata_id index)
 		ret = HFI_PROPERTY_PARAM_VDEC_MPEG2_SEQDISP_EXTRADATA;
 		break;
 	case HAL_EXTRADATA_FRAME_QP:
-                ret = HFI_PROPERTY_PARAM_VDEC_FRAME_QP_EXTRADATA;
-                break;
-        case HAL_EXTRADATA_FRAME_BITS_INFO:
-                ret = HFI_PROPERTY_PARAM_VDEC_FRAME_BITS_INFO_EXTRADATA;
-                break;
-        case HAL_EXTRADATA_LTR_INFO:
-                ret = HFI_PROPERTY_PARAM_VENC_LTR_INFO;
-                break;
-        case HAL_EXTRADATA_METADATA_MBI:
-                ret = HFI_PROPERTY_PARAM_VENC_MBI_DUMPING;
-                break;
-        case HAL_EXTRADATA_STREAM_USERDATA:
-                ret = HFI_PROPERTY_PARAM_VDEC_STREAM_USERDATA_EXTRADATA;
-                break;
+		ret = HFI_PROPERTY_PARAM_VDEC_FRAME_QP_EXTRADATA;
+		break;
+	case HAL_EXTRADATA_FRAME_BITS_INFO:
+		ret = HFI_PROPERTY_PARAM_VDEC_FRAME_BITS_INFO_EXTRADATA;
+		break;
+	case HAL_EXTRADATA_LTR_INFO:
+		ret = HFI_PROPERTY_PARAM_VENC_LTR_INFO;
+		break;
+	case HAL_EXTRADATA_METADATA_MBI:
+		ret = HFI_PROPERTY_PARAM_VENC_MBI_DUMPING;
+		break;
+	case HAL_EXTRADATA_STREAM_USERDATA:
+		ret = HFI_PROPERTY_PARAM_VDEC_STREAM_USERDATA_EXTRADATA;
+		break;
 	default:
 		dprintk(VIDC_WARN, "Extradata index not found: %d\n", index);
 		break;
@@ -1447,7 +1447,6 @@ int create_pkt_cmd_session_set_property(
 		hfi->ltrcount = hal->ltrcount;
 		hfi->trustmode = hal->trustmode;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_ltrmode);
-                pr_err("SET LTR\n");
 		break;
 	}
 	case HAL_CONFIG_VENC_USELTRFRAME:
@@ -1461,7 +1460,6 @@ int create_pkt_cmd_session_set_property(
 		hfi->refltr = hal->refltr;
 		hfi->useconstrnt = hal->useconstrnt;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_ltruse);
-                pr_err("SET LTR\n");
 		break;
 	}
 	case HAL_CONFIG_VENC_MARKLTRFRAME:
@@ -1473,17 +1471,24 @@ int create_pkt_cmd_session_set_property(
 		hfi = (struct hfi_ltrmark *) &pkt->rg_property_data[1];
 		hfi->markframe = hal->markframe;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_ltrmark);
-                pr_err("MARK LTR\n");
 		break;
 	}
-        case HAL_PARAM_VENC_HIER_P_NUM_FRAMES:
-        {
-                pkt->rg_property_data[0] =
-                        HFI_PROPERTY_PARAM_VENC_HIER_P_NUM_ENH_LAYER;
-                pkt->rg_property_data[1] = *(u32 *)pdata;
-                pkt->size += sizeof(u32) * 2;
-                break;
-        }
+	case HAL_PARAM_VENC_HIER_P_MAX_ENH_LAYERS:
+	{
+		pkt->rg_property_data[0] =
+			HFI_PROPERTY_PARAM_VENC_HIER_P_MAX_NUM_ENH_LAYER;
+		pkt->rg_property_data[1] = *(u32 *)pdata;
+		pkt->size += sizeof(u32) * 2;
+		break;
+	}
+	case HAL_CONFIG_VENC_HIER_P_NUM_FRAMES:
+	{
+		pkt->rg_property_data[0] =
+			HFI_PROPERTY_CONFIG_VENC_HIER_P_ENH_LAYER;
+		pkt->rg_property_data[1] = *(u32 *)pdata;
+		pkt->size += sizeof(u32) * 2;
+		break;
+	}
 	case HAL_PARAM_VENC_ENABLE_INITIAL_QP:
 	{
 		struct hfi_initial_quantization *hfi;
