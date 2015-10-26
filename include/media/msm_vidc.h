@@ -222,8 +222,8 @@ enum msm_vidc_recovery_sei {
 };
 
 enum msm_vidc_userdata_type {
-       MSM_VIDC_USERDATA_TYPE_FRAME = 0x1,
-       MSM_VIDC_USERDATA_TYPE_TOP_FIELD = 0x2,
-       MSM_VIDC_USERDATA_TYPE_BOTTOM_FIELD = 0x3,
+	MSM_VIDC_USERDATA_TYPE_FRAME = 0x1,
+	MSM_VIDC_USERDATA_TYPE_TOP_FIELD = 0x2,
+	MSM_VIDC_USERDATA_TYPE_BOTTOM_FIELD = 0x3,
 };
 #endif
