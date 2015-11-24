@@ -34,6 +34,9 @@
 #ifdef CONFIG_ION_MSM
 #include <mach/ion.h>
 #endif
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+#include <linux/persistent_ram.h>
+#endif
 #include <mach/msm_memtypes.h>
 #include <mach/msm_smd.h>
 #include <mach/restart.h>
@@ -176,9 +179,30 @@ void __init msm8974_init(void)
 	msm8974_add_drivers();
 }
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
+static struct persistent_ram_descriptor msm_prd[] __initdata = {
+	{
+		.name = "ram_console",
+		.size = SZ_1M,
+	},
+};
+
+static struct persistent_ram msm_pr __initdata = {
+	.descs = msm_prd,
+	.num_descs = ARRAY_SIZE(msm_prd),
+	.start = /*0xE0200000,//*/PLAT_PHYS_OFFSET + SZ_1G + SZ_512M,
+	.size = SZ_1M,
+};
+#endif
+
 void __init msm8974_init_very_early(void)
 {
 	msm8974_early_memory();
+#ifdef CONFIG_ANDROID_RAM_CONSOLE	
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
+	persistent_ram_early_init(&msm_pr);
+#endif
 }
 
 static const char *msm8974_dt_match[] __initconst = {
