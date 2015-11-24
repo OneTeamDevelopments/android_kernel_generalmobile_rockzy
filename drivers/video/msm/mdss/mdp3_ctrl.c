@@ -666,7 +666,8 @@ static int mdp3_ctrl_off(struct msm_fb_data_type *mfd)
 	rc = mdp3_session->dma->stop(mdp3_session->dma, mdp3_session->intf);
 	if (rc)
 		pr_debug("fail to stop the MDP3 dma\n");
-
+	
+	mfd->panel_info->cont_splash_enabled = 0;
 
 	if (panel->event_handler)
 		rc = panel->event_handler(panel, MDSS_EVENT_PANEL_OFF, NULL);
@@ -757,6 +758,7 @@ static int mdp3_ctrl_reset_cmd(struct msm_fb_data_type *mfd)
 		mdp3_dma->vsync_enable(mdp3_dma, &vsync_client);
 
 	mdp3_session->first_commit = true;
+	mfd->panel_info->cont_splash_enabled = 0;
 
 reset_error:
 	mutex_unlock(&mdp3_session->lock);
@@ -845,6 +847,7 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 		mdp3_dma->vsync_enable(mdp3_dma, &vsync_client);
 
 	mdp3_session->first_commit = true;
+	mfd->panel_info->cont_splash_enabled = 0;
 
 reset_error:
 	mutex_unlock(&mdp3_session->lock);
