@@ -808,6 +808,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value = 1,
 		.step = 1,
 		.qmenu = NULL,
+<<<<<<< HEAD
 	},
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY,
@@ -829,6 +830,9 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.step = 1,
 		.qmenu = NULL,
 	},
+=======
+	}
+>>>>>>> parent of 61fce45... Update msm_venc.c
 };
 
 #define NUM_CTRLS ARRAY_SIZE(msm_venc_ctrls)
@@ -2224,6 +2228,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		}
 		pdata = &hier_p_layers;
 		break;
+<<<<<<< HEAD
 	case V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY:
 		property_id = HAL_CONFIG_REALTIME;
 		enable.enable = ctrl->val;
@@ -2232,6 +2237,8 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE:
 		property_id = 0;
 		break;
+=======
+>>>>>>> parent of 61fce45... Update msm_venc.c
 	default:
 		dprintk(VIDC_ERR, "Unsupported index: %x\n", ctrl->id);
 		rc = -ENOTSUPP;
