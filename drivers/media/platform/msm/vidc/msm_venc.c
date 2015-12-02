@@ -809,7 +809,6 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.step = 1,
 		.qmenu = NULL,
 	},
-	}
 };
 
 #define NUM_CTRLS ARRAY_SIZE(msm_venc_ctrls)
