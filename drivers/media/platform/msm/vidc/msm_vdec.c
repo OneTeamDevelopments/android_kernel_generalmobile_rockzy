@@ -1774,7 +1774,6 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 			"Limiting input buffer size to :%u\n", ctrl->val);
 		break;
 	}
-<<<<<<< HEAD
 	case V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY:
 		property_id = HAL_CONFIG_REALTIME;
 		hal_property.enable = ctrl->val;
@@ -1783,8 +1782,6 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE:
 		property_id = 0;
 		break;
-=======
->>>>>>> parent of 13291e5... Update msm_vdec.c
 	default:
 		break;
 	}
