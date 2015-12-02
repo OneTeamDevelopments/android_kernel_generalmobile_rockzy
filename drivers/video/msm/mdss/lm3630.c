@@ -93,6 +93,8 @@ void set_backlight_lm3630(unsigned int level)
 		para = (u8) ((level*3)/4);
 	else if(lcd_vendor == 3)
 		para = (u8) ((level*9)/10);
+	else if(lcd_vendor == 4)
+		para = (u8) ((level*9)/10);
 	else
 	{	
 		printk("%s:lcd detect error\n",__func__);
@@ -188,6 +190,9 @@ static int __devinit lm3630_probe(struct i2c_client *client,
 	}else if(strstr(saved_command_line, "tianma") != NULL)
 	{
 		lcd_vendor = 3;
+	}else if(strstr(saved_command_line, "sharp") != NULL)
+	{
+		lcd_vendor = 4;
 	}
 	else
 		lcd_vendor = 0;
