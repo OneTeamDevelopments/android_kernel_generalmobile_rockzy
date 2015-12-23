@@ -22,7 +22,7 @@
 #include <linux/types.h>
 
 struct ion_handle;
-typedef struct ion_handle *ion_user_handle_t;
+typedef int ion_user_handle_t;
 
 /**
  * enum ion_heap_types - list of all possible types of heaps
@@ -72,6 +72,7 @@ enum ion_heap_type {
 #ifdef __KERNEL__
 #include <linux/err.h>
 #include <mach/ion.h>
+struct ion_handle;
 struct ion_device;
 struct ion_heap;
 struct ion_mapper;
