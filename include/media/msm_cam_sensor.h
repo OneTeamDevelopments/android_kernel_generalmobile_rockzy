@@ -52,6 +52,11 @@
 #define MAX_AF_ITERATIONS 3
 #define MAX_NUMBER_OF_STEPS 47
 
+typedef enum sensor_stats_type {
+	YRGB,
+	YYYY,
+} sensor_stats_type_t;
+
 enum flash_type {
 	LED_FLASH = 1,
 	STROBE_FLASH,
@@ -601,10 +606,10 @@ struct msm_camera_led_cfg_t {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 3, uint32_t)
 
 #define VIDIOC_MSM_CSIPHY_IO_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csid_cfg_data)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csiphy_cfg_data)
 
 #define VIDIOC_MSM_CSID_IO_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 5, struct csiphy_cfg_data)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 5, struct csid_cfg_data)
 
 #define VIDIOC_MSM_ACTUATOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 6, struct msm_actuator_cfg_data)
