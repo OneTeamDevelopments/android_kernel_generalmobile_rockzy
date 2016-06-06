@@ -243,7 +243,7 @@ int check_otp_VCM(int index, int code)
 }
 // index: index of otp group. (1, 2, 3)
 // otp_ptr: pointer of otp_struct
-// return: 1,
+// return: 0,
 int read_otp_wb(int index, struct gn_sunny_ov4688_otp_struct *otp_ptr)
 {
 	int i, temp;
@@ -296,7 +296,7 @@ int read_otp_wb(int index, struct gn_sunny_ov4688_otp_struct *otp_ptr)
 	for (i=address_start;i<=address_end;i++) {
 		gn_sunny_ov4688_write_cmos_sensor(i, 0x00);
 	}
-	return 1;
+	return 0;
 }
 
 // index: index of otp group. (1, 2, 3)
