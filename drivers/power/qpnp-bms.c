@@ -95,12 +95,6 @@
 
 #define QPNP_BMS_DEV_NAME "qcom,qpnp-bms"
 
-#if defined(CONFIG_GN_Q_BSP_PM_CHG_DEBUG_SUPPORT) 
-#undef pr_debug                                                                                                                                                               
-#define pr_debug(fmt, ...) \
-      printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
-#endif
-
 enum {
 	SHDW_CC,
 	CC
