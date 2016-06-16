@@ -924,7 +924,7 @@ static int flash_proc_read(char *page, char **start, off_t off, int count,
         pr_err("page is NULL pointer!!!\n");
 	 return -EINVAL;
     }
-#endif
+
     if (*pold_mode >= 0)
         read_size = snprintf(page, PAGE_SIZE, "%d\n", *pold_mode);
     return read_size;
@@ -950,7 +950,6 @@ static int flash_proc_write(struct file *filp, const char __user *buff,
     if (copy_from_user(temp, buff, 1)) 
         return -EFAULT; 
     sscanf(temp, "%d", &new_mode);
-#endif
 
     if (new_mode == *pold_mode) {
         pr_err("the same mode as old %d\n", *pold_mode);
