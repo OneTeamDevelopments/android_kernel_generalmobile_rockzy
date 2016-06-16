@@ -23,7 +23,7 @@
 
 	adp1660: qcom,camera-led-flash-src1 {
 		cell-index = <0>;
-		compatible = "qcom,led-flash";
+		compatible = "qcom,camera-led-cci-src";
 		qcom,name = "adp1660";
 		qcom,cci-master = <0>;
 		qcom,slave-id = <0x30>;
