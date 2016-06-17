@@ -197,8 +197,14 @@ Example:
         actuator0: qcom,actuator@18 {
                 cell-index = <0>;
                 reg = <0x18>;
-                compatible = "qcom,actuator";
-                qcom,cci-master = <0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+		cam_vaf-supply = <&pm8941_l23>;
+		qcom,cam-vreg-name = "cam_vaf";
+		qcom,cam-vreg-type = <0>;
+		qcom,cam-vreg-min-voltage = <3000000>;
+		qcom,cam-vreg-max-voltage = <3000000>;
+		qcom,cam-vreg-op-mode = <100000>;
         };
 
        qcom,s5k3l1yx@6e {
