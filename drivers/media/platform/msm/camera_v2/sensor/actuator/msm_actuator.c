@@ -490,7 +490,6 @@ static int32_t msm_actuator_vreg_control(struct msm_actuator_ctrl_t *a_ctrl,
 static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
 {
 	int32_t rc = 0;
-    struct msm_camera_i2c_reg_setting reg_setting;
 	CDBG("Enter\n");
 	if (a_ctrl->actuator_state != ACTUATOR_POWER_DOWN) {
 		if (a_ctrl->vcm_enable) {
