@@ -628,7 +628,7 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		CDBG("%s sensor id %x\n", __func__,
 			sensor_slave_info.sensor_id_info.sensor_id);
 		for (slave_index = 0; slave_index <
-			p_ctrl->power_setting_size->size; slave_index++) {
+			p_ctrl->power_setting_size; slave_index++) {
 			CDBG("%s i %d power setting %d %d %ld %d\n", __func__,
 				slave_index,
 				p_ctrl->power_setting[slave_index].seq_type,
