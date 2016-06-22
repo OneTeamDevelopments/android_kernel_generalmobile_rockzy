@@ -281,8 +281,6 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 	}
 
 	flashdata = fctrl->flashdata;
-
-	flashdata->sensor_init_params = kzalloc(sizeof(
         power_info = &flashdata->power_info;
 
 	rc = of_property_read_u32(of_node, "cell-index", &fctrl->subdev_id);
