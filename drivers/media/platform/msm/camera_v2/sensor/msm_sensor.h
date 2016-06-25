@@ -103,6 +103,8 @@ struct msm_sensor_ctrl_t {
 	void *misc_regulator;
 	enum msm_sensor_state_t sensor_state;
 	uint8_t is_probe_succeed;
+	uint32_t id;
+	struct device_node *of_node;
         struct gn_otp_sensor_fn_t *gn_otp_func_tbl;
 };
 
