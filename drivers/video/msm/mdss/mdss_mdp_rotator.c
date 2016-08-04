@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -212,6 +212,13 @@ static int __mdss_mdp_rotator_to_pipe(struct mdss_mdp_rotator_session *rot,
 		struct mdss_mdp_pipe *pipe)
 {
 	int ret;
+	struct mdss_mdp_pipe *rot_pipe = NULL;
+	struct mdss_mdp_ctl *orig_ctl;
+
+	rot_pipe = rot->pipe;
+	orig_ctl = rot_pipe->mixer->ctl;
+	if (orig_ctl->wb_lock)
+		mutex_lock(orig_ctl->wb_lock);
 
 	pipe->flags = rot->flags;
 	pipe->src_fmt = mdss_mdp_get_format_params(rot->format);
@@ -225,12 +232,12 @@ static int __mdss_mdp_rotator_to_pipe(struct mdss_mdp_rotator_session *rot,
 	rot->params_changed = 0;
 
 	ret = mdss_mdp_smp_reserve(pipe);
-	if (ret) {
+	if (ret)
 		pr_err("unable to mdss_mdp_smp_reserve rot data\n");
-		return ret;
-	}
 
-	return 0;
+	if (orig_ctl->wb_lock)
+		mutex_unlock(orig_ctl->wb_lock);
+	return ret;
 }
 
 static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
@@ -471,6 +478,16 @@ int mdss_mdp_rotator_setup(struct msm_fb_data_type *mfd,
 			ret = -ENODEV;
 			goto rot_err;
 		}
+
+		if (work_busy(&rot->commit_work)) {
+  			mutex_unlock(&rotator_lock);
+  			flush_work(&rot->commit_work);
+  			mutex_lock(&rotator_lock);
+ 		}
+ 
+ 		if (rot->format != fmt->format)
+ 			format_changed = true;
+ 
 	} else {
 		pr_err("invalid rotator session id=%x\n", req->id);
 		ret = -EINVAL;
@@ -626,10 +643,15 @@ static int mdss_mdp_rotator_finish(struct mdss_mdp_rotator_session *rot)
 		mdss_mdp_rotator_finish(rot->next);
 
 	rot_pipe = rot->pipe;
-	if (rot_pipe) {
-		mdss_mdp_rotator_busy_wait(rot);
-		list_del(&rot->head);
-	}
+		if (work_busy(&rot->commit_work)) {
+  			mutex_unlock(&rotator_lock);
+			flush_work(&rot->commit_work);
+  			mutex_lock(&rotator_lock);
+  		}
+  
+ 		mdss_mdp_rotator_busy_wait(rot);
+ 		list_del(&rot->head);
+ 	}
 
 	if (!list_empty(&rot->list))
 		list_del(&rot->list);
