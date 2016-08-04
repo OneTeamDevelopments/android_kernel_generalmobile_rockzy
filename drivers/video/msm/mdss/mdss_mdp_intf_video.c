@@ -640,6 +640,7 @@ static int mdss_mdp_video_config_fps(struct mdss_mdp_ctl *ctl,
 static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 {
 	struct mdss_mdp_video_ctx *ctx;
+	struct mdss_panel_data *pdata = ctl->panel_data;
 	int rc;
 
 	pr_debug("kickoff ctl=%d\n", ctl->num);
@@ -670,6 +671,20 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 
 		pr_debug("enabling timing gen for intf=%d\n", ctl->intf_num);
 
+		if ((pdata->panel_info.cont_splash_enabled &&
+			!ctl->mfd->splash_info.splash_logo_enabled)
+			|| (ctl->mfd->splash_info.splash_logo_enabled
+			&& !is_mdss_iommu_attached())) {
+			rc = wait_for_completion_timeout(&ctx->vsync_comp,
+					usecs_to_jiffies(VSYNC_TIMEOUT_US));
+		}
+
+  		rc = mdss_iommu_ctrl(1);
+  		if (IS_ERR_VALUE(rc)) {
+  			pr_err("IOMMU attach failed\n");
+ 			return rc;
+ 		}
+ 
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 
 		mdss_mdp_irq_enable(MDSS_MDP_IRQ_INTF_UNDER_RUN, ctl->intf_num);
