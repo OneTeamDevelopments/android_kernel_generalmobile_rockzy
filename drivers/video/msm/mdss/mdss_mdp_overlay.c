@@ -1049,37 +1049,51 @@ commit_fail:
 	return ret;
 }
 
-int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
-{
-	struct mdss_mdp_pipe *pipe, *tmp;
-	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
-	u32 pipe_ndx, unset_ndx = 0;
-	int i;
-	LIST_HEAD(destroy_pipes);
-
-	for (i = 0; unset_ndx != ndx && i < MDSS_MDP_MAX_SSPP; i++) {
-		pipe_ndx = BIT(i);
-		if (pipe_ndx & ndx) {
-			unset_ndx |= pipe_ndx;
-			pipe = mdss_mdp_pipe_get(mdp5_data->mdata, pipe_ndx);
-			if (IS_ERR_OR_NULL(pipe)) {
-				pr_warn("unknown pipe ndx=%x\n", pipe_ndx);
-				continue;
-			}
-			mutex_lock(&mfd->lock);
-			pipe->pid = 0;
-			if (!list_empty(&pipe->used_list)) {
-				list_del_init(&pipe->used_list);
-				list_add(&pipe->cleanup_list,
-					&mdp5_data->pipes_cleanup);
-			}
-			mutex_unlock(&mfd->lock);
-			mdss_mdp_mixer_pipe_unstage(pipe);
-			mdss_mdp_pipe_unmap(pipe);
-		}
-	}
-	return 0;
-}
+ int mdss_mdp_overlay_release(struct msm_fb_data_type *mfd, int ndx)
+ {
+ 	struct mdss_mdp_pipe *pipe, *tmp;
+ 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+ 	u32 unset_ndx = 0;
+ 	int destroy_pipe;
+ 
+ 	mutex_lock(&mdp5_data->list_lock);
+ 	list_for_each_entry_safe(pipe, tmp, &mdp5_data->pipes_used, list) {
+ 		if (pipe->ndx & ndx) {
+ 			if (mdss_mdp_pipe_map(pipe)) {
+ 				pr_err("Unable to map used pipe%d ndx=%x\n",
+ 						pipe->num, pipe->ndx);
+ 				continue;
+ 			}
+ 
+ 			unset_ndx |= pipe->ndx;
+ 
+ 			pipe->pid = 0;
+ 			destroy_pipe = pipe->play_cnt == 0;
+ 
+ 			if (destroy_pipe)
+ 				list_del_init(&pipe->list);
+ 			else
+ 				list_move(&pipe->list,
+ 						&mdp5_data->pipes_cleanup);
+ 			mdss_mdp_pipe_unmap(pipe);
+ 			if (destroy_pipe)
+ 				mdss_mdp_pipe_destroy(pipe);
+ 
+ 			if (unset_ndx == ndx)
+ 				break;
+ 		}
+ 	}
+ 
+ 	mutex_unlock(&mdp5_data->list_lock);
+ 
+ 	if (unset_ndx != ndx) {
+ 		pr_warn("Unable to unset pipe(s) ndx=0x%x unset=0x%x\n",
+ 				ndx, unset_ndx);
+                return -ENOENT;
+ 	}
+ 
+ 	return 0;
+ }
 
 static int mdss_mdp_overlay_unset(struct msm_fb_data_type *mfd, int ndx)
 {
@@ -1245,6 +1259,8 @@ static void mdss_mdp_overlay_force_cleanup(struct msm_fb_data_type *mfd)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	struct mdss_mdp_ctl *ctl = mdp5_data->ctl;
+	struct mdss_mdp_pipe *pipe, *tmp;
+	LIST_HEAD(destroy_pipes);
 	int ret;
 
 	pr_debug("forcing cleanup to unset dma pipes on fb%d\n", mfd->index);
@@ -1259,7 +1275,12 @@ static void mdss_mdp_overlay_force_cleanup(struct msm_fb_data_type *mfd)
 			mdss_mdp_display_wait4comp(ctl);
 	}
 
-	mdss_mdp_overlay_cleanup(mfd);
+	mutex_lock(&mdp5_data->list_lock);
+	list_for_each_entry_safe(pipe, tmp, &mdp5_data->pipes_cleanup, list) {
+		list_move(&pipe->list, &destroy_pipes);
+	}
+	mutex_unlock(&mdp5_data->list_lock);
+	mdss_mdp_overlay_cleanup(mfd, &destroy_pipes);
 }
 
 static void mdss_mdp_overlay_force_dma_cleanup(struct mdss_data_type *mdata)
@@ -1621,14 +1642,17 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 			__func__, dfps);
 		return count;
 	}
-
-	if (dfps < 30) {
-		pr_err("Unsupported FPS. Configuring to min_fps = 30\n");
-		dfps = 30;
-		rc = mdss_mdp_ctl_update_fps(mdp5_data->ctl, dfps);
-	} else if (dfps > 60) {
-		pr_err("Unsupported FPS. Configuring to max_fps = 60\n");
-		dfps = 60;
+	
+	mutex_lock(&mdp5_data->dfps_lock);
+	if (dfps < pdata->panel_info.min_fps) {
+		pr_err("Unsupported FPS. min_fps = %d\n",
+				pdata->panel_info.min_fps);
+		mutex_unlock(&mdp5_data->dfps_lock);
+		return -EINVAL;
+	} else if (dfps > pdata->panel_info.max_fps) {
+		pr_warn("Unsupported FPS. Configuring to max_fps = %d\n",
+				pdata->panel_info.max_fps);
+		dfps = pdata->panel_info.max_fps;
 		rc = mdss_mdp_ctl_update_fps(mdp5_data->ctl, dfps);
 	} else {
 		rc = mdss_mdp_ctl_update_fps(mdp5_data->ctl, dfps);
