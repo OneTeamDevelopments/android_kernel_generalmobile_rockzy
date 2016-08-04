@@ -538,7 +538,7 @@ static struct mdss_mdp_pipe *mdss_mdp_pipe_init(struct mdss_mdp_mixer *mixer,
 		pipe = mdata->dma_pipes + mixer->num;
 		if (pipe->mixer->type != MDSS_MDP_MIXER_TYPE_WRITEBACK)
 			return NULL;
-  		kref_get(&pipe->kref);
+  		mdss_mdp_pipe_map(pipe);
 		pr_debug("pipe sharing for pipe=%d\n", pipe->num);
 	} else {
 		pr_err("no %d type pipes available\n", type);
