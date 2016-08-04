@@ -326,8 +326,6 @@ void mdss_dsi_cmd_mdp_start(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_cmd_bta_sw_trigger(struct mdss_panel_data *pdata);
 void mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
-int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl);
-void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_bus_clk_start(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl,
