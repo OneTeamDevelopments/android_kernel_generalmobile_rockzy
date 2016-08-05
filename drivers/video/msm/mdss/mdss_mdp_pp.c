@@ -1791,6 +1791,17 @@ void mdss_mdp_pp_term(struct device *dev)
 		mutex_unlock(&mdss_pp_mutex);
 	}
 }
+int mdss_mdp_pp_overlay_init(struct msm_fb_data_type *mfd)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+
+	if ((!mfd) || (!mdata)) {
+		pr_err("Invalid mfd or mdata.\n");
+		return -EPERM;
+	}
+
+	return 0;
+}
 
 static int pp_ad_shutdown_cleanup(struct msm_fb_data_type *mfd)
 {
