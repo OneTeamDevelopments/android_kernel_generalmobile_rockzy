@@ -42,6 +42,9 @@
 #define  MIN(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
+#define MDP_PP_AD_BL_LINEAR	0x0
+#define MDP_PP_AD_BL_LINEAR_INV	0x1
+
 /**
  * enum mdp_notify_event - Different frame events to indicate frame update state
  *
@@ -80,6 +83,7 @@ struct disp_info_notify {
 	struct mutex lock;
 	int value;
 	int is_suspend;
+	int ref_count;
 	bool init_done;
 };
 
@@ -122,7 +126,8 @@ struct msm_mdp_interface {
 	int (*lut_update)(struct msm_fb_data_type *mfd, struct fb_cmap *cmap);
 	int (*do_histogram)(struct msm_fb_data_type *mfd,
 				struct mdp_histogram *hist);
-	int (*update_ad_input)(struct msm_fb_data_type *mfd);
+	int (*ad_calc_bl)(struct msm_fb_data_type *mfd, int bl_in,
+		int *bl_out, bool *bl_out_notify);
 	int (*ad_shutdown_cleanup)(struct msm_fb_data_type *mfd);
 	int (*panel_register_done)(struct mdss_panel_data *pdata);
 	u32 (*fb_stride)(u32 fb_index, u32 xres, int bpp);
@@ -130,6 +135,7 @@ struct msm_mdp_interface {
 	struct msm_sync_pt_data *(*get_sync_fnc)(struct msm_fb_data_type *mfd,
 				const struct mdp_buf_sync *buf_sync);
 	void (*check_dsi_status)(struct work_struct *work, uint32_t interval);
+	int (*configure_panel)(struct msm_fb_data_type *mfd, int mode);
 	void *private1;
 };
 
@@ -165,6 +171,9 @@ struct msm_fb_data_type {
 	u32 dest;
 	struct fb_info *fbi;
 
+	int idle_time;
+	struct delayed_work idle_notify_work;
+
 	int op_enable;
 	u32 fb_imgType;
 	int panel_reconfig;
@@ -182,14 +191,15 @@ struct msm_fb_data_type {
 	int ext_ad_ctrl;
 	u32 ext_bl_ctrl;
 	u32 calib_mode;
+	u32 ad_bl_level;
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_min_lvl;
 	u32 unset_bl_level;
 	u32 bl_updated;
-	u32 bl_level_old;
+	u32 bl_level_scaled;
+	u32 bl_level_prev_scaled;
 	struct mutex bl_lock;
-	struct mutex lock;
 
 	struct platform_device *pdev;
 
@@ -206,11 +216,16 @@ struct msm_fb_data_type {
 	/* for non-blocking */
 	struct task_struct *disp_thread;
 	atomic_t commits_pending;
+	atomic_t kickoff_pending;
 	wait_queue_head_t commit_wait_q;
 	wait_queue_head_t idle_wait_q;
+	wait_queue_head_t kickoff_wait_q;
 	bool shutdown_pending;
 
 	struct msm_fb_splash_info splash_info;
+
+	wait_queue_head_t ioctl_q;
+	atomic_t ioctl_ref_cnt;
 
 	struct msm_fb_backup_type msm_fb_backup;
 	struct completion power_set_comp;
@@ -218,6 +233,9 @@ struct msm_fb_data_type {
 
 	u32 dcm_state;
 	struct list_head proc_list;
+	u32 wait_for_kickoff;
+	struct ion_client *fb_ion_client;
+	struct ion_handle *fb_ion_handle;
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
@@ -248,4 +266,5 @@ struct sync_fence *mdss_fb_sync_get_fence(struct sw_sync_timeline *timeline,
 				const char *fence_name, int val);
 int mdss_fb_register_mdp_instance(struct msm_mdp_interface *mdp);
 int mdss_fb_dcm(struct msm_fb_data_type *mfd, int req_state);
+int mdss_fb_suspres_panel(struct device *dev, void *data);
 #endif /* MDSS_FB_H */

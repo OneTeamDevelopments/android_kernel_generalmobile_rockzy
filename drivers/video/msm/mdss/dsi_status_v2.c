@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,7 +28,6 @@
  * command. If DSI controller fails to acknowledge the BTA command, it sends
  * the PANEL_ALIVE=0 status to HAL layer.
  */
-
 void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 				uint32_t interval)
 {
@@ -39,7 +38,12 @@ void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 	int ret = 0;
 
 	pdsi_status = container_of(to_delayed_work(work),
-        struct dsi_status_data, check_status);
+	struct dsi_status_data, check_status);
+
+	if (!pdsi_status || !(pdsi_status->mfd)) {
+		pr_err("%s: mfd not available\n", __func__);
+		return;
+	}
 
 	pdata = dev_get_platdata(&pdsi_status->mfd->pdev->dev);
 	if (!pdata) {
@@ -49,6 +53,7 @@ void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 							panel_data);
+
 	if (!ctrl_pdata || !ctrl_pdata->check_status) {
 		pr_err("%s: DSI ctrl or status_check callback not available\n",
 								__func__);
@@ -56,15 +61,31 @@ void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 	}
 
 	mdp3_session = pdsi_status->mfd->mdp.private1;
-	mutex_lock(&mdp3_session->lock);
-	ret = ctrl_pdata->check_status(ctrl_pdata);
+	if (!mdp3_session) {
+		pr_err("%s: Display is off\n", __func__);
+		return;
+	}
 
+	mutex_lock(&mdp3_session->lock);
+	if (!mdp3_session->status) {
+		pr_info("display off already\n");
+		mutex_unlock(&mdp3_session->lock);
+		return;
+	}
+
+	if (mdp3_session->wait_for_dma_done)
+		ret = mdp3_session->wait_for_dma_done(mdp3_session);
+
+	if (!ret)
+		ret = ctrl_pdata->check_status(ctrl_pdata);
+	else
+		pr_err("%s: wait_for_dma_done error\n", __func__);
 	mutex_unlock(&mdp3_session->lock);
 
 	if ((pdsi_status->mfd->panel_power_on)) {
 		if (ret > 0) {
 			schedule_delayed_work(&pdsi_status->check_status,
-				                msecs_to_jiffies(interval));
+						msecs_to_jiffies(interval));
 		} else {
 			char *envp[2] = {"PANEL_ALIVE=0", NULL};
 			pdata->panel_info.panel_dead = true;
@@ -76,3 +97,4 @@ void mdp3_check_dsi_ctrl_status(struct work_struct *work,
 		}
 	}
 }
+

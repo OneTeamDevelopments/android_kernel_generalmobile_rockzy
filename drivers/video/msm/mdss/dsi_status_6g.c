@@ -39,6 +39,10 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 
 	pstatus_data = container_of(to_delayed_work(work),
 		struct dsi_status_data, check_status);
+	if (!pstatus_data || !(pstatus_data->mfd)) {
+		pr_err("%s: mfd not available\n", __func__);
+		return;
+	}
 
 	pdata = dev_get_platdata(&pstatus_data->mfd->pdev->dev);
 	if (!pdata) {
@@ -58,19 +62,19 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	mdp5_data = mfd_to_mdp5_data(pstatus_data->mfd);
 	ctl = mfd_to_ctl(pstatus_data->mfd);
 
- 	if (!ctl) {
- 		pr_err("%s: Display is off\n", __func__);
- 		return;
- 	}
- 
- 	if (!ctl->power_on) {
- 		schedule_delayed_work(&pstatus_data->check_status,
- 			msecs_to_jiffies(interval));
- 		pr_err("%s: ctl not powered on\n", __func__);
- 		return;
-  	}
-  
-  	mutex_lock(&ctrl_pdata->mutex);
+	if (!ctl) {
+		pr_err("%s: Display is off\n", __func__);
+		return;
+	}
+
+	if (!ctl->power_on) {
+		schedule_delayed_work(&pstatus_data->check_status,
+			msecs_to_jiffies(interval));
+		pr_err("%s: ctl not powered on\n", __func__);
+		return;
+	}
+
+	mutex_lock(&ctrl_pdata->mutex);
 
 	/*
 	 * TODO: Because mdss_dsi_cmd_mdp_busy has made sure DMA to
@@ -85,11 +89,11 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 	if (pstatus_data->mfd->shutdown_pending) {
 		if (mipi->mode == DSI_CMD_MODE)
 			mutex_unlock(&mdp5_data->ov_lock);
-  		mutex_unlock(&ctrl_pdata->mutex);
-  		pr_err("%s: DSI turning off, avoiding panel status check\n",
-  							__func__);
- 		return;
- 	}
+		mutex_unlock(&ctrl_pdata->mutex);
+		pr_err("%s: DSI turning off, avoiding panel status check\n",
+							__func__);
+		return;
+	}
 
 	/*
 	 * For the command mode panels, we return pan display
@@ -112,6 +116,7 @@ void mdss_check_dsi_ctrl_status(struct work_struct *work, uint32_t interval)
 
 	if (mipi->mode == DSI_CMD_MODE)
 		mutex_unlock(&mdp5_data->ov_lock);
+	mutex_unlock(&ctrl_pdata->mutex);
 
 	if ((pstatus_data->mfd->panel_power_on)) {
 		if (ret > 0) {

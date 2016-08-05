@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,12 +30,12 @@
 #include "mdss_panel.h"
 #include "mdss_mdp.h"
 
-+#define STATUS_CHECK_INTERVAL_MS 5000
- +#define STATUS_CHECK_INTERVAL_MIN_MS 200
- +#define DSI_STATUS_CHECK_DISABLE 1
- +
- +static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
- +static uint32_t dsi_status_disable = DSI_STATUS_CHECK_DISABLE;
+#define STATUS_CHECK_INTERVAL_MS 5000
+#define STATUS_CHECK_INTERVAL_MIN_MS 200
+#define DSI_STATUS_CHECK_DISABLE 0
+
+static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
+static uint32_t dsi_status_disable = DSI_STATUS_CHECK_DISABLE;
 struct dsi_status_data *pstatus_data;
 
 /*
@@ -46,11 +46,6 @@ struct dsi_status_data *pstatus_data;
 static void check_dsi_ctrl_status(struct work_struct *work)
 {
 	struct dsi_status_data *pdsi_status = NULL;
-	struct mdss_panel_data *pdata = NULL;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_overlay_private *mdp5_data = NULL;
-	struct mdss_mdp_ctl *ctl = NULL;
-	int ret = 0;
 
 	pdsi_status = container_of(to_delayed_work(work),
 		struct dsi_status_data, check_status);
@@ -60,9 +55,14 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 
-        pdsi_status->mfd->mdp.check_dsi_status(work, interval);
- }
- 
+	if (!pdsi_status->mfd) {
+		pr_err("%s: FB data not available\n", __func__);
+		return;
+	}
+
+	pdsi_status->mfd->mdp.check_dsi_status(work, interval);
+}
+
 /*
  * fb_event_callback() - Call back function for the fb_register_client()
  *			 notifying events
@@ -81,6 +81,7 @@ static int fb_event_callback(struct notifier_block *self,
 	struct dsi_status_data *pdata = container_of(self,
 				struct dsi_status_data, fb_notifier);
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo;
 	struct msm_fb_data_type *mfd;
 
 	if (!evdata) {
@@ -95,6 +96,14 @@ static int fb_event_callback(struct notifier_block *self,
 		pr_err("%s: DSI ctrl not available\n", __func__);
 		return NOTIFY_BAD;
 	}
+
+	pinfo = &ctrl_pdata->panel_data.panel_info;
+
+	if (!(pinfo->esd_check_enabled)) {
+		pr_debug("ESD check is not enaled in panel dtsi\n");
+		return NOTIFY_DONE;
+	}
+
 	if (dsi_status_disable) {
 		pr_debug("%s: DSI status disabled\n", __func__);
 		return NOTIFY_DONE;
@@ -103,13 +112,23 @@ static int fb_event_callback(struct notifier_block *self,
 	pdata->mfd = evdata->info->par;
 	if (event == FB_EVENT_BLANK) {
 		int *blank = evdata->data;
+		struct dsi_status_data *pdata = container_of(self,
+				struct dsi_status_data, fb_notifier);
+		pdata->mfd = evdata->info->par;
+
 		switch (*blank) {
 		case FB_BLANK_UNBLANK:
 			schedule_delayed_work(&pdata->check_status,
 				msecs_to_jiffies(interval));
 			break;
 		case FB_BLANK_POWERDOWN:
+		case FB_BLANK_HSYNC_SUSPEND:
+		case FB_BLANK_VSYNC_SUSPEND:
+		case FB_BLANK_NORMAL:
 			cancel_delayed_work(&pdata->check_status);
+			break;
+		default:
+			pr_err("Unknown case in FB_EVENT_BLANK event\n");
 			break;
 		}
 	}
