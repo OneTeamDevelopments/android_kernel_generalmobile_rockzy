@@ -556,7 +556,6 @@ unsigned long bdi_dirty_limit(struct backing_dev_info *bdi, unsigned long dirty)
 }
 
 /*
- * 
  *                           setpoint - dirty 3
  *        f(dirty) := 1.0 + (----------------)
  *                           limit - setpoint
@@ -1394,7 +1393,7 @@ static void balance_dirty_pages(struct address_space *mapping,
 		 * and limits. Small writeouts when the bdi limits are ramping
 		 * up are the price we consciously pay for strictlimit-ing.
 		 */
-                 if (dirty <= dirty_freerun_ceiling(thresh, bg_thresh)) {
+		if (dirty <= dirty_freerun_ceiling(thresh, bg_thresh)) {
 			current->dirty_paused_when = now;
 			current->nr_dirtied = 0;
 			current->nr_dirtied_pause =
@@ -1408,9 +1407,9 @@ static void balance_dirty_pages(struct address_space *mapping,
 		if (!strictlimit)
 			bdi_dirty_limits(bdi, dirty_thresh, background_thresh,
 					 &bdi_dirty, &bdi_thresh, NULL);
- 
+
 		dirty_exceeded = (bdi_dirty > bdi_thresh) &&
-				  ((nr_dirty > dirty_thresh) || strictlimit);
+				 ((nr_dirty > dirty_thresh) || strictlimit);
 		if (dirty_exceeded && !bdi->dirty_exceeded)
 			bdi->dirty_exceeded = 1;
 
