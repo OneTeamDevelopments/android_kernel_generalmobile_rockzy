@@ -883,7 +883,6 @@ extern void sysrq_sched_debug_show(void);
 extern void sched_init_granularity(void);
 extern void update_max_interval(void);
 extern void update_group_power(struct sched_domain *sd, int cpu);
-extern int update_runtime(struct notifier_block *nfb, unsigned long action, void *hcpu);
 extern void init_sched_rt_class(void);
 extern void init_sched_fair_class(void);
 
@@ -957,15 +956,15 @@ static inline unsigned int do_avg_nr_running(struct rq *rq)
 	return ave_nr_running;
 }
 
- static inline void inc_nr_running(struct rq *rq)
- {
+static inline void inc_nr_running(struct rq *rq)
+{
 #if defined(CONFIG_MSM_DCVS)
- 	sched_update_nr_prod(cpu_of(rq), rq->nr_running, true);
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running, true);
 #endif
 	write_seqcount_begin(&rq->ave_seqcnt);
 	rq->ave_nr_running = do_avg_nr_running(rq);
 	rq->nr_last_stamp = rq->clock_task;
- 	rq->nr_running++;
+	rq->nr_running++;
 	write_seqcount_end(&rq->ave_seqcnt);
 }
 
@@ -977,7 +976,7 @@ static inline void dec_nr_running(struct rq *rq)
 	write_seqcount_begin(&rq->ave_seqcnt);
 	rq->ave_nr_running = do_avg_nr_running(rq);
 	rq->nr_last_stamp = rq->clock_task;
- 	rq->nr_running--;
+	rq->nr_running--;
 	write_seqcount_end(&rq->ave_seqcnt);
 }
 
