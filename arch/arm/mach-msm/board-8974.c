@@ -255,7 +255,7 @@ static struct persistent_ram msm_pr __initdata = {
 void __init msm8974_init_very_early(void)
 {
 	msm8974_early_memory();
-#ifdef CCONFIG_ANDROID_RAM_CONSOLE	
+#ifdef CONFIG_ANDROID_RAM_CONSOLE	
 //Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
 	persistent_ram_early_init(&msm_pr);
 #endif
