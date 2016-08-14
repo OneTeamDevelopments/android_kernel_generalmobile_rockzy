@@ -26,7 +26,6 @@
 #include <linux/msm_thermal.h>
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 #include <linux/persistent_ram.h>
-#include <linux/memblock.h>
 #endif
 #include <asm/mach/map.h>
 #include <asm/hardware/gic.h>
@@ -65,60 +64,6 @@ static struct memtype_reserve msm8974_reserve_table[] __initdata = {
 	},
 };
 
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-static struct persistent_ram_descriptor desc = {
-        .name = "ram_console",
-};
-
-static struct persistent_ram ram = {
-        .descs = &desc,
-        .num_descs = 1,
-};
-
-void __init ram_console_debug_reserve(unsigned long ram_console_size)
-{
-        int ret;
-
-        ram.start = memblock_end_of_DRAM() - ram_console_size;
-        ram.size = ram_console_size;
-        ram.descs->size = ram_console_size;
-
-        INIT_LIST_HEAD(&ram.node);
-
-        ret = persistent_ram_early_init(&ram);
-        if (ret)
-                goto fail;
-
-        return;
-
-fail:
-        pr_err("Failed to reserve memory block for ram console\n");
-}
-
-static struct resource ram_console_resources[] = {
-        {
-                .flags = IORESOURCE_MEM,
-        },
-};
-
-static struct platform_device ram_console_device = {
-        .name           = "ram_console",
-        .id             = -1,
-        .num_resources  = ARRAY_SIZE(ram_console_resources),
-        .resource       = ram_console_resources,
-};
-
-void __init ram_console_debug_init(void)
-{
-        int err;
-
-        err = platform_device_register(&ram_console_device);
-        if (err)
-                pr_err("%s: ram console registration failed (%d)!\n",
-                        __func__, err);
-}
-#endif
-
 static int msm8974_paddr_to_memtype(phys_addr_t paddr)
 {
 	return MEMTYPE_EBI1;
@@ -134,9 +79,6 @@ void __init msm_8974_reserve(void)
 	reserve_info = &msm8974_reserve_info;
 	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8974_reserve_table);
 	msm_reserve();
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-	ram_console_debug_reserve(SZ_1M *2);
-#endif
 }
 
 static void __init msm8974_early_memory(void)
@@ -220,9 +162,6 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-	ram_console_debug_init();
-#endif
 #ifdef CONFIG_LCD_KCAL
 	msm_add_lcd_kcal_devices();
 #endif
@@ -296,9 +235,30 @@ void __init msm8974_init(void)
 	msm8974_add_drivers();
 }
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
+static struct persistent_ram_descriptor msm_prd[] __initdata = {
+	{
+		.name = "ram_console",
+		.size = SZ_1M,
+	},
+};
+
+static struct persistent_ram msm_pr __initdata = {
+	.descs = msm_prd,
+	.num_descs = ARRAY_SIZE(msm_prd),
+	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
+	.size = SZ_1M,
+};
+#endif
+
 void __init msm8974_init_very_early(void)
 {
 	msm8974_early_memory();
+#ifdef CCONFIG_ANDROID_RAM_CONSOLE	
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
+	persistent_ram_early_init(&msm_pr);
+#endif
 }
 
 static const char *msm8974_dt_match[] __initconst = {
