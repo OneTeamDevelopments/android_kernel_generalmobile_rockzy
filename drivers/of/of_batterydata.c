@@ -180,7 +180,7 @@ static int of_batterydata_read_batt_id_kohm(const struct device_node *np,
 	data = prop->value;
 	for (i = 0; i < num; i++)
 		*id_kohm++ = be32_to_cpup(data++);
-    printk("%s: %s: batt_id = %d\n",__func__,np->name,batt_ids->kohm[0]);
+
 	return 0;
 }
 
@@ -235,14 +235,7 @@ static int of_batterydata_load_battery_data(struct device_node *node,
 	OF_PROP_READ(batt_data->iterm_ua, "chg-term-ua", node, rc, true);
 
 	batt_data->batt_id_kohm = best_id_kohm;
-	printk("%s: fcc-mah = %d\n",__func__,batt_data->fcc);
-	printk("%s: default-rbatt-mohm = %d\n",__func__,batt_data->default_rbatt_mohm);
-	printk("%s: rbatt-capacitive-mohm = %d\n",__func__,batt_data->rbatt_capacitive_mohm);
-	printk("%s: flat-ocv-threshold-uv = %d\n",__func__,batt_data->flat_ocv_threshold_uv);
-	printk("%s: max-voltage-uv = %d\n",__func__,batt_data->max_voltage_uv);
-	printk("%s: v-cutoff-uv = %d\n",__func__,batt_data->cutoff_uv);
-	printk("%s: chg-term-ua = %d\n",__func__,batt_data->iterm_ua);
-	printk("%s: batt-id-kohm = %d\n",__func__,batt_data->batt_id_kohm);
+
 	return rc;
 }
 
@@ -287,8 +280,6 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 
 	batt_id_kohm = of_batterydata_convert_battery_id_kohm(batt_id_uv,
 					rpull_up_kohm, vadc_vdd_uv);
-	printk("%s: batt_id_kohm = %d\n",__func__,batt_id_kohm);
-
 	best_node = NULL;
 	best_delta = 0;
 	best_id_kohm = 0;
