@@ -882,14 +882,8 @@ static int32_t qpnp_adc_tm_configure(struct qpnp_adc_tm_chip *chip,
 	}
 
 	/* Hardware setting time */
-#if defined(CONFIG_GN_Q_BSP_PMIC_DISABLE_LOW_TM_INTERRUPTS_SUPPORT)
-	rc = qpnp_adc_tm_write_reg(chip, QPNP_HW_SETTLE_DELAY, 
-			0xF);
-#else
 	rc = qpnp_adc_tm_write_reg(chip, QPNP_HW_SETTLE_DELAY,
 					chan_prop->hw_settle_time);
-#endif
-
 	if (rc < 0) {
 		pr_err("adc-tm hw settling time setup err\n");
 		return rc;

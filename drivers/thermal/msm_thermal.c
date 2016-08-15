@@ -41,6 +41,7 @@
 #include <linux/msm_thermal_ioctl.h>
 #include <mach/rpm-smd.h>
 #include <mach/scm.h>
+#include <linux/sched.h>
 
 #define MAX_CURRENT_UA 1000000
 #define MAX_RAILS 5
@@ -1073,21 +1074,39 @@ static int __ref update_offline_cores(int val)
 			pr_err("Unable to offline CPU%d. err:%d\n",
 				cpu, ret);
 		else
-			pr_debug("Offlined CPU%d\n", cpu);
+			pr_info("Offlined CPU%d\n", cpu);
 	}
 	return ret;
+}
+
+static __ref void clear_offline_cores(void)
+{
+	uint32_t cpu = 0;
+
+	if (!core_control_enabled)
+		return;
+
+	pr_info("Core control cleared\n");
+
+	mutex_lock(&core_control_mutex);
+	for_each_possible_cpu(cpu) {
+		cpus_offlined &= ~BIT(cpu);
+	}
+	mutex_unlock(&core_control_mutex);
 }
 
 static __ref int do_hotplug(void *data)
 {
 	int ret = 0;
 	uint32_t cpu = 0, mask = 0;
+	struct sched_param param = {.sched_priority = MAX_RT_PRIO-2};
 
 	if (!core_control_enabled) {
 		pr_debug("Core control disabled\n");
 		return -EINVAL;
 	}
 
+	sched_setscheduler(current, SCHED_FIFO, &param);
 	while (!kthread_should_stop()) {
 		while (wait_for_completion_interruptible(
 			&hotplug_notify_complete) != 0)
@@ -1116,7 +1135,7 @@ static __ref int do_hotplug(void *data)
 	return ret;
 }
 #else
-static void do_core_control(long temp)
+static __ref void do_core_control(long temp)
 {
 	return;
 }
@@ -1124,6 +1143,10 @@ static void do_core_control(long temp)
 static __ref int do_hotplug(void *data)
 {
 	return 0;
+}
+
+static __ref void clear_offline_cores(void)
+{
 }
 #endif
 
@@ -1309,24 +1332,28 @@ static void __ref do_freq_control(long temp)
 		if (limit_idx == limit_idx_high)
 			return;
 
-		limit_idx += msm_thermal_info.bootup_freq_step;
-		if (limit_idx >= limit_idx_high) {
+		// remove limit in one step
+		// since we already waited for temp to fall below
+		// limit - hysteresis
+		//limit_idx += msm_thermal_info.bootup_freq_step;
+		//if (limit_idx >= limit_idx_high) {
 			limit_idx = limit_idx_high;
 			max_freq = UINT_MAX;
-		} else
-			max_freq = table[limit_idx].frequency;
+		//} else
+		//	max_freq = table[limit_idx].frequency;
 	}
 
 	if (max_freq == cpus[cpu].limited_max_freq)
 		return;
 
 	/* Update new limits */
+	pr_info("Limiting CPU max frequency to %u. Temp:%ld\n",
+			max_freq, temp);
+
 	get_online_cpus();
 	for_each_possible_cpu(cpu) {
 		if (!(msm_thermal_info.bootup_freq_control_mask & BIT(cpu)))
 			continue;
-		pr_info("Limiting CPU%d max frequency to %u. Temp:%ld\n",
-			cpu, max_freq, temp);
 		cpus[cpu].limited_max_freq = max_freq;
 		update_cpu_freq(cpu);
 	}
@@ -1342,12 +1369,13 @@ static void clear_freq_limit(void)
 		cpus[0].limited_min_freq == 0)
 		return;
 
+	pr_info("CPU max frequency limit cleared\n");
+
 	get_online_cpus();
 	for_each_possible_cpu(cpu) {
 		if (cpus[cpu].limited_max_freq == UINT_MAX &&
 			cpus[cpu].limited_min_freq == 0)
 			continue;
-		pr_info("Max frequency reset for CPU%d\n", cpu);
 		cpus[cpu].limited_max_freq = UINT_MAX;
 		cpus[cpu].limited_min_freq = 0;
 		update_cpu_freq(cpu);
@@ -1379,14 +1407,9 @@ static void __ref check_temp(struct work_struct *work)
 			limit_init = 1;
 	}
 	pr_debug("temp=%ld\n", temp);
-	
-	if (temp >= msm_thermal_info.limit_temp_degC)
-		do_freq_control(temp);
-	else
-		clear_freq_limit();
 
-	if (temp >= msm_thermal_info.core_limit_temp_degC)
-		do_core_control(temp);
+	do_freq_control(temp);
+	do_core_control(temp);
 
 	do_vdd_restriction();
 	do_psm();
@@ -1570,7 +1593,9 @@ static __ref int do_freq_mitigation(void *data)
 {
 	int ret = 0;
 	uint32_t cpu = 0, max_freq_req = 0, min_freq_req = 0;
+	struct sched_param param = {.sched_priority = MAX_RT_PRIO-1};
 
+	sched_setscheduler(current, SCHED_FIFO, &param);
 	while (!kthread_should_stop()) {
 		while (wait_for_completion_interruptible(
 			&freq_mitigation_complete) != 0)
@@ -1979,6 +2004,7 @@ static int __ref set_enabled(const char *val, const struct kernel_param *kp)
 		else {
 			polling_enabled = 1;
 			clear_freq_limit();
+			clear_offline_cores();
 			schedule_delayed_work(&check_temp_work, 0);
 		}
 
@@ -2071,6 +2097,7 @@ static ssize_t __ref store_poll_ms(struct kobject *kobj,
 	} else {
 		polling_enabled = 1;
 		clear_freq_limit();
+		clear_offline_cores();
 		schedule_delayed_work(&check_temp_work, 0);
 	}
 	pr_info("polling enabled = %d poll_ms=%d\n", polling_enabled, val);
@@ -2165,6 +2192,7 @@ static ssize_t __ref store_cc_enabled(struct kobject *kobj,
 	} else {
 		pr_info("Core control disabled\n");
 		unregister_cpu_notifier(&msm_thermal_cpu_notifier);
+		clear_offline_cores();
 	}
 	pr_info("core_control_enabled = %d\n", core_control_enabled);
 
@@ -3547,3 +3575,4 @@ int __init msm_thermal_late_init(void)
 	return 0;
 }
 late_initcall(msm_thermal_late_init);
+
