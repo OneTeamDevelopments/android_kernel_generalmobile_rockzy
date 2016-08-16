@@ -1737,7 +1737,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int rc = 0;
 	static const char *panel_name;
 #if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
-	static const char *device_panel_name;
 	struct gn_device_info gn_mydev_info;
 	gn_mydev_info.gn_dev_type = GN_DEVICE_TYPE_LCD;
 #endif
@@ -1760,14 +1759,14 @@ int mdss_dsi_panel_init(struct device_node *node,
 
 #if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
 	if(strstr(panel_name, "tianma"))
-		device_panel_name = "tianma_r63421";
+		panel_name = "tianma_r63421";
 	else if(strstr(panel_name, "jdi"))
-		device_panel_name = "jdi_r63417";
+		panel_name = "jdi_r63417";
 	else if(strstr(panel_name, "truly"))
-		device_panel_name = "truly_r63417";
+		panel_name = "truly_r63417";
 	else 
-		device_panel_name = "unknown lcd";
-	strcpy(gn_mydev_info.name, device_panel_name);
+		panel_name = "unknown lcd";
+	strcpy(gn_mydev_info.name, panel_name);
 	gn_set_device_info(gn_mydev_info);
  #endif
 #ifdef CONFIG_VENDOR_EDIT
