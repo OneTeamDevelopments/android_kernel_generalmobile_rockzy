@@ -23,6 +23,10 @@
 #include <linux/err.h>
 
 #include "mdss_dsi.h"
+#if defined(CONFIG_GN_DEVICE_TYPE_CHECK)
+#include <linux/gn_device_check.h>
+extern int gn_set_device_info(struct gn_device_info gn_dev_info);
+#endif
 #ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2014-02-11 yxq add begin for Find7s */
 #include <linux/pcb_version.h>
@@ -436,6 +440,10 @@ disp_en_gpio_err:
 	return rc;
 }
 
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+void mdss_dsi_panel_lm3630(unsigned int bl_level)
+       set_backlight_lm3630(bl_level);
+#endif 
 #ifndef CONFIG_VENDOR_EDIT
 /* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
 
@@ -794,6 +802,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
 		}
 		break;
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+	case BL_LM3630:
+		mdss_dsi_panel_lm3630(bl_level);
+		break;
+#endif
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
@@ -1483,6 +1496,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 		}
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+	else if (!strncmp(data, "bl_ctrl_lm3630", 14)) {
+			ctrl_pdata->bklt_ctrl = BL_LM3630;
+	}
+#endif
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
