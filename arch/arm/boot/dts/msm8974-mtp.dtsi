@@ -193,17 +193,12 @@
 				regulator-max-microamp = <9360>;
 			};
 		};
-		ti_lm3630_bl@36 {
-			compatible = "ti,lm3630";
-			reg = <0x36>;
-			ti,bank-a-ctrl = <0x05>;
-			ti,init-brt-ed1 = <200>;
-			ti,init-brt-led2 = <200>;
-			ti,max-brt-led1 = <255>;
-			ti,max-brt-led2 = <255>;
-			ti,pwm-active = <0>;
-			ti,pwm-ctrl = <0>;
-			ti,pwm-period = <255>;
+                lm3630@36 {
+                	status = "ok";
+                        reg = <0x36>;
+                        compatible = "ti,lm3630";
+                        label = "lm3630";
+                        ti,enable_gpio = <&msmgpio 58 0x00>;
                  };
                 tps65132@3e {
                 	status = "ok";
