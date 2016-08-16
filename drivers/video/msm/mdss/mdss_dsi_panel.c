@@ -241,6 +241,13 @@ out:
 }
 #endif /*VENDOR_EDIT*/
 
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+void mdss_dsi_panel_lm3630(unsigned int bl_level)
+{
+       set_backlight_lm3630(bl_level);
+}
+#endif
+
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	ctrl->pwm_bl = pwm_request(ctrl->pwm_lpg_chan, "lcd-bklt");
@@ -440,10 +447,6 @@ disp_en_gpio_err:
 	return rc;
 }
 
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-void mdss_dsi_panel_lm3630(unsigned int bl_level)
-       set_backlight_lm3630(bl_level);
-#endif 
 #ifndef CONFIG_VENDOR_EDIT
 /* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
 
