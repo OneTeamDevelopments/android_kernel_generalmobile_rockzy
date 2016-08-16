@@ -197,6 +197,12 @@ struct mmc_hotplug {
 	void *handler_priv;
 };
 
+enum dev_state {
+	DEV_SUSPENDING = 1,
+	DEV_SUSPENDED,
+	DEV_RESUMED,
+};
+
 struct mmc_host {
 	struct device		*parent;
 	struct device		class_dev;
@@ -351,6 +357,10 @@ struct mmc_host {
 	struct wake_lock	detect_wake_lock;
 	const char		*wlock_name;
 	int			detect_change;	/* card detect flag */
+#ifdef CONFIG_VENDOR_EDIT
+//Lycan.Wang@Prd.BasicDrv, 2014-07-10 Add for retry 5 times when new sdcard init error
+    int detect_change_retry;
+#endif /* VENDOR_EDIT */
 	struct mmc_hotplug	hotplug;
 
 	const struct mmc_bus_ops *bus_ops;	/* current bus driver */
@@ -423,6 +433,7 @@ struct mmc_host {
 		struct delayed_work work;
 		enum mmc_load	state;
 	} clk_scaling;
+	enum dev_state dev_status;
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
