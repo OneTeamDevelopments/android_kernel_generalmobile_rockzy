@@ -237,13 +237,6 @@ out:
 }
 #endif /*VENDOR_EDIT*/
 
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-void mdss_dsi_panel_lm3630(unsigned int bl_level)
-{
-       set_backlight_lm3630(bl_level);
-}
-#endif
-
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	ctrl->pwm_bl = pwm_request(ctrl->pwm_lpg_chan, "lcd-bklt");
@@ -475,15 +468,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
-#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
-		set_vol_tps65132_positive();
-		mdelay(1);
-		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
-		{
-			gpio_set_value((ctrl_pdata->tps_en_gpio), 1);
-			set_vol_tps65132_nagetive();
-                }
-#endif
 		rc = mdss_dsi_request_gpios(ctrl_pdata);
 		if (rc) {
 			pr_err("gpio request failed\n");
@@ -513,7 +497,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
-        } else {
+	} else {
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
@@ -588,12 +572,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				pr_debug("%s: Reset panel done\n", __func__);
 			}
 		} else {
-#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
-		mdelay(10); // add for IC request
-		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
-			gpio_set_value((ctrl_pdata->tps_en_gpio), 0);
-		mdelay(1);
-#endif
 			gpio_set_value((ctrl_pdata->rst_gpio), 0);
 			gpio_free(ctrl_pdata->rst_gpio);
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
@@ -816,11 +794,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
 		}
 		break;
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-	case BL_LM3630:
-		mdss_dsi_panel_lm3630(bl_level);
-		break;
-#endif
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
@@ -1510,11 +1483,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 		}
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-	else if (!strncmp(data, "bl_ctrl_lm3630", 14)) {
-			ctrl_pdata->bklt_ctrl = BL_LM3630;
-	}
-#endif
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
@@ -1750,16 +1718,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	else
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
-	if(strstr(panel_name, "tianma"))
-		panel_name = "tianma_r63421";
-	else if(strstr(panel_name, "jdi"))
-		panel_name = "jdi_r63417";
-	else if(strstr(panel_name, "truly"))
-		panel_name = "truly_r63417";
-	else 
-		panel_name = "unknown lcd";
- #endif
 #ifdef CONFIG_VENDOR_EDIT
 	if(strstr(panel_name,"rsp 1440p video mode dsi panel") || strstr(panel_name,"rsp 1440p cmd mode dsi panel"))
 		find7s_lcd_rsp_ic = 1;
