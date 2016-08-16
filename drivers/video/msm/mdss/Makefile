@@ -45,5 +45,4 @@ obj-$(CONFIG_FB_MSM_MDSS) += mdss_fb.o
 
 obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += mdss_dsi_status.o
 
-obj-y += tps65132.o
 obj-y += lm3630.o
