@@ -1447,14 +1447,14 @@ static int fuse_do_setattr(struct dentry *entry, struct iattr *attr,
 		invalidate_inode_pages2(inode->i_mapping);
 	}
 
-        clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
+	clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
 	return 0;
 
 error:
 	if (is_truncate)
 		fuse_release_nowrite(inode);
 
-        clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
+	clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
 	return err;
 }
 
