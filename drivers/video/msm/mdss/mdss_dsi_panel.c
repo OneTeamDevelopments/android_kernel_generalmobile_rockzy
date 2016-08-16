@@ -23,10 +23,6 @@
 #include <linux/err.h>
 
 #include "mdss_dsi.h"
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK)
-#include <linux/gn_device_check.h>
-extern int gn_set_device_info(struct gn_device_info gn_dev_info);
-#endif
 #ifdef CONFIG_VENDOR_EDIT
 /* OPPO 2014-02-11 yxq add begin for Find7s */
 #include <linux/pcb_version.h>
@@ -516,7 +512,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
-	} else {
+        } else {
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
@@ -1736,10 +1732,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 {
 	int rc = 0;
 	static const char *panel_name;
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
-	struct gn_device_info gn_mydev_info;
-	gn_mydev_info.gn_dev_type = GN_DEVICE_TYPE_LCD;
-#endif
 	struct mdss_panel_info *pinfo;
 
 	if (!node || !ctrl_pdata) {
@@ -1766,8 +1758,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 		panel_name = "truly_r63417";
 	else 
 		panel_name = "unknown lcd";
-	strcpy(gn_mydev_info.name, panel_name);
-	gn_set_device_info(gn_mydev_info);
  #endif
 #ifdef CONFIG_VENDOR_EDIT
 	if(strstr(panel_name,"rsp 1440p video mode dsi panel") || strstr(panel_name,"rsp 1440p cmd mode dsi panel"))
