@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,219 +23,13 @@
 #include <linux/err.h>
 
 #include "mdss_dsi.h"
-#ifdef CONFIG_VENDOR_EDIT
-/* OPPO 2014-02-11 yxq add begin for Find7s */
-#include <linux/pcb_version.h>
-/* OPPO 2014-02-11 yxq add end */
+#if defined(CONFIG_GN_DEVICE_TYPE_CHECK)
+#include <linux/gn_device_check.h>
+extern int gn_set_device_info(struct gn_device_info gn_dev_info);
 #endif
-
 #define DT_CMD_HDR 6
 
-#define MIN_REFRESH_RATE 30
-
 DEFINE_LED_TRIGGER(bl_led_trigger);
-
-#ifdef CONFIG_VENDOR_EDIT
-extern  int lm3630_bank_a_update_status(u32 bl_level);
-static bool find7s_lcd_rsp_ic = 0;
-
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
-struct dsi_panel_cmds cabc_off_sequence;
-struct dsi_panel_cmds cabc_user_interface_image_sequence;
-struct dsi_panel_cmds cabc_still_image_sequence;
-struct dsi_panel_cmds cabc_video_image_sequence;
-
-struct dsi_panel_cmds gamma1;
-struct dsi_panel_cmds gamma2;
-struct dsi_panel_cmds gamma3;
-struct dsi_panel_cmds gamma4;
-
-static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
-			struct dsi_panel_cmds *pcmds);
-
-extern int set_backlight_pwm(int state);
-
-enum
-{
-    CABC_CLOSE = 0,
-    CABC_LOW_MODE,
-    CABC_MIDDLE_MODE,
-    CABC_HIGH_MODE,
-
-};
-
-static DEFINE_MUTEX(config_mutex);
-
-static int mdss_dsi_update_gamma_index(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int ret = 0;
-	struct mdss_panel_info *pinfo = NULL;
-
-	if (ctrl_pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
-	}
-
-	pinfo = &(ctrl_pdata->panel_data.panel_info);
-
-	if (!pinfo->gamma_count)
-		return -EINVAL;
-
-
-	if (pinfo->gamma_index < 0 || pinfo->gamma_index >= pinfo->gamma_count) {
-		return -EINVAL;
-	}
-
-	pr_info("%s: update gamma index=%d", __func__, pinfo->gamma_index);
-
-	switch (pinfo->gamma_index)
-	{
-		case 0:
-			 mdss_dsi_panel_cmds_send(ctrl_pdata, &gamma1);
-			 break;
-		case 1:
-			 mdss_dsi_panel_cmds_send(ctrl_pdata, &gamma2);
-			 break;
-		case 2:
-			 mdss_dsi_panel_cmds_send(ctrl_pdata, &gamma3);
-			 break;
-		case 3:
-			 mdss_dsi_panel_cmds_send(ctrl_pdata, &gamma4);
-			 break;
-		default:
-			pr_err("%s : invalid gamma index %d yxr \n",__func__, pinfo->gamma_index);
-			ret = -EINVAL;
-			break;
-	}
-
-	return ret;
-}
-
-int mdss_dsi_panel_set_gamma_index(struct mdss_panel_data *pdata, int index)
-{
-	int ret = 0;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_panel_info *pinfo = NULL;
-
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
-	}
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
-	pinfo = &(ctrl_pdata->panel_data.panel_info);
-
-	if (!pinfo->gamma_count)
-		return -EINVAL;
-
-    mutex_lock(&config_mutex);
-
-    if(index < 0 || index >= pinfo->gamma_count) {
-		pr_err("%s: valid gamma indexes are 0-%d\n", __func__,
-				(pinfo->gamma_count - 1));
-	goto out;
-    }
-
-	pinfo->gamma_index = index;
-
-	if (!pinfo->panel_power_on) {
-		pr_info("%s: lcd is off, queued gamma change\n", __func__);
-		goto out;
-	}
-
-	ret = mdss_dsi_update_gamma_index(ctrl_pdata);
-
-out:
-    mutex_unlock(&config_mutex);
-	return ret;
-}
-
-static int mdss_dsi_update_cabc_level(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int ret = 0;
-	struct mdss_panel_info *pinfo = NULL;
-
-    if (ctrl_pdata == NULL) {
-	    pr_err("%s: Invalid input data\n", __func__);
-	    return -EINVAL;
-    }
-
-	pinfo = &(ctrl_pdata->panel_data.panel_info);
-
-    if (!pinfo->cabc_available)
-	goto done;
-
-	pr_info("%s: update cabc level=%d (%d)", __func__,
-			pinfo->cabc_mode, pinfo->cabc_active);
-
-	switch (pinfo->cabc_mode)
-	{
-		case 0:
-			mdss_dsi_panel_cmds_send(ctrl_pdata, &cabc_off_sequence);
-			break;
-		case 1:
-			if (pinfo->cabc_bl_max > 0 && !pinfo->cabc_active)
-				mdss_dsi_panel_cmds_send(ctrl_pdata, &cabc_off_sequence);
-			else
-				mdss_dsi_panel_cmds_send(ctrl_pdata, &cabc_user_interface_image_sequence);
-			break;
-		case 2:
-			mdss_dsi_panel_cmds_send(ctrl_pdata, &cabc_still_image_sequence);
-			break;
-		case 3:
-			mdss_dsi_panel_cmds_send(ctrl_pdata, &cabc_video_image_sequence);
-			break;
-		default:
-			pr_err("%s: cabc level %d is not supported!\n",__func__, pinfo->cabc_mode);
-			ret = -EINVAL;
-			break;
-	}
-
-done:
-	set_backlight_pwm((pinfo->cabc_available && (pinfo->cabc_mode > 0)) ? 1 : 0);
-
-	return ret;
-}
-
-int mdss_dsi_panel_set_cabc(struct mdss_panel_data *pdata, int level)
-{
-	int ret = 0;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_panel_info *pinfo = NULL;
-
-    if (pdata == NULL) {
-	    pr_err("%s: Invalid input data\n", __func__);
-	    return -EINVAL;
-    }
-
-    ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
-	pinfo = &(ctrl_pdata->panel_data.panel_info);
-
-    if (!pinfo->cabc_available)
-	return 0;
-
-	mutex_lock(&config_mutex);
-
-	if (level < 0 || level > 3) {
-		pr_err("%s: valid cabc values are 0-4\n", __func__);
-		goto out;
-	}
-
-	pinfo->cabc_mode = level;
-
-	if (!pinfo->panel_power_on) {
-		pr_info("%s: lcd is off, queued cabc change\n", __func__);
-		goto out;
-	}
-
-	ret = mdss_dsi_update_cabc_level(ctrl_pdata);
-
-out:
-	mutex_unlock(&config_mutex);
-	return ret;
-
-}
-#endif /*VENDOR_EDIT*/
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -246,12 +40,10 @@ void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 	}
 }
 
-#ifndef CONFIG_VENDOR_EDIT
 static void mdss_dsi_panel_bklt_pwm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	int ret;
 	u32 duty;
-	u32 period_ns;
 
 	if (ctrl->pwm_bl == NULL) {
 		pr_err("%s: no PWM\n", __func__);
@@ -280,23 +72,10 @@ static void mdss_dsi_panel_bklt_pwm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 		ctrl->pwm_enabled = 0;
 	}
 
-	if (ctrl->pwm_period >= USEC_PER_SEC) {
-		ret = pwm_config_us(ctrl->pwm_bl, duty, ctrl->pwm_period);
-		if (ret) {
-			pr_err("%s: pwm_config_us() failed err=%d.\n",
-					__func__, ret);
-			return;
-		}
-	} else {
-		period_ns = ctrl->pwm_period * NSEC_PER_USEC;
-		ret = pwm_config(ctrl->pwm_bl,
-				level * period_ns / ctrl->bklt_max,
-				period_ns);
-		if (ret) {
-			pr_err("%s: pwm_config() failed err=%d.\n",
-					__func__, ret);
-			return;
-		}
+	ret = pwm_config_us(ctrl->pwm_bl, duty, ctrl->pwm_period);
+	if (ret) {
+		pr_err("%s: pwm_config_us() failed err=%d.\n", __func__, ret);
+		return;
 	}
 
 	ret = pwm_enable(ctrl->pwm_bl);
@@ -310,13 +89,7 @@ static struct dsi_cmd_desc dcs_read_cmd = {
 	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(dcs_cmd)},
 	dcs_cmd
 };
-#else
-static char dcs_cmd[2] = {0x56, 0x00}; /* DTYPE_DCS_READ */
-static struct dsi_cmd_desc dcs_read_cmd = {
-	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(dcs_cmd)},
-	dcs_cmd
-};
-#endif
+
 u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 		char cmd1, void (*fxn)(int), char *rbuf, int len)
 {
@@ -359,8 +132,6 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-#ifndef CONFIG_VENDOR_EDIT
-
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
@@ -385,69 +156,17 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-#endif
-
-static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int rc = 0;
-
-#ifdef CONFIG_VENDOR_EDIT
-	if(ctrl_pdata->index == 1)
-	  return rc;
-#endif
-
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-		rc = gpio_request(ctrl_pdata->disp_en_gpio,
-						"disp_enable");
-		if (rc) {
-			pr_err("request disp_en gpio failed, rc=%d\n",
-				       rc);
-			goto disp_en_gpio_err;
-		}
-	}
-	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
-	if (rc) {
-		pr_err("request reset gpio failed, rc=%d\n",
-			rc);
-		goto rst_gpio_err;
-	}
-
-#ifndef CONFIG_VENDOR_EDIT
-	if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
-		rc = gpio_request(ctrl_pdata->mode_gpio, "panel_mode");
-		if (rc) {
-			pr_err("request panel mode gpio failed,rc=%d\n",
-								rc);
-			goto mode_gpio_err;
-		}
-	}
-#endif
-
-	return rc;
-
-#ifndef CONFIG_VENDOR_EDIT
-mode_gpio_err:
-	gpio_free(ctrl_pdata->rst_gpio);
-#endif	
-rst_gpio_err:
-	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-		gpio_free(ctrl_pdata->disp_en_gpio);
-disp_en_gpio_err:
-	return rc;
-}
-
-#ifndef CONFIG_VENDOR_EDIT
-/* Xinqin.Yang@PhoneSW.Driver, 2014/01/10  Modify for rewrite reset function */
-
-int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
+void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
-	int i, rc = 0;
-
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+#else
+	int i;
+#endif
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
+		return;
 	}
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -461,29 +180,38 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio)) {
 		pr_debug("%s:%d, reset line not configured\n",
 			   __func__, __LINE__);
-		return rc;
+		return;
 	}
 
-	pr_debug("%s: enable = %d\n", __func__, enable);
+	pr_info("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
-		rc = mdss_dsi_request_gpios(ctrl_pdata);
-		if (rc) {
-			pr_err("gpio request failed\n");
-			return rc;
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		mdelay(3);
+#endif
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
+		set_vol_tps65132_positive();
+		mdelay(1);
+		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
+		{
+			gpio_set_value((ctrl_pdata->tps_en_gpio), 1);
+			set_vol_tps65132_nagetive();
 		}
-		if (!pinfo->panel_power_on) {
-			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+#endif
 
-			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
-				gpio_set_value((ctrl_pdata->rst_gpio),
-					pdata->panel_info.rst_seq[i]);
-				if (pdata->panel_info.rst_seq[++i])
-					usleep(pinfo->rst_seq[i] * 1000);
-			}
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+#else
+		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+			gpio_set_value((ctrl_pdata->rst_gpio),
+				pdata->panel_info.rst_seq[i]);
+			if (pdata->panel_info.rst_seq[++i])
+				usleep(pdata->panel_info.rst_seq[i] * 1000);
 		}
+#endif
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
@@ -497,173 +225,30 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+		mdelay(1);
+		gpio_set_value((ctrl_pdata->rst_gpio), 1);
+		mdelay(3);
+#endif
 	} else {
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-			gpio_free(ctrl_pdata->disp_en_gpio);
-		}
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		gpio_free(ctrl_pdata->rst_gpio);
-		if (gpio_is_valid(ctrl_pdata->mode_gpio))
-			gpio_free(ctrl_pdata->mode_gpio);
-	}
-	return rc;
-}
-
-#else
-
-int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_panel_info *pinfo = NULL;
-	int rc = 0;
-
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
-	}
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-		pr_debug("%s:%d, reset line not configured\n",
-			   __func__, __LINE__);
-	}
-
-	if (!gpio_is_valid(ctrl_pdata->rst_gpio)) {
-		pr_debug("%s:%d, reset line not configured\n",
-			   __func__, __LINE__);
-		return rc;
-	}
-
-    pr_debug("%s: enable = %d, panel index=%d\n", __func__, enable, ctrl_pdata->index);
-	pinfo = &(ctrl_pdata->panel_data.panel_info);
-    if (!get_pcb_version_find7s()) { /* For Single DSI: Find7 ,liuyan add for N3*/
-		if (enable) {
-			rc = mdss_dsi_request_gpios(ctrl_pdata);
-			if (rc) {
-				pr_err("gpio request failed\n");
-				return rc;
-			}
-			if (!pinfo->panel_power_on) {
-				//pr_err("%s:lcd power up\n", __func__);
-				gpio_set_value((ctrl_pdata->rst_gpio), 0);
-				gpio_direction_output(ctrl_pdata->disp_en_gpio,0);
-
-#ifdef CONFIG_OPPO_DEVICE_N3
-				gpio_direction_output(ctrl_pdata->disp_en_gpio76,0);
+		
+#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
+		mdelay(10); // add for IC request
+		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
+			gpio_set_value((ctrl_pdata->tps_en_gpio), 0);
+		mdelay(1);
 #endif
-				mdelay(2);
-				if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-					gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-					gpio_direction_output(ctrl_pdata->disp_en_gpio,1);
-				}
-#ifdef CONFIG_OPPO_DEVICE_N3
-				gpio_direction_output(ctrl_pdata->disp_en_gpio76,1);
-#endif
-				mdelay(2);
-				gpio_set_value((ctrl_pdata->rst_gpio), 1);
-				mdelay(10);
-			}
-			if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-				pr_debug("%s: Panel Not properly turned OFF\n", __func__);
-				ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-				pr_debug("%s: Reset panel done\n", __func__);
-			}
-		} else {
-			gpio_set_value((ctrl_pdata->rst_gpio), 0);
-			gpio_free(ctrl_pdata->rst_gpio);
-			if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-			gpio_direction_output(ctrl_pdata->disp_en_gpio,0);
-			gpio_free(ctrl_pdata->disp_en_gpio);
-			}
-#ifdef CONFIG_OPPO_DEVICE_N3
-			gpio_direction_output(ctrl_pdata->disp_en_gpio76,0);
-#endif
-		}
-    } else {		 /* For Dual DSI: Find7S */
-		if(ctrl_pdata->index==1){ /* For Find7S DSI 1 */
-			if (enable) {
-				if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-					pr_err("%s: Panel Not properly turned OFF\n", __func__);
-					ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-					pr_err("%s: Reset panel done\n", __func__);
-				}
-			}
-		} else { /* For DSI 0 */
-			if (enable) {
-				rc = mdss_dsi_request_gpios(ctrl_pdata);
-				if (rc) {
-					pr_err("gpio request failed\n");
-					return rc;
-				}
-				if (!pinfo->panel_power_on) {
-					if(find7s_lcd_rsp_ic == 1){
-						pr_info("%s rsp ic reset\n",__func__);
-						gpio_set_value((ctrl_pdata->rst_gpio), 0);
-						gpio_direction_output((ctrl_pdata->disp_en_gpio), 0);
-						gpio_direction_output(46,0);
-						mdelay(2);
-						if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-							gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-						gpio_direction_output((ctrl_pdata->disp_en_gpio), 1);
-						mdelay(5);
-						gpio_direction_output(46,1);
-						mdelay(5);
-						gpio_set_value((ctrl_pdata->rst_gpio), 1);
-						mdelay(10);
-					} else {
-						pr_info("%s ntk ic reset\n",__func__);
-						gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
-						mdelay(5);
-						gpio_set_value((ctrl_pdata->rst_gpio), 0); /* GPIO_19 ---> 0 */
-						mdelay(10);
-						gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
-						mdelay(10);
-						if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-							gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-						gpio_direction_output((ctrl_pdata->disp_en_gpio),1); /* GPIO_58 --->1 */
-						/*mdelay(2);
-						gpio_direction_output(46,1);
-						mdelay(10);
-						gpio_direction_output(46,0);
-						mdelay(2);
-						gpio_direction_output((ctrl_pdata->disp_en_gpio), 0);
-						mdelay(10);
-						gpio_direction_output((ctrl_pdata->disp_en_gpio), 1);*/
-						mdelay(2);
-						gpio_direction_output(46,1);
-					}
-					if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-						pr_debug("%s: Panel Not properly turned OFF\n", __func__);
-						ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-						pr_debug("%s: Reset panel done\n", __func__);
-					}
-				}
-			} else {
-				gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
-				mdelay(5);
-				gpio_set_value((ctrl_pdata->rst_gpio), 0); /* GPIO_19 ---> 0 */
-				mdelay(10);
-				gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 --->1 */
-				gpio_free(ctrl_pdata->rst_gpio);
-				mdelay(10);
-				gpio_direction_output(46,0);   //add for find7s enable display -5v
-				mdelay(2);
-				if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-					gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-					gpio_direction_output((ctrl_pdata->disp_en_gpio),0); /* GPIO_58 ---> 0 */
-					gpio_free(ctrl_pdata->disp_en_gpio);
-				}
-				mdelay(10);
-			}
-		}
-    }
-	return rc;
+	}
 }
-//yanghai modify end
+
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+void mdss_dsi_panel_lm3630(unsigned int bl_level)
+{
+	set_backlight_lm3630(bl_level);
+}
 #endif
 
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
@@ -721,40 +306,9 @@ static int mdss_dsi_panel_partial_update(struct mdss_panel_data *pdata)
 	return rc;
 }
 
-static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
-							int mode)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mipi_panel_info *mipi;
-	struct dsi_panel_cmds *pcmds;
-
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return;
-	}
-
-	mipi  = &pdata->panel_info.mipi;
-
-	if (!mipi->dynamic_switch_enabled)
-		return;
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-	if (mode == DSI_CMD_MODE)
-		pcmds = &ctrl_pdata->video2cmd;
-	else
-		pcmds = &ctrl_pdata->cmd2video;
-
-	mdss_dsi_panel_cmds_send(ctrl_pdata, pcmds);
-
-	return;
-}
-
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
-#ifndef CONFIG_VENDOR_EDIT
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	if (pdata == NULL) {
@@ -783,26 +337,17 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 	case BL_DCS_CMD:
 		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
-		if (mdss_dsi_is_master_ctrl(ctrl_pdata)) {
-			struct mdss_dsi_ctrl_pdata *sctrl =
-				mdss_dsi_get_slave_ctrl();
-			if (!sctrl) {
-				pr_err("%s: Invalid slave ctrl data\n",
-					__func__);
-				return;
-			}
-			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
-		}
 		break;
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+	case BL_LM3630:
+		mdss_dsi_panel_lm3630(bl_level);
+		break;
+#endif
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
 		break;
 	}
-#else
-	pr_debug("%s: %d\n", __func__, bl_level);
-	lm3630_bank_a_update_status(bl_level);
-#endif
 }
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
@@ -820,16 +365,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mipi  = &pdata->panel_info.mipi;
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
-#ifdef CONFIG_OPPO_DEVICE_N3
-	pr_debug("%s: gpio 76=%d\n", __func__,gpio_get_value(ctrl->disp_en_gpio76));
-#endif
+
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
-
-#ifdef CONFIG_VENDOR_EDIT
-    mdss_dsi_update_gamma_index(ctrl);
-	mdss_dsi_update_cabc_level(ctrl);
-#endif /*VENDOR_EDIT*/
 
 	pr_debug("%s:-\n", __func__);
 	return 0;
@@ -970,16 +508,11 @@ static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		len -= dchdr->dlen;
 	}
 
-	/*Set default link state to LP Mode*/
-	pcmds->link_state = DSI_LP_MODE;
-
-	if (link_key) {
-		data = of_get_property(np, link_key, NULL);
-		if (data && !strcmp(data, "dsi_hs_mode"))
-			pcmds->link_state = DSI_HS_MODE;
-		else
-			pcmds->link_state = DSI_LP_MODE;
-	}
+	data = of_get_property(np, link_key, NULL);
+	if (data && !strcmp(data, "dsi_hs_mode"))
+		pcmds->link_state = DSI_HS_MODE;
+	else
+		pcmds->link_state = DSI_LP_MODE;
 
 	pr_debug("%s: dcs_cmd=%x len=%d, cmd_cnt=%d link_state=%d\n", __func__,
 		pcmds->buf[0], pcmds->blen, pcmds->cmd_cnt, pcmds->link_state);
@@ -992,7 +525,7 @@ exit_free:
 }
 
 
-int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
+static int mdss_panel_dt_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format)
 {
 	int rc = 0;
@@ -1115,41 +648,6 @@ static int mdss_dsi_parse_fbc_params(struct device_node *np,
 	return 0;
 }
 
-static void mdss_panel_parse_te_params(struct device_node *np,
-				       struct mdss_panel_info *panel_info)
-{
-
-	u32 tmp;
-	int rc = 0;
-	/*
-	 * TE default: dsi byte clock calculated base on 70 fps;
-	 * around 14 ms to complete a kickoff cycle if te disabled;
-	 * vclk_line base on 60 fps; write is faster than read;
-	 * init == start == rdptr;
-	 */
-	panel_info->te.tear_check_en =
-		!of_property_read_bool(np, "qcom,mdss-tear-check-disable");
-	rc = of_property_read_u32
-		(np, "qcom,mdss-tear-check-sync-cfg-height", &tmp);
-	panel_info->te.sync_cfg_height = (!rc ? tmp : 0xfff0);
-	rc = of_property_read_u32
-		(np, "qcom,mdss-tear-check-sync-init-val", &tmp);
-	panel_info->te.vsync_init_val = (!rc ? tmp : panel_info->yres);
-	rc = of_property_read_u32
-		(np, "qcom,mdss-tear-check-sync-threshold-start", &tmp);
-	panel_info->te.sync_threshold_start = (!rc ? tmp : 4);
-	rc = of_property_read_u32
-		(np, "qcom,mdss-tear-check-sync-threshold-continue", &tmp);
-	panel_info->te.sync_threshold_continue = (!rc ? tmp : 4);
-	rc = of_property_read_u32(np, "qcom,mdss-tear-check-start-pos", &tmp);
-	panel_info->te.start_pos = (!rc ? tmp : panel_info->yres);
-	rc = of_property_read_u32
-		(np, "qcom,mdss-tear-check-rd-ptr-trigger-intr", &tmp);
-	panel_info->te.rd_ptr_irq = (!rc ? tmp : panel_info->yres + 1);
-	rc = of_property_read_u32(np, "qcom,mdss-tear-check-frame-rate", &tmp);
-	panel_info->te.refx100 = (!rc ? tmp : 6000);
-}
-
 
 static int mdss_dsi_parse_reset_seq(struct device_node *np,
 		u32 rst_seq[MDSS_DSI_RST_SEQ_LEN], u32 *rst_len,
@@ -1179,168 +677,6 @@ static int mdss_dsi_parse_reset_seq(struct device_node *np,
 	return 0;
 }
 
-static void mdss_dsi_parse_roi_alignment(struct device_node *np,
-		struct mdss_panel_info *pinfo)
-{
-	int len = 0;
-	u32 value[6];
-	struct property *data;
-	data = of_find_property(np, "qcom,panel-roi-alignment", &len);
-	len /= sizeof(u32);
-	if (!data || (len != 6)) {
-		pr_err("%s: Panel roi alignment not found", __func__);
-	} else {
-		int rc = of_property_read_u32_array(np,
-				"qcom,panel-roi-alignment", value, len);
-		if (rc)
-			pr_err("%s: Error reading panel roi alignment values",
-					__func__);
-		else {
-			pinfo->xstart_pix_align = value[0];
-			pinfo->width_pix_align = value[1];
-			pinfo->ystart_pix_align = value[2];
-			pinfo->height_pix_align = value[3];
-			pinfo->min_width = value[4];
-			pinfo->min_height = value[5];
-		}
-
-		pr_info("%s: ROI alignment: [%d, %d, %d, %d, %d, %d]",
-				__func__, pinfo->xstart_pix_align,
-				pinfo->width_pix_align, pinfo->ystart_pix_align,
-				pinfo->height_pix_align, pinfo->min_width,
-				pinfo->min_height);
-	}
-}
-
-static int mdss_dsi_parse_panel_features(struct device_node *np,
-	struct mdss_dsi_ctrl_pdata *ctrl)
-{
-	struct mdss_panel_info *pinfo;
-
-	if (!np || !ctrl) {
-		pr_err("%s: Invalid arguments\n", __func__);
-		return -ENODEV;
-	}
-
-	pinfo = &ctrl->panel_data.panel_info;
-
-	pinfo->cont_splash_enabled = of_property_read_bool(np,
-		"qcom,cont-splash-enabled");
-
-	pinfo->partial_update_enabled = of_property_read_bool(np,
-		"qcom,partial-update-enabled");
-	pr_info("%s:%d Partial update %s\n", __func__, __LINE__,
-		(pinfo->partial_update_enabled ? "enabled" : "disabled"));
-	if (pinfo->partial_update_enabled)
-		ctrl->partial_update_fnc = mdss_dsi_panel_partial_update;
-
-	pinfo->ulps_feature_enabled = of_property_read_bool(np,
-		"qcom,ulps-enabled");
-	pr_info("%s: ulps feature %s", __func__,
-		(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
-	pinfo->esd_check_enabled = of_property_read_bool(np,
-		"qcom,esd-check-enabled");
-
-	pinfo->mipi.dynamic_switch_enabled = of_property_read_bool(np,
-		"qcom,dynamic-mode-switch-enabled");
-
-	if (pinfo->mipi.dynamic_switch_enabled) {
-		mdss_dsi_parse_dcs_cmds(np, &ctrl->video2cmd,
-			"qcom,video-to-cmd-mode-switch-commands", NULL);
-
-		mdss_dsi_parse_dcs_cmds(np, &ctrl->cmd2video,
-			"qcom,cmd-to-video-mode-switch-commands", NULL);
-
-		if (!ctrl->video2cmd.cmd_cnt || !ctrl->cmd2video.cmd_cnt) {
-			pr_warn("No commands specified for dynamic switch\n");
-			pinfo->mipi.dynamic_switch_enabled = 0;
-		}
-	}
-
-	pr_info("%s: dynamic switch feature enabled: %d", __func__,
-		pinfo->mipi.dynamic_switch_enabled);
-
-	return 0;
-}
-
-static int mdss_dsi_set_refresh_rate_range(struct device_node *pan_node,
-		struct mdss_panel_info *pinfo)
-{
-	int rc = 0;
-	rc = of_property_read_u32(pan_node,
-			"qcom,mdss-dsi-min-refresh-rate",
-			&pinfo->min_fps);
-	if (rc) {
-		pr_warn("%s:%d, Unable to read min refresh rate\n",
-				__func__, __LINE__);
-
-		/*
-		 * Since min refresh rate is not specified when dynamic
-		 * fps is enabled, using minimum as 30
-		 */
-		pinfo->min_fps = MIN_REFRESH_RATE;
-		rc = 0;
-	}
-
-	rc = of_property_read_u32(pan_node,
-			"qcom,mdss-dsi-max-refresh-rate",
-			&pinfo->max_fps);
-	if (rc) {
-		pr_warn("%s:%d, Unable to read max refresh rate\n",
-				__func__, __LINE__);
-
-		/*
-		 * Since max refresh rate was not specified when dynamic
-		 * fps is enabled, using the default panel refresh rate
-		 * as max refresh rate supported.
-		 */
-		pinfo->max_fps = pinfo->mipi.frame_rate;
-		rc = 0;
-	}
-
-	pr_info("dyn_fps: min = %d, max = %d\n",
-			pinfo->min_fps, pinfo->max_fps);
-	return rc;
-}
-
-static void mdss_dsi_parse_dfps_config(struct device_node *pan_node,
-			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	const char *data;
-	bool dynamic_fps;
-	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
-
-	dynamic_fps = of_property_read_bool(pan_node,
-			"qcom,mdss-dsi-pan-enable-dynamic-fps");
-
-	if (!dynamic_fps)
-		return;
-
-	pinfo->dynamic_fps = true;
-	data = of_get_property(pan_node, "qcom,mdss-dsi-pan-fps-update", NULL);
-	if (data) {
-		if (!strcmp(data, "dfps_suspend_resume_mode")) {
-			pinfo->dfps_update = DFPS_SUSPEND_RESUME_MODE;
-			pr_debug("dfps mode: suspend/resume\n");
-		} else if (!strcmp(data, "dfps_immediate_clk_mode")) {
-			pinfo->dfps_update = DFPS_IMMEDIATE_CLK_UPDATE_MODE;
-			pr_debug("dfps mode: Immediate clk\n");
-		} else if (!strcmp(data, "dfps_immediate_porch_mode")) {
-			pinfo->dfps_update = DFPS_IMMEDIATE_PORCH_UPDATE_MODE;
-			pr_debug("dfps mode: Immediate porch\n");
-		} else {
-			pinfo->dfps_update = DFPS_SUSPEND_RESUME_MODE;
-			pr_debug("default dfps mode: suspend/resume\n");
-		}
-		mdss_dsi_set_refresh_rate_range(pan_node, pinfo);
-	} else {
-		pinfo->dynamic_fps = false;
-		pr_debug("dfps update mode not configured: disable\n");
-	}
-	pinfo->new_fps = pinfo->mipi.frame_rate;
-
-	return;
-}
 
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -1396,11 +732,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	tmp = 0;
 	data = of_get_property(np, "qcom,mdss-dsi-pixel-packing", NULL);
 	if (data && !strcmp(data, "loose"))
-		pinfo->mipi.pixel_packing = 1;
-	else
-		pinfo->mipi.pixel_packing = 0;
-	rc = mdss_panel_get_dst_fmt(pinfo->bpp,
-		pinfo->mipi.mode, pinfo->mipi.pixel_packing,
+		tmp = 1;
+	rc = mdss_panel_dt_get_dst_fmt(pinfo->bpp,
+		pinfo->mipi.mode, tmp,
 		&(pinfo->mipi.dst_format));
 	if (rc) {
 		pr_debug("%s: problem determining dst format. Set Default\n",
@@ -1421,14 +755,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		else if (!strcmp(pdest, "display_2"))
 			pinfo->pdest = DISPLAY_2;
 		else {
-			pr_debug("%s: incorrect pdest. Set Default\n",
-				__func__);
+			pr_debug("%s: pdest not specified. Set Default\n",
+								__func__);
 			pinfo->pdest = DISPLAY_1;
 		}
 	} else {
-		pr_debug("%s: pdest not specified. Set Default\n",
-				__func__);
-		pinfo->pdest = DISPLAY_1;
+		pr_err("%s: pdest not specified\n", __func__);
+		return -EINVAL;
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-h-front-porch", &tmp);
 	pinfo->lcdc.h_front_porch = (!rc ? tmp : 6);
@@ -1483,6 +816,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 		}
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+	else if (!strncmp(data, "bl_ctrl_lm3630", 14)) {
+			ctrl_pdata->bklt_ctrl = BL_LM3630;
+	}
+#endif
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);
@@ -1510,8 +848,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-hsa-power-mode");
 	pinfo->mipi.hbp_power_stop = of_property_read_bool(np,
 		"qcom,mdss-dsi-hbp-power-mode");
-	pinfo->mipi.last_line_interleave_en = of_property_read_bool(np,
-		"qcom,mdss-dsi-last-line-interleave");
 	pinfo->mipi.bllp_power_stop = of_property_read_bool(np,
 		"qcom,mdss-dsi-bllp-power-mode");
 	pinfo->mipi.eof_bllp_power_stop = of_property_read_bool(
@@ -1607,7 +943,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->mipi.init_delay = (!rc ? tmp : 0);
 
 	mdss_dsi_parse_fbc_params(np, pinfo);
-	mdss_dsi_parse_roi_alignment(np, pinfo);
 
 	mdss_dsi_parse_trigger(np, &(pinfo->mipi.mdp_trigger),
 		"qcom,mdss-dsi-mdp-trigger");
@@ -1620,74 +955,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
 
-	mdss_panel_parse_te_params(np, pinfo);
-
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->on_cmds,
 		"qcom,mdss-dsi-on-command", "qcom,mdss-dsi-on-command-state");
 
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
-
-	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->status_cmds,
-			"qcom,mdss-dsi-panel-status-command",
-				"qcom,mdss-dsi-panel-status-command-state");
-	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-status-value", &tmp);
-	ctrl_pdata->status_value = (!rc ? tmp : 0);
-
-
-	ctrl_pdata->status_mode = ESD_MAX;
-	rc = of_property_read_string(np,
-				"qcom,mdss-dsi-panel-status-check-mode", &data);
-	if (!rc) {
-		if (!strcmp(data, "bta_check"))
-			ctrl_pdata->status_mode = ESD_BTA;
-		else if (!strcmp(data, "reg_read"))
-			ctrl_pdata->status_mode = ESD_REG;
-	}
-
-#ifdef CONFIG_VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
-	rc = mdss_dsi_parse_dcs_cmds(np, &cabc_off_sequence,
-		"qcom,mdss-dsi-cabc-off-command", "qcom,mdss-dsi-off-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &cabc_user_interface_image_sequence,
-		"qcom,mdss-dsi-cabc-ui-command", "qcom,mdss-dsi-off-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &cabc_still_image_sequence,
-		"qcom,mdss-dsi-cabc-still-image-command", "qcom,mdss-dsi-off-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &cabc_video_image_sequence,
-		"qcom,mdss-dsi-cabc-video-command", "qcom,mdss-dsi-off-command-state");
-
-	of_property_read_u32(np, "qcom,mdss-dsi-bl-cabc-max-level", &pinfo->cabc_bl_max);
-	
-	pinfo->cabc_available = rc == 0 ? 1 : 0;
-	
-	/* Predefined gamma */
-	pinfo->gamma_count = 0;
-
-	rc = mdss_dsi_parse_dcs_cmds(np, &gamma1,
-		"qcom,mdss-dsi-gamma1", "qcom,mdss-dsi-off-command-state");
-	pinfo->gamma_count += rc == 0 ? 1 : 0;
-
-	rc = mdss_dsi_parse_dcs_cmds(np, &gamma2,
-		"qcom,mdss-dsi-gamma2", "qcom,mdss-dsi-off-command-state");
-	pinfo->gamma_count += rc == 0 ? 1 : 0;
-
-	rc = mdss_dsi_parse_dcs_cmds(np, &gamma3,
-		"qcom,mdss-dsi-gamma3", "qcom,mdss-dsi-off-command-state");
-	pinfo->gamma_count += rc == 0 ? 1 : 0;
-
-	rc = mdss_dsi_parse_dcs_cmds(np, &gamma4,
-		"qcom,mdss-dsi-gamma4", "qcom,mdss-dsi-off-command-state");
-	pinfo->gamma_count += rc == 0 ? 1 : 0;
-	
-#endif /*VENDOR_EDIT*/
-
-	rc = mdss_dsi_parse_panel_features(np, ctrl_pdata);
-	if (rc) {
-		pr_err("%s: failed to parse panel features\n", __func__);
-		goto error;
-	}
-
-	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
 	return 0;
 
@@ -1701,16 +973,63 @@ int mdss_dsi_panel_init(struct device_node *node,
 {
 	int rc = 0;
 	static const char *panel_name;
-	struct mdss_panel_info *pinfo;
-
-	if (!node || !ctrl_pdata) {
-		pr_err("%s: Invalid arguments\n", __func__);
+	bool cont_splash_enabled;
+	bool partial_update_enabled;
+#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
+	static const char *device_panel_name;
+	struct gn_device_info gn_mydev_info;
+	gn_mydev_info.gn_dev_type = GN_DEVICE_TYPE_LCD;
+#endif
+	if (!node) {
+		pr_err("%s: no panel node\n", __func__);
 		return -ENODEV;
 	}
 
-	pinfo = &ctrl_pdata->panel_data.panel_info;
-
 	pr_debug("%s:%d\n", __func__, __LINE__);
+	#ifdef CONFIG_GN_Q_BSP_LCD_COMPATIBILITY_SUPPORT
+	{
+		int lcd_adc0_gpio, lcd_adc1_gpio;
+
+		lcd_adc0_gpio = of_get_named_gpio(node, "qcom,gn_lcd_adc0_gpio", 0);
+		lcd_adc1_gpio = of_get_named_gpio(node, "qcom,gn_lcd_adc1_gpio", 0);
+
+		if (!gpio_is_valid(lcd_adc0_gpio)) {
+			pr_err("%s:%d, compatibility gpio not specified\n",__func__, __LINE__);
+		}
+		else {
+			rc = gpio_request(lcd_adc0_gpio, "lcd_compatibility");
+			if (rc) {
+				pr_err("request lcd compatibility gpio failed, rc=%d\n",rc);
+				gpio_free(lcd_adc0_gpio);
+				return -ENODEV;
+			}
+		}
+		if (!gpio_is_valid(lcd_adc1_gpio)) {
+			pr_err("%s:%d, compatibility gpio not specified\n",__func__, __LINE__);
+		}
+		else {
+			rc = gpio_request(lcd_adc1_gpio, "lcd_compatibility");
+			if (rc) {
+				pr_err("request lcd compatibility gpio failed, rc=%d\n",rc);
+				gpio_free(lcd_adc1_gpio);
+				return -ENODEV;
+			}
+		}
+		rc = gpio_tlmm_config(GPIO_CFG(lcd_adc0_gpio, 1,GPIO_CFG_INPUT,GPIO_CFG_PULL_DOWN,GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: unable to config tlmm = %d\n",__func__, lcd_adc0_gpio);
+			gpio_free(lcd_adc0_gpio);
+			return -ENODEV;
+		}											
+		rc = gpio_tlmm_config(GPIO_CFG(lcd_adc1_gpio, 1,GPIO_CFG_INPUT,GPIO_CFG_PULL_DOWN,GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: unable to config tlmm = %d\n",__func__, lcd_adc1_gpio);
+			gpio_free(lcd_adc1_gpio);
+			return -ENODEV;
+		}	
+
+	}
+	#endif
 	panel_name = of_get_property(node, "qcom,mdss-dsi-panel-name", NULL);
 	if (!panel_name)
 		pr_info("%s:%d, Panel name not specified\n",
@@ -1718,29 +1037,55 @@ int mdss_dsi_panel_init(struct device_node *node,
 	else
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 
-#ifdef CONFIG_VENDOR_EDIT
-	if(strstr(panel_name,"rsp 1440p video mode dsi panel") || strstr(panel_name,"rsp 1440p cmd mode dsi panel"))
-		find7s_lcd_rsp_ic = 1;
+#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
+	if(strstr(panel_name, "tianma"))
+		device_panel_name = "tianma_r63421";
+	else if(strstr(panel_name, "jdi"))
+		device_panel_name = "jdi_r63417";
+	else if(strstr(panel_name, "truly"))
+		device_panel_name = "truly_r63417";
+	else 
+		device_panel_name = "unknown lcd";
+	strcpy(gn_mydev_info.name, device_panel_name);
+	gn_set_device_info(gn_mydev_info);
 #endif
-
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
 		return rc;
 	}
 
-	if (!cmd_cfg_cont_splash)
-		pinfo->cont_splash_enabled = false;
-	pr_info("%s: Continuous splash %s", __func__,
-		pinfo->cont_splash_enabled ? "enabled" : "disabled");
+	if (cmd_cfg_cont_splash)
+		cont_splash_enabled = of_property_read_bool(node,
+				"qcom,cont-splash-enabled");
+	else
+		cont_splash_enabled = false;
+	if (!cont_splash_enabled) {
+		pr_info("%s:%d Continuous splash flag not found.\n",
+				__func__, __LINE__);
+		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 0;
+	} else {
+		pr_info("%s:%d Continuous splash flag enabled.\n",
+				__func__, __LINE__);
 
-	pinfo->dynamic_switch_pending = false;
-	pinfo->is_lpm_mode = false;
+		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 1;
+	}
+
+	partial_update_enabled = of_property_read_bool(node,
+						"qcom,partial-update-enabled");
+	if (partial_update_enabled) {
+		pr_info("%s:%d Partial update enabled.\n", __func__, __LINE__);
+		ctrl_pdata->panel_data.panel_info.partial_update_enabled = 1;
+		ctrl_pdata->partial_update_fnc = mdss_dsi_panel_partial_update;
+	} else {
+		pr_info("%s:%d Partial update disabled.\n", __func__, __LINE__);
+		ctrl_pdata->panel_data.panel_info.partial_update_enabled = 0;
+		ctrl_pdata->partial_update_fnc = NULL;
+	}
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
-	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 
 	return 0;
 }
