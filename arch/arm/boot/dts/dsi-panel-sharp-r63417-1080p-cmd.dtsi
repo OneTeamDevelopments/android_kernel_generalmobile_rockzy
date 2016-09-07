@@ -17,6 +17,7 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_sharp_r63417_1080_cmd: qcom,mdss_dsi_sharp_r63417_1080p_cmd {
+	        qcom,cont-splash-enabled;
 		qcom,mdss-dsi-panel-name = "sharp r63417 1080p command mode dsi panel";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
