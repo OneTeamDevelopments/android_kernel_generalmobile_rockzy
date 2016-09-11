@@ -41,6 +41,7 @@ enum msm_sensor_state_t {
 	MSM_SENSOR_POWER_DOWN,
 	MSM_SENSOR_POWER_UP,
 };
+
 struct gn_sunny_ov4688_otp_struct   
 {
     int16_t customer_id;
@@ -56,8 +57,8 @@ struct gn_sunny_ov4688_otp_struct
 	int16_t VCM_end;
 	int16_t VCM_start;
 	int16_t user_data[5];
-	int16_t lenc[63];//63
 };
+
 struct gn_sunny_ov8835_otp_struct   
 {
     int16_t customer_id;
