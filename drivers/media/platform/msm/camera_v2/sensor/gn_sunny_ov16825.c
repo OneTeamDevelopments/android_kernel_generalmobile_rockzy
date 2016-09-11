@@ -13,13 +13,6 @@
 #include "msm_sensor.h"
 #define GN_SUNNY_OV16825_SENSOR_NAME "gn_sunny_ov16825"
 DEFINE_MSM_MUTEX(gn_sunny_ov16825_mut);
-#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
-#include <linux/gn_device_check.h>
-#endif
-#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
-extern int gn_set_device_info(struct gn_device_info gn_dev_info);
-static struct gn_device_info gn_cameradev_info;
-#endif
 static struct msm_sensor_ctrl_t gn_sunny_ov16825_s_ctrl;
 
 static struct msm_sensor_power_setting gn_sunny_ov16825_power_setting[] = {
@@ -152,16 +145,8 @@ static int __init gn_sunny_ov16825_init_module(void)
 	pr_info("%s:%d\n", __func__, __LINE__);
 	rc = platform_driver_probe(&gn_sunny_ov16825_platform_driver,
 		gn_sunny_ov16825_platform_probe);
-	if (!rc){
-	#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
-		gn_cameradev_info.gn_dev_type = GN_DEVICE_TYPE_BACK_CAM;
-		memcpy(gn_cameradev_info.name, "sunny_ov16825",sizeof("sunny_ov16825"));
-		memcpy(gn_cameradev_info.vendor,"sunny_ov16825",sizeof("sunny_ov16825"));
-		gn_set_device_info(gn_cameradev_info);
-	#endif
+	if (!rc)
 		return rc;
-	}
-	pr_err("%s:%d rc %d\n", __func__, __LINE__, rc);
 	return i2c_add_driver(&gn_sunny_ov16825_i2c_driver);
 }
 
