@@ -67,7 +67,7 @@
 		qcom,mdss-dsi-panel-timings = [6e 26 1b 00 35 34 20 28 17 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x20>;
 		qcom,mdss-dsi-t-clk-pre = <0x2a>;
-		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-min-level = <15>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
 		qcom,mdss-dsi-bl-pmic-bank-select = <7>;
