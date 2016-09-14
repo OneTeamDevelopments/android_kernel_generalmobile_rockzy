@@ -16,7 +16,7 @@
 #define RG_TYPICAL 0xE7	//0x138    
 #define BG_TYPICAL 0x10F //0x127
 DEFINE_MSM_MUTEX(gn_sunny_ov4688_mut);
-static struct gn_sunny_ov4688_otp_struct *otp_ptr;
+static struct gn_sunny_ov4688_otp_struct *current_otp;
 
 static struct msm_sensor_ctrl_t gn_sunny_ov4688_s_ctrl;
 
@@ -502,7 +502,7 @@ static int __init gn_sunny_ov4688_init_module(void)
 {
 	int32_t rc = 0;
 	pr_info("%s:%d\n", __func__, __LINE__);
-	otp_ptr   = kzalloc(sizeof(struct gn_sunny_ov4688_otp_struct),GFP_KERNEL);
+	current_otp = kzalloc(sizeof(struct gn_sunny_ov4688_otp_struct),GFP_KERNEL);
 	rc = platform_driver_probe(&gn_sunny_ov4688_platform_driver,
 		gn_sunny_ov4688_platform_probe);
 	if (!rc)
@@ -518,7 +518,7 @@ static void __exit gn_sunny_ov4688_exit_module(void)
 		platform_driver_unregister(&gn_sunny_ov4688_platform_driver);
 	} else
 		i2c_del_driver(&gn_sunny_ov4688_i2c_driver);
-	kzfree(otp_ptr);
+	kzfree(current_otp);
 	return;
 }
 
