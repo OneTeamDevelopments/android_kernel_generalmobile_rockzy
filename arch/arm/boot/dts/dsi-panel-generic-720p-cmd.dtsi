@@ -67,7 +67,7 @@
 		qcom,mdss-dsi-panel-timings = [6e 26 1b 00 35 34 20 28 17 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x20>;
 		qcom,mdss-dsi-t-clk-pre = <0x2a>;
-		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-min-level = <15>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
 		qcom,mdss-dsi-bl-pmic-bank-select = <7>;
@@ -75,5 +75,16 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
 		qcom,mdss-dsi-reset-sequence = <1 20>, <0 200>, <1 20>;
+		cm,mdss-livedisplay-cabc-cmd = [
+			15 01 00 00 10 00 02 55 00];
+		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
+		cm,mdss-livedisplay-cabc-image-value = <0x02>;
+		cm,mdss-livedisplay-cabc-video-value = <0x03>;
+		cm,mdss-livedisplay-sre-weak-value = <0x50>;
+		cm,mdss-livedisplay-sre-medium-value = <0x60>;
+		cm,mdss-livedisplay-sre-strong-value = <0x70>;
+		cm,mdss-livedisplay-aco-value = <0x80>;
+		cm,mdss-livedisplay-post-cmd = [
+			05 01 00 00 10 00 02 29 00];
 	};
 };
