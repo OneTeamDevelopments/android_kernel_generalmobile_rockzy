@@ -22,6 +22,8 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/gpio.h>
+#include <linux/if.h>
+#include <linux/random.h>
 #include <linux/wakelock.h>
 #include <linux/delay.h>
 #include <linux/of.h>
@@ -47,15 +49,12 @@
 #include "wcnss_prealloc.h"
 #endif
 
+#include <asm/bootinfo.h>
+
 #define DEVICE "wcnss_wlan"
 #define CTRL_DEVICE "wcnss_ctrl"
 #define VERSION "1.01"
 #define WCNSS_PIL_DEVICE "wcnss"
-/*OPPO qiulei 2013-10-28 add begin wifi_devinfo*/
-#ifdef CONFIG_VENDOR_EDIT 
-#include <mach/device_info.h>
-#endif /* VENDOR_EDIT */
-/*OPPO qiulei 2013-10-28 add end wifi_devinfo*/
 
 #define WCNSS_DISABLE_PC_LATENCY	100
 #define WCNSS_ENABLE_PC_LATENCY	PM_QOS_DEFAULT_VALUE
@@ -269,7 +268,10 @@ static struct notifier_block wnb = {
 	.notifier_call = wcnss_notif_cb,
 };
 
-#define NVBIN_FILE "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+#define NVBIN_FILE_X3    "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+#define NVBIN_FILE_X4    "wlan/prima/WCNSS_qcom_wlan_nv_x4.bin"
+#define NVBIN_FILE_X4LTE "wlan/prima/WCNSS_qcom_wlan_nv_x4lte.bin"
+#define NVBIN_FILE_X5    "wlan/prima/WCNSS_qcom_wlan_nv_x5.bin"
 
 /*
  * On SMD channel 4K of maximum data can be transferred, including message
@@ -320,14 +322,6 @@ struct nvbin_dnld_req_params {
 	 */
 };
 
-/*OPPO qiulei 2013-10-24 add begin for wifi_devinfo*/
-#ifdef CONFIG_VENDOR_EDIT 
-struct manufacture_info wcn_info = {
-	.version = "wcn3680",
-	.manufacture = "Qualcomm",
-};
-#endif /* VENDOR_EDIT */
-/*OPPO qiulei 2013-10-24 add end for wifi_devinfo*/
 
 struct nvbin_dnld_req_msg {
 	/*
@@ -890,22 +884,6 @@ void wcnss_pronto_log_debug_regs(void)
 }
 EXPORT_SYMBOL(wcnss_pronto_log_debug_regs);
 
-int wcnss_get_mux_control(void)
-{
-	void __iomem *pmu_conf_reg;
-	u32 reg = 0;
-
-	if (NULL == penv)
-		return 0;
-
-	pmu_conf_reg = penv->msm_wcnss_base + PRONTO_PMU_OFFSET;
-	writel_relaxed(0, pmu_conf_reg);
-	reg = readl_relaxed(pmu_conf_reg);
-	reg |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
-	writel_relaxed(reg, pmu_conf_reg);
-	return 1;
-}
-
 #ifdef CONFIG_WCNSS_REGISTER_DUMP_ON_BITE
 static void wcnss_log_iris_regs(void)
 {
@@ -921,6 +899,21 @@ static void wcnss_log_iris_regs(void)
 		reg_val = wcnss_rf_read_reg(regs_array[i]);
 		pr_info("[0x%08x] : 0x%08x\n", regs_array[i], reg_val);
 	}
+}
+
+int wcnss_get_mux_control(void)
+{
+	void __iomem *pmu_conf_reg;
+	u32 reg = 0;
+
+	if (NULL == penv)
+		return 0;
+
+	pmu_conf_reg = penv->msm_wcnss_base + PRONTO_PMU_OFFSET;
+	reg = readl_relaxed(pmu_conf_reg);
+	reg |= WCNSS_PMU_CFG_GC_BUS_MUX_SEL_TOP;
+	writel_relaxed(reg, pmu_conf_reg);
+	return 1;
 }
 
 void wcnss_log_debug_regs_on_bite(void)
@@ -2045,6 +2038,25 @@ static void wcnss_send_pm_config(struct work_struct *worker)
 
 static DECLARE_RWSEM(wcnss_pm_sem);
 
+void wcnss_get_nv_file(char *nv_file, int size)
+{
+	int hw_ver;
+
+	hw_ver = get_hw_version_major();
+	if (hw_ver == 4) {
+		/* X4 LTE P2 and later hw have version 4.5 and above */
+		if (get_hw_version_minor() >= 5)
+			strlcpy(nv_file, NVBIN_FILE_X4LTE, size);
+		else
+			strlcpy(nv_file, NVBIN_FILE_X4, size);
+	}
+	else if (hw_ver == 5)
+		strlcpy(nv_file, NVBIN_FILE_X5, size);
+	else
+		strlcpy(nv_file, NVBIN_FILE_X3, size);
+}
+EXPORT_SYMBOL(wcnss_get_nv_file);
+
 static void wcnss_nvbin_dnld(void)
 {
 	int ret = 0;
@@ -2058,14 +2070,18 @@ static void wcnss_nvbin_dnld(void)
 	unsigned int nv_blob_size = 0;
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
+	char xiaomi_wlan_nv_file[40];
 
 	down_read(&wcnss_pm_sem);
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
+	wcnss_get_nv_file(xiaomi_wlan_nv_file, sizeof(xiaomi_wlan_nv_file));
+	pr_info("wcnss: Get nv file from %s\n", xiaomi_wlan_nv_file);
+
+	ret = request_firmware(&nv, xiaomi_wlan_nv_file, dev);
 
 	if (ret || !nv || !nv->data || !nv->size) {
 		pr_err("wcnss: %s: request_firmware failed for %s(ret = %d)\n",
-			__func__, NVBIN_FILE, ret);
+			__func__, xiaomi_wlan_nv_file, ret);
 		goto out;
 	}
 
@@ -2323,17 +2339,6 @@ static int wcnss_ctrl_open(struct inode *inode, struct file *file)
 	return rc;
 }
 
-static int wcnss_ctrl_release(struct inode *inode, struct file *file)
-{
-	int rc = 0;
-
-	if (!penv || !penv->ctrl_device_opened)
-		return -EFAULT;
-
-	penv->ctrl_device_opened = 0;
-
-	return rc;
-}
 
 void process_usr_ctrl_cmd(u8 *buf, size_t len)
 {
@@ -2397,7 +2402,6 @@ static ssize_t wcnss_ctrl_write(struct file *fp, const char __user
 static const struct file_operations wcnss_ctrl_fops = {
 	.owner = THIS_MODULE,
 	.open = wcnss_ctrl_open,
-	.release = wcnss_ctrl_release,
 	.write = wcnss_ctrl_write,
 };
 
@@ -2713,6 +2717,16 @@ void wcnss_flush_work(struct work_struct *work)
 }
 EXPORT_SYMBOL(wcnss_flush_work);
 
+/* wlan prop driver cannot invoke show_stack
+ * function directly, so to invoke this function it
+ * call wcnss_dump_stack function
+ */
+void wcnss_dump_stack(struct task_struct *task)
+{
+	show_stack(task, NULL);
+}
+EXPORT_SYMBOL(wcnss_dump_stack);
+
 /* wlan prop driver cannot invoke cancel_delayed_work_sync
  * function directly, so to invoke this function it call
  * wcnss_flush_delayed_work function
@@ -2822,7 +2836,7 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 		return -EFAULT;
 
 	if ((UINT32_MAX - count < penv->user_cal_rcvd) ||
-	        (penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
+	     (penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
 		pr_err(DEVICE " invalid size to write %d\n", count +
 				penv->user_cal_rcvd);
 		rc = -ENOMEM;
@@ -2889,11 +2903,6 @@ wcnss_wlan_probe(struct platform_device *pdev)
 
 	/* create an environment to track the device */
 	penv = devm_kzalloc(&pdev->dev, sizeof(*penv), GFP_KERNEL);
-	/*OPPO qiulei 2013-10-24 add begin for wifi_devinfo*/
-	#ifdef CONFIG_OPPO_DEVICE_INFO
-	register_device_proc("wcn", wcn_info.version, wcn_info.manufacture);
-	#endif /* VENDOR_EDIT */
-   /*OPPO qiulei 2013-10-24 add end for wifi_devinfo*/
 	if (!penv) {
 		dev_err(&pdev->dev, "cannot allocate device memory.\n");
 		return -ENOMEM;
