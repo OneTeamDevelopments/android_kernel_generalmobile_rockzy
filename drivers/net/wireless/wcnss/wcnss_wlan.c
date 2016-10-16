@@ -22,6 +22,8 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/gpio.h>
+#include <linux/if.h>
+#include <linux/random.h>
 #include <linux/wakelock.h>
 #include <linux/delay.h>
 #include <linux/of.h>
@@ -46,6 +48,8 @@
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 #include "wcnss_prealloc.h"
 #endif
+
+#include <asm/bootinfo.h>
 
 #define DEVICE "wcnss_wlan"
 #define CTRL_DEVICE "wcnss_ctrl"
@@ -264,7 +268,10 @@ static struct notifier_block wnb = {
 	.notifier_call = wcnss_notif_cb,
 };
 
-#define NVBIN_FILE "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+#define NVBIN_FILE_X3    "wlan/prima/WCNSS_qcom_wlan_nv.bin"
+#define NVBIN_FILE_X4    "wlan/prima/WCNSS_qcom_wlan_nv_x4.bin"
+#define NVBIN_FILE_X4LTE "wlan/prima/WCNSS_qcom_wlan_nv_x4lte.bin"
+#define NVBIN_FILE_X5    "wlan/prima/WCNSS_qcom_wlan_nv_x5.bin"
 
 /*
  * On SMD channel 4K of maximum data can be transferred, including message
@@ -931,10 +938,8 @@ void wcnss_log_debug_regs_on_bite(void)
 
 		if (clk_rate) {
 			wcnss_pronto_log_debug_regs();
-#ifdef CONFIG_WCNSS_REGISTER_DUMP_ON_BITE
 			if (wcnss_get_mux_control())
 				wcnss_log_iris_regs();
-#endif
 		} else {
 			pr_err("clock frequency is zero, cannot access PMU or other registers\n");
 			wcnss_log_iris_regs();
@@ -948,10 +953,8 @@ void wcnss_reset_intr(void)
 {
 	if (wcnss_hardware_type() == WCNSS_PRONTO_HW) {
 		wcnss_pronto_log_debug_regs();
-#ifdef CONFIG_WCNSS_REGISTER_DUMP_ON_BITE
 		if (wcnss_get_mux_control())
 			wcnss_log_iris_regs();
-#endif
 		wmb();
 		__raw_writel(1 << 16, penv->fiq_reg);
 	} else {
@@ -969,10 +972,8 @@ void wcnss_reset_fiq(bool clk_chk_en)
 			wcnss_log_debug_regs_on_bite();
 		} else {
 			wcnss_pronto_log_debug_regs();
-#ifdef CONFIG_WCNSS_REGISTER_DUMP_ON_BITE
 			if (wcnss_get_mux_control())
 				wcnss_log_iris_regs();
-#endif
 		}
 		/* Insert memory barrier before writing fiq register */
 		wmb();
@@ -2050,14 +2051,18 @@ static void wcnss_nvbin_dnld(void)
 	unsigned int nv_blob_size = 0;
 	const struct firmware *nv = NULL;
 	struct device *dev = &penv->pdev->dev;
+	char xiaomi_wlan_nv_file[40];
 
 	down_read(&wcnss_pm_sem);
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
+	wcnss_get_nv_file(xiaomi_wlan_nv_file, sizeof(xiaomi_wlan_nv_file));
+	pr_info("wcnss: Get nv file from %s\n", xiaomi_wlan_nv_file);
+
+	ret = request_firmware(&nv, xiaomi_wlan_nv_file, dev);
 
 	if (ret || !nv || !nv->data || !nv->size) {
 		pr_err("wcnss: %s: request_firmware failed for %s(ret = %d)\n",
-			__func__, NVBIN_FILE, ret);
+			__func__, xiaomi_wlan_nv_file, ret);
 		goto out;
 	}
 
@@ -2812,7 +2817,7 @@ static ssize_t wcnss_wlan_write(struct file *fp, const char __user
 		return -EFAULT;
 
 	if ((UINT32_MAX - count < penv->user_cal_rcvd) ||
-					(penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
+	     (penv->user_cal_exp_size < count + penv->user_cal_rcvd)) {
 		pr_err(DEVICE " invalid size to write %d\n", count +
 				penv->user_cal_rcvd);
 		rc = -ENOMEM;
@@ -2959,12 +2964,19 @@ static struct platform_driver wcnss_wlan_driver = {
 
 static int __init wcnss_wlan_init(void)
 {
+	int ret = 0;
+
 	platform_driver_register(&wcnss_wlan_driver);
 	platform_driver_register(&wcnss_wlan_ctrl_driver);
 	platform_driver_register(&wcnss_ctrl_driver);
 	register_pm_notifier(&wcnss_pm_notifier);
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+	ret = wcnss_prealloc_init();
+	if (ret < 0)
+		pr_err("wcnss: pre-allocation failed\n");
+#endif
 
-	return 0;
+	return ret;
 }
 
 static void __exit wcnss_wlan_exit(void)
@@ -2975,6 +2987,9 @@ static void __exit wcnss_wlan_exit(void)
 		penv = NULL;
 	}
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+	wcnss_prealloc_deinit();
+#endif
 	unregister_pm_notifier(&wcnss_pm_notifier);
 	platform_driver_unregister(&wcnss_ctrl_driver);
 	platform_driver_unregister(&wcnss_wlan_ctrl_driver);
