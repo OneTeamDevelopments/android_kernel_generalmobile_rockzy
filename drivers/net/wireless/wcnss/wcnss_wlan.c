@@ -49,8 +49,6 @@
 #include "wcnss_prealloc.h"
 #endif
 
-#include <asm/bootinfo.h>
-
 #define DEVICE "wcnss_wlan"
 #define CTRL_DEVICE "wcnss_ctrl"
 #define VERSION "1.01"
