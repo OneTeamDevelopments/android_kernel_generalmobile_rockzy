@@ -338,7 +338,7 @@ static int pil_venus_reset(struct pil_desc *pil)
 
 	/* Map virtual addr space 0 - fw_sz to firmware physical addr space */
 	rc = msm_iommu_map_contig_buffer(pa, drv->venus_domain_num, 0,
-					 drv->fw_sz, SZ_4K, 0, iova);
+					 drv->fw_sz, SZ_4K, 0, &iova);
 
 	if (rc || (iova != 0)) {
 		dev_err(pil->dev, "Failed to setup IOMMU\n");
