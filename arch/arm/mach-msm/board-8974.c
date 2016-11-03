@@ -51,8 +51,25 @@
 #include "modem_notifier.h"
 #include "platsmp.h"
 
+static struct platform_device *ram_console_dev;
+
+static struct persistent_ram_descriptor msm_prd[] __initdata = {
+	{
+		.name = "ram_console",
+		.size = SZ_1M,
+	},
+};
+
+static struct persistent_ram msm_pr __initdata = {
+	.descs = msm_prd,
+	.num_descs = ARRAY_SIZE(msm_prd),
+	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
+	.size = SZ_1M,
+};
+
 void __init msm_8974_reserve(void)
 {
+	persistent_ram_early_init(&msm_pr);
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
@@ -78,6 +95,24 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+}
+
+static void __init msm8974_config_ramconsole(void)
+{
+	int ret;
+
+	ram_console_dev = platform_device_alloc("ram_console", -1);
+	if (!ram_console_dev) {
+		pr_err("%s: Unable to allocate memory for RAM console device",
+				__func__);
+		return;
+	}
+
+	ret = platform_device_add(ram_console_dev);
+	if (ret) {
+		pr_err("%s: Unable to add RAM console device", __func__);
+		return;
+	}
 }
 
 static struct of_dev_auxdata msm_hsic_host_adata[] = {
@@ -145,6 +180,7 @@ void __init msm8974_init(void)
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
 	board_dt_populate(adata);
+	msm8974_config_ramconsole();
 	msm8974_add_drivers();
 }
 
