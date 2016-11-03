@@ -56,11 +56,6 @@ void __init msm_8974_reserve(void)
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
-static void __init msm8974_early_memory(void)
-{
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
-}
-
 /*
  * Used to satisfy dependencies for devices that need to be
  * run early or in a particular order. Most likely your device doesn't fall
@@ -153,27 +148,6 @@ void __init msm8974_init(void)
 	msm8974_add_drivers();
 }
 
-//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
-static struct persistent_ram_descriptor msm_prd[] __initdata = {
-	{
-		.name = "ram_console",
-		.size = SZ_1M,
-	},
-};
-
-static struct persistent_ram msm_pr __initdata = {
-	.descs = msm_prd,
-	.num_descs = ARRAY_SIZE(msm_prd),
-	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
-	.size = SZ_1M,
-};
-
-void __init msm8974_init_very_early(void)
-{
-	msm8974_early_memory();
-	persistent_ram_early_init(&msm_pr);
-}
-
 static const char *msm8974_dt_match[] __initconst = {
 	"qcom,msm8974",
 	"qcom,apq8074",
@@ -188,7 +162,6 @@ DT_MACHINE_START(MSM8974_DT, "Qualcomm MSM 8974 (Flattened Device Tree)")
 	.timer = &msm_dt_timer,
 	.dt_compat = msm8974_dt_match,
 	.reserve = msm_8974_reserve,
-	.init_very_early = msm8974_init_very_early,
 	.restart = msm_restart,
 	.smp = &msm8974_smp_ops,
 MACHINE_END
