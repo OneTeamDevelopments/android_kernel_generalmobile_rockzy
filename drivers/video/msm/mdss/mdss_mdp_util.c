@@ -455,36 +455,41 @@ void mdss_mdp_data_calc_offset(struct mdss_mdp_data *data, u16 x, u16 y,
 	}
 }
 
-int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
+static int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
 {
 	struct ion_client *iclient = mdss_get_ionclient();
 	if (data->flags & MDP_MEMORY_ID_TYPE_FB) {
-		pr_debug("fb mem buf=0x%x\n", data->addr);
+		pr_debug("fb mem buf=0x%pa\n", &data->addr);
 		fput_light(data->srcp_file, data->p_need);
 		data->srcp_file = NULL;
 	} else if (data->srcp_file) {
-		pr_debug("pmem buf=0x%x\n", data->addr);
+		pr_debug("pmem buf=0x%pa\n", &data->addr);
 		data->srcp_file = NULL;
 	} else if (!IS_ERR_OR_NULL(data->srcp_ihdl)) {
-		pr_debug("ion hdl=%p buf=0x%x\n", data->srcp_ihdl, data->addr);
-
-		if (is_mdss_iommu_attached()) {
-			int domain;
-			if (data->flags & MDP_SECURE_OVERLAY_SESSION)
-				domain = MDSS_IOMMU_DOMAIN_SECURE;
-			else
-				domain = MDSS_IOMMU_DOMAIN_UNSECURE;
-			ion_unmap_iommu(iclient, data->srcp_ihdl,
+		pr_debug("ion hdl=%p buf=0x%pa\n", data->srcp_ihdl, &data->addr);
+		if (!iclient) {
+			pr_err("invalid ion client\n");
+			return -ENOMEM;
+		} else {
+			if (data->mapped) {
+				int domain;
+				if (data->flags & MDP_SECURE_OVERLAY_SESSION)
+					domain = MDSS_IOMMU_DOMAIN_SECURE;
+				else
+					domain = MDSS_IOMMU_DOMAIN_UNSECURE;
+				ion_unmap_iommu(iclient, data->srcp_ihdl,
 					mdss_get_iommu_domain(domain), 0);
 
-			if (domain == MDSS_IOMMU_DOMAIN_SECURE) {
-				msm_ion_unsecure_buffer(iclient,
-					data->srcp_ihdl);
+				if (domain == MDSS_IOMMU_DOMAIN_SECURE) {
+					msm_ion_unsecure_buffer(iclient,
+							data->srcp_ihdl);
+				}
+				data->mapped = false;
 			}
+			ion_free(iclient, data->srcp_ihdl);
+			data->srcp_ihdl = NULL;
 		}
 
-		ion_free(iclient, data->srcp_ihdl);
-		data->srcp_ihdl = NULL;
 	} else {
 		return -ENOMEM;
 	}
