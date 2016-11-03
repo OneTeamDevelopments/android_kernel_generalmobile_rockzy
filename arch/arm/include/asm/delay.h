@@ -24,6 +24,7 @@ extern struct arm_delay_ops {
 	void (*delay)(unsigned long);
 	void (*const_udelay)(unsigned long);
 	void (*udelay)(unsigned long);
+	unsigned long ticks_per_jiffy;
 } arm_delay_ops;
 
 #define __delay(n)		arm_delay_ops.delay(n)
@@ -68,4 +69,3 @@ extern void register_current_timer_delay(const struct delay_timer *timer);
 #endif /* __ASSEMBLY__ */
 
 #endif /* defined(_ARM_DELAY_H) */
-
