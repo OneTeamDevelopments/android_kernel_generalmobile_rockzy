@@ -492,7 +492,8 @@ int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
 	return 0;
 }
 
-int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
+static int mdss_mdp_get_img(struct msmfb_data *img,
+		struct mdss_mdp_img_data *data)
 {
 	struct file *file;
 	int ret = -EINVAL;
@@ -505,6 +506,7 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 	len = (unsigned long *) &data->len;
 	data->flags |= img->flags;
 	data->p_need = 0;
+	data->offset = img->offset;
 
 	if (img->flags & MDP_BLIT_SRC_GEM) {
 		data->srcp_file = NULL;
@@ -536,39 +538,12 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 			data->srcp_ihdl = NULL;
 			return ret;
 		}
+		data->addr = 0;
+		data->len = 0;
+		data->mapped = false;
+		/* return early, mapping will be done later */
 
-		if (is_mdss_iommu_attached()) {
-			int domain;
-			if (data->flags & MDP_SECURE_OVERLAY_SESSION) {
-				domain = MDSS_IOMMU_DOMAIN_SECURE;
-				ret = msm_ion_secure_buffer(iclient,
-					data->srcp_ihdl, 0x2, 0);
-				if (IS_ERR_VALUE(ret)) {
-					ion_free(iclient, data->srcp_ihdl);
-					pr_err("failed to secure handle (%d)\n",
-						ret);
-					return ret;
-				}
-			} else {
-				domain = MDSS_IOMMU_DOMAIN_UNSECURE;
-			}
-
-			ret = ion_map_iommu(iclient, data->srcp_ihdl,
-					    mdss_get_iommu_domain(domain),
-					    0, SZ_4K, 0, start, len, 0, 0);
-			if (ret && (domain == MDSS_IOMMU_DOMAIN_SECURE))
-				msm_ion_unsecure_buffer(iclient,
-						data->srcp_ihdl);
-		} else {
-			ret = ion_phys(iclient, data->srcp_ihdl, start,
-				       (size_t *) len);
-		}
-
-		if (IS_ERR_VALUE(ret)) {
-			ion_free(iclient, data->srcp_ihdl);
-			pr_err("failed to map ion handle (%d)\n", ret);
-			return ret;
-		}
+		return 0;
 	}
 
 	if (!*start) {
@@ -577,12 +552,12 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 		return -ENOMEM;
 	}
 
-	if (!ret && (img->offset < data->len)) {
-		data->addr += img->offset;
-		data->len -= img->offset;
+	if (!ret && (data->offset < data->len)) {
+		data->addr += data->offset;
+		data->len -= data->offset;
 
-		pr_debug("mem=%d ihdl=%p buf=0x%x len=0x%x\n", img->memory_id,
-			 data->srcp_ihdl, data->addr, data->len);
+		pr_debug("mem=%d ihdl=%p buf=0x%pa len=0x%u\n", img->memory_id,
+			 data->srcp_ihdl, &data->addr, data->len);
 	} else {
 		mdss_mdp_put_img(data);
 		return ret ? : -EOVERFLOW;
