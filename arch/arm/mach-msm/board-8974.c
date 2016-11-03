@@ -24,9 +24,8 @@
 #include <linux/regulator/krait-regulator.h>
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
 #include <linux/persistent_ram.h>
-#endif
+
 #include <asm/mach/map.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/map.h>
@@ -154,7 +153,6 @@ void __init msm8974_init(void)
 	msm8974_add_drivers();
 }
 
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
 //Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
 static struct persistent_ram_descriptor msm_prd[] __initdata = {
 	{
@@ -169,15 +167,11 @@ static struct persistent_ram msm_pr __initdata = {
 	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
 	.size = SZ_1M,
 };
-#endif
 
 void __init msm8974_init_very_early(void)
 {
 	msm8974_early_memory();
-#ifdef CONFIG_ANDROID_RAM_CONSOLE	
-//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
 	persistent_ram_early_init(&msm_pr);
-#endif
 }
 
 static const char *msm8974_dt_match[] __initconst = {
