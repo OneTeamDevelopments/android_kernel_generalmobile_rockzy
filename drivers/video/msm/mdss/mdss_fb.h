@@ -178,10 +178,10 @@ struct msm_fb_data_type {
 	struct disp_info_type_suspend suspend;
 
 	struct ion_handle *ihdl;
-	unsigned long iova;
+	dma_addr_t iova;
 	void *cursor_buf;
-	unsigned long cursor_buf_phys;
-	unsigned long cursor_buf_iova;
+	phys_addr_t cursor_buf_phys;
+	dma_addr_t cursor_buf_iova;
 
 	int ext_ad_ctrl;
 	u32 ext_bl_ctrl;
