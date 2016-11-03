@@ -135,7 +135,7 @@ static int ion_user_to_kernel(struct smem_client *client, int fd, u32 offset,
 		struct msm_smem *mem, enum hal_buffer buffer_type)
 {
 	struct ion_handle *hndl;
-	unsigned long iova = 0;
+	dma_addr_t iova = 0;
 	unsigned long buffer_size = 0;
 	unsigned long ionflags = 0;
 	int rc = 0;
