@@ -1761,7 +1761,7 @@ static int venus_hfi_get_qdss_iommu_virtual_addr(struct hfi_mem_map *mem_map,
 {
 	int i;
 	int rc = 0;
-	unsigned long iova = 0;
+	dma_addr_t iova = 0;
 	int num_entries = sizeof(venus_qdss_entries)/(2 * sizeof(u32));
 
 	for (i = 0; i < num_entries; i++) {
