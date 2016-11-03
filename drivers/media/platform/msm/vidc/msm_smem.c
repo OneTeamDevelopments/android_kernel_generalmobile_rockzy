@@ -46,7 +46,7 @@ static u32 get_tz_usage(struct smem_client *client, enum hal_buffer buffer_type)
 
 static int get_device_address(struct smem_client *smem_client,
 		struct ion_handle *hndl, unsigned long align,
-		unsigned long *iova, unsigned long *buffer_size,
+		dma_addr_t *iova, unsigned long *buffer_size,
 		u32 flags, enum hal_buffer buffer_type)
 {
 	int rc = 0;
