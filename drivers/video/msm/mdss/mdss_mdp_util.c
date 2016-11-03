@@ -455,41 +455,36 @@ void mdss_mdp_data_calc_offset(struct mdss_mdp_data *data, u16 x, u16 y,
 	}
 }
 
-static int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
+int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
 {
 	struct ion_client *iclient = mdss_get_ionclient();
 	if (data->flags & MDP_MEMORY_ID_TYPE_FB) {
-		pr_debug("fb mem buf=0x%pa\n", &data->addr);
+		pr_debug("fb mem buf=0x%x\n", data->addr);
 		fput_light(data->srcp_file, data->p_need);
 		data->srcp_file = NULL;
 	} else if (data->srcp_file) {
-		pr_debug("pmem buf=0x%pa\n", &data->addr);
+		pr_debug("pmem buf=0x%x\n", data->addr);
 		data->srcp_file = NULL;
 	} else if (!IS_ERR_OR_NULL(data->srcp_ihdl)) {
-		pr_debug("ion hdl=%p buf=0x%pa\n", data->srcp_ihdl, &data->addr);
-		if (!iclient) {
-			pr_err("invalid ion client\n");
-			return -ENOMEM;
-		} else {
-			if (data->mapped) {
-				int domain;
-				if (data->flags & MDP_SECURE_OVERLAY_SESSION)
-					domain = MDSS_IOMMU_DOMAIN_SECURE;
-				else
-					domain = MDSS_IOMMU_DOMAIN_UNSECURE;
-				ion_unmap_iommu(iclient, data->srcp_ihdl,
+		pr_debug("ion hdl=%p buf=0x%x\n", data->srcp_ihdl, data->addr);
+
+		if (is_mdss_iommu_attached()) {
+			int domain;
+			if (data->flags & MDP_SECURE_OVERLAY_SESSION)
+				domain = MDSS_IOMMU_DOMAIN_SECURE;
+			else
+				domain = MDSS_IOMMU_DOMAIN_UNSECURE;
+			ion_unmap_iommu(iclient, data->srcp_ihdl,
 					mdss_get_iommu_domain(domain), 0);
 
-				if (domain == MDSS_IOMMU_DOMAIN_SECURE) {
-					msm_ion_unsecure_buffer(iclient,
-							data->srcp_ihdl);
-				}
-				data->mapped = false;
+			if (domain == MDSS_IOMMU_DOMAIN_SECURE) {
+				msm_ion_unsecure_buffer(iclient,
+					data->srcp_ihdl);
 			}
-			ion_free(iclient, data->srcp_ihdl);
-			data->srcp_ihdl = NULL;
 		}
 
+		ion_free(iclient, data->srcp_ihdl);
+		data->srcp_ihdl = NULL;
 	} else {
 		return -ENOMEM;
 	}
@@ -497,8 +492,7 @@ static int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
 	return 0;
 }
 
-static int mdss_mdp_get_img(struct msmfb_data *img,
-		struct mdss_mdp_img_data *data)
+int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 {
 	struct file *file;
 	int ret = -EINVAL;
@@ -511,7 +505,6 @@ static int mdss_mdp_get_img(struct msmfb_data *img,
 	len = (unsigned long *) &data->len;
 	data->flags |= img->flags;
 	data->p_need = 0;
-	data->offset = img->offset;
 
 	if (img->flags & MDP_BLIT_SRC_GEM) {
 		data->srcp_file = NULL;
@@ -543,12 +536,39 @@ static int mdss_mdp_get_img(struct msmfb_data *img,
 			data->srcp_ihdl = NULL;
 			return ret;
 		}
-		data->addr = 0;
-		data->len = 0;
-		data->mapped = false;
-		/* return early, mapping will be done later */
 
-		return 0;
+		if (is_mdss_iommu_attached()) {
+			int domain;
+			if (data->flags & MDP_SECURE_OVERLAY_SESSION) {
+				domain = MDSS_IOMMU_DOMAIN_SECURE;
+				ret = msm_ion_secure_buffer(iclient,
+					data->srcp_ihdl, 0x2, 0);
+				if (IS_ERR_VALUE(ret)) {
+					ion_free(iclient, data->srcp_ihdl);
+					pr_err("failed to secure handle (%d)\n",
+						ret);
+					return ret;
+				}
+			} else {
+				domain = MDSS_IOMMU_DOMAIN_UNSECURE;
+			}
+
+			ret = ion_map_iommu(iclient, data->srcp_ihdl,
+					    mdss_get_iommu_domain(domain),
+					    0, SZ_4K, 0, start, len, 0, 0);
+			if (ret && (domain == MDSS_IOMMU_DOMAIN_SECURE))
+				msm_ion_unsecure_buffer(iclient,
+						data->srcp_ihdl);
+		} else {
+			ret = ion_phys(iclient, data->srcp_ihdl, start,
+				       (size_t *) len);
+		}
+
+		if (IS_ERR_VALUE(ret)) {
+			ion_free(iclient, data->srcp_ihdl);
+			pr_err("failed to map ion handle (%d)\n", ret);
+			return ret;
+		}
 	}
 
 	if (!*start) {
@@ -557,12 +577,12 @@ static int mdss_mdp_get_img(struct msmfb_data *img,
 		return -ENOMEM;
 	}
 
-	if (!ret && (data->offset < data->len)) {
-		data->addr += data->offset;
-		data->len -= data->offset;
+	if (!ret && (img->offset < data->len)) {
+		data->addr += img->offset;
+		data->len -= img->offset;
 
-		pr_debug("mem=%d ihdl=%p buf=0x%pa len=0x%u\n", img->memory_id,
-			 data->srcp_ihdl, &data->addr, data->len);
+		pr_debug("mem=%d ihdl=%p buf=0x%x len=0x%x\n", img->memory_id,
+			 data->srcp_ihdl, data->addr, data->len);
 	} else {
 		mdss_mdp_put_img(data);
 		return ret ? : -EOVERFLOW;
