@@ -86,6 +86,7 @@
 			reg = <0 0x1100000>;
 			label = "qseecom_mem";
 		};
+
 		audio_mem: audio_region {
 			linux,contiguous-region;
 			linux,reserve-region;
