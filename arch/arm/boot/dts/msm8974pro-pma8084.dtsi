@@ -78,16 +78,6 @@
 		HSUSB_3p3-supply = <&pma8084_l24>;
 	};
 
-	qcom,sdcc@f9824000 {
-		vdd-supply = <&pma8084_l20>;
-		vdd-io-supply = <&pma8084_s4>;
-	};
-
-	qcom,sdcc@f98a4000 {
-		vdd-supply = <&pma8084_l21>;
-		vdd-io-supply = <&pma8084_l13>;
-	};
-
 	slim@fe12f000 {
 		taiko_codec {
 			cdc-vdd-buck-supply = <&pma8084_s5>;
