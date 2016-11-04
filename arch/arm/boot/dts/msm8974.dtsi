@@ -69,13 +69,6 @@
 	};
 
 	memory {
-		oem_data_mem: oem_data_region@5900000 {
-			linux,reserve-contiguous-region;
-			linux,reserve-region;
-			linux,remove-completely;
-			reg = <0x5900000 0x100000>;
-			label = "oem_data";
-		};
 		secure_mem: secure_region {
 			linux,contiguous-region;
 			reg = <0 0xFC00000>;
@@ -93,7 +86,27 @@
 			reg = <0 0x1100000>;
 			label = "qseecom_mem";
 		};
+		audio_mem: audio_region {
+			linux,contiguous-region;
+			linux,reserve-region;
+			reg = <0 0x614000>;
+			lable = "audio_mem";
+		};
 
+		peripheral_mem: peripheral_region@5d00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x5d00000 0x7d00000>;
+			label = "peripheral_mem";
+		};
+
+		external_image_mem: external_image_region@fa00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0xfa00000 0x500000>;
+		};
 	};
 
 	soc: soc { };
@@ -2327,11 +2340,10 @@
 		qcom,rx-ring-size = <64>;
 	};
 
-        memory_hole: qcom,msm-mem-hole {
-                compatible = "qcom,msm-mem-hole";
-                qcom,memblock-remove = <0x5d00000 0x7d00000
-					0xfa00000 0x500000>; /* Address and Size of Hole */
-        };
+	ram_console {
+		compatible = "ram_console";
+		bootinfo = <0>;
+	};
 
 	uart7: uart@f995d000 { /*BLSP #2, UART #7 */
 		compatible = "qcom,msm-hsuart-v14";
