@@ -60,7 +60,6 @@
 		qcom,ion-heap@23 { /* OTHER PIL HEAP */
 			compatible = "qcom,msm-ion-reserve";
 			reg = <23>;
-			qcom,heap-align = <0x1000>;
 			linux,contiguous-region = <&peripheral_mem>;
 			qcom,ion-heap-type = "DMA";
 		};
