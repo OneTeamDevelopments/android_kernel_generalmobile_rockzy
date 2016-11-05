@@ -989,7 +989,7 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 				unsigned long long t;
 				unsigned long nanosec_rem;
 
-				t = cpu_clock(printk_cpu);
+				t = cpu_clock(printk_cpu) + get_total_sleep_time();
 				nanosec_rem = do_div(t, 1000000000);
 				//peirs modify for debug msm_ipc_router problem, 2013.09.23, begin:
 				/*
