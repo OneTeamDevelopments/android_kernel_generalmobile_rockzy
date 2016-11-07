@@ -221,6 +221,30 @@ struct dsi_drv_cm_data {
 	int broadcast_enable;
 };
 
+#define CMD_REQ_MAX     4
+
+typedef void (*fxn)(u32 data);
+
+#define CMD_REQ_RX      0x0001
+#define CMD_REQ_COMMIT  0x0002
+#define CMD_CLK_CTRL    0x0004
+#define CMD_REQ_NO_MAX_PKT_SIZE 0x0008
+
+struct dcs_cmd_req {
+	struct dsi_cmd_desc *cmds;
+	int cmds_cnt;
+	u32 flags;
+	int rlen;       /* rx length */
+	fxn cb;
+};
+
+struct dcs_cmd_list {
+	int put;
+	int get;
+	int tot;
+	struct dcs_cmd_req list[CMD_REQ_MAX];
+};
+
 enum {
 	DSI_CTRL_0,
 	DSI_CTRL_1,
