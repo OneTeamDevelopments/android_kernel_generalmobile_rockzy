@@ -221,7 +221,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 #endif
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
-		return;
+		return -EINVAL;
 	}
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
