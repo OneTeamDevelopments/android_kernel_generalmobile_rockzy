@@ -28,7 +28,11 @@
 #include <linux/atomic.h>
 
 #define UEVENT_HELPER_PATH_LEN		256
+#ifdef CONFIG_MACH_OPPO
+#define UEVENT_NUM_ENVP			64	/* number of env pointers */
+#else
 #define UEVENT_NUM_ENVP			32	/* number of env pointers */
+#endif
 #define UEVENT_BUFFER_SIZE		2048	/* buffer for the variables */
 
 /* path to the userspace helper executed on an event */
@@ -224,7 +228,7 @@ static inline int kobject_uevent_env(struct kobject *kobj,
 
 static inline __printf(2, 3)
 int add_uevent_var(struct kobj_uevent_env *env, const char *format, ...)
-{ return 0; }
+{ return -ENOMEM; }
 
 static inline int kobject_action_type(const char *buf, size_t count,
 				      enum kobject_action *type)
