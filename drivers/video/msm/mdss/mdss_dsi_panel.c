@@ -303,7 +303,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 }
 
 #if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-extern int mdss_dsi_panel_lm3630(u32 bl_level)
+void mdss_dsi_panel_lm3630(unsigned int bl_level)
+{
+	set_backlight_lm3630(bl_level);
+}
 #endif
 
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
@@ -425,7 +428,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 #if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
 	case BL_LM3630:
-		mdss_dsi_panel_lm3630(bl_level);
+		mdss_dsi_panel_lm3630(ctrl_pdata, bl_level);
 		break;
 #endif
 	default:
