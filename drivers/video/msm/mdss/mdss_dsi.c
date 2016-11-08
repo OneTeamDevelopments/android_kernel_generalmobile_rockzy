@@ -1669,20 +1669,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	} else {
 		ctrl_pdata->mode_gpio = -EINVAL;
 	}
-			rc = gpio_request(ctrl_pdata->mode_gpio, "panel_mode");
-			if (rc) {
-				pr_err("request panel mode gpio failed,rc=%d\n",
-									rc);
-				gpio_free(ctrl_pdata->mode_gpio);
-				if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-					gpio_free(ctrl_pdata->disp_en_gpio);
-				if (gpio_is_valid(ctrl_pdata->rst_gpio))
-					gpio_free(ctrl_pdata->rst_gpio);
-				if (gpio_is_valid(ctrl_pdata->disp_te_gpio))
-					gpio_free(ctrl_pdata->disp_te_gpio);
-				return -ENODEV;
-			}
-		}
+
 
 	if (mdss_dsi_clk_init(ctrl_pdev, ctrl_pdata)) {
 		pr_err("%s: unable to initialize Dsi ctrl clks\n", __func__);
