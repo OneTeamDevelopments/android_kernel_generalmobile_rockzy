@@ -1683,7 +1683,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 				return -ENODEV;
 			}
 		}
-	}
 
 	if (mdss_dsi_clk_init(ctrl_pdev, ctrl_pdata)) {
 		pr_err("%s: unable to initialize Dsi ctrl clks\n", __func__);
