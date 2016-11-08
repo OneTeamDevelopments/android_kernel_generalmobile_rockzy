@@ -34,6 +34,10 @@ extern int gn_set_device_info(struct gn_device_info gn_dev_info);
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
+#if defined(CONFIG_BACKLIGHT_LM3630)
+extern void lm3630_lcd_backlight_set_level(int level);
+#endif
+
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	ctrl->pwm_bl = pwm_request(ctrl->pwm_lpg_chan, "lcd-bklt");
@@ -302,13 +306,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 }
 
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-void mdss_dsi_panel_lm3630(unsigned int bl_level)
-{
-	set_backlight_lm3630(bl_level);
-}
-#endif
-
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
 static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
 
@@ -428,7 +425,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 #if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
 	case BL_LM3630:
-		mdss_dsi_panel_lm3630(ctrl_pdata, bl_level);
+		mdss_dsi_panel_lm3630(bl_level);
 		break;
 #endif
 	default:
