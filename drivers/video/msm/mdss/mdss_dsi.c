@@ -1666,7 +1666,9 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		if (!gpio_is_valid(ctrl_pdata->mode_gpio))
 			pr_info("%s:%d, mode gpio not specified\n",
 							__func__, __LINE__);
-		} else {
+	} else {
+		ctrl_pdata->mode_gpio = -EINVAL;
+	}
 			rc = gpio_request(ctrl_pdata->mode_gpio, "panel_mode");
 			if (rc) {
 				pr_err("request panel mode gpio failed,rc=%d\n",
