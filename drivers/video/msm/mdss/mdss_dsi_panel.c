@@ -217,7 +217,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	struct mdss_panel_info *pinfo = NULL;
 #if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
 #else
-	int i;
+	int i, rc = 0;
 #endif
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
