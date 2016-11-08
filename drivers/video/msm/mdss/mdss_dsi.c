@@ -1590,15 +1590,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		pr_err("%s:%d, Disp_en gpio not specified\n",
 						__func__, __LINE__);
-	} else {
-		rc = gpio_request(ctrl_pdata->disp_en_gpio, "disp_enable");
-		if (rc) {
-			pr_err("request reset gpio failed, rc=%d\n",
-			       rc);
-			gpio_free(ctrl_pdata->disp_en_gpio);
-			return -ENODEV;
-		}
-	}
+
 
 	if (pinfo->type == MIPI_CMD_PANEL) {
 		ctrl_pdata->disp_te_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
@@ -1613,9 +1605,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 					pinfo->type == MIPI_CMD_PANEL) {
 		rc = gpio_request(ctrl_pdata->disp_te_gpio, "disp_te");
 		if (rc) {
-			pr_err("request TE gpio failed, rc=%d\n",
-			       rc);
-			gpio_free(ctrl_pdata->disp_te_gpio);
+			pr_err("request TE gpio failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
 		rc = gpio_tlmm_config(GPIO_CFG(
