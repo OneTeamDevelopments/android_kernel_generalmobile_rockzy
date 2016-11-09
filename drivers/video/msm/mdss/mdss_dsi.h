@@ -525,9 +525,6 @@ static inline bool mdss_dsi_ulps_feature_enabled(
 	return pdata->panel_info.ulps_feature_enabled;
 }
 
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
-void set_backlight_lm3630(unsigned int level);
-#endif
 #if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
 void set_vol_tps65132_positive(void);
 void set_vol_tps65132_nagetive(void);
