@@ -34,7 +34,7 @@ extern int gn_set_device_info(struct gn_device_info gn_dev_info);
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
-#if defined(CONFIG_BACKLIGHT_LM3630)
+#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
 extern void lm3630_lcd_backlight_set_level(int level);
 #endif
 
