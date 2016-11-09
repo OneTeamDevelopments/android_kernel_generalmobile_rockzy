@@ -24,10 +24,7 @@
 
 #include "mdss_dsi.h"
 #include "mdss_livedisplay.h"
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK)
-#include <linux/gn_device_check.h>
-extern int gn_set_device_info(struct gn_device_info gn_dev_info);
-#endif
+
 #define DT_CMD_HDR 6
 
 #define MIN_REFRESH_RATE 30
@@ -1332,17 +1329,15 @@ int mdss_dsi_panel_init(struct device_node *node,
 {
 	int rc = 0;
 	static const char *panel_name;
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
-	static const char *device_panel_name;
-	struct gn_device_info gn_mydev_info;
-	gn_mydev_info.gn_dev_type = GN_DEVICE_TYPE_LCD;
-#endif
+	struct mdss_panel_info *pinfo;
+
 	if (!node || !ctrl_pdata) {
 		pr_err("%s: Invalid arguments\n", __func__);
 		return -ENODEV;
 	}
 
 	pinfo = &ctrl_pdata->panel_data.panel_info;
+
 	pr_debug("%s:%d\n", __func__, __LINE__);
 	#ifdef CONFIG_GN_Q_BSP_LCD_COMPATIBILITY_SUPPORT
 	{
@@ -1395,20 +1390,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	else
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
-	if(strstr(panel_name, "tianma"))
-		device_panel_name = "tianma_r63421";
-	else if(strstr(panel_name, "jdi"))
-		device_panel_name = "jdi_r63417";
-	else if(strstr(panel_name, "truly"))
-		device_panel_name = "truly_r63417";
-	else if(strstr(panel_name, "sharp"))
-		device_panel_name = "sharp_r63417";
-	else 
-		device_panel_name = "unknown lcd";
-	strcpy(gn_mydev_info.name, device_panel_name);
-	gn_set_device_info(gn_mydev_info);
-#endif
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
