@@ -309,6 +309,7 @@ static u32 mdss_mdp_perf_calc_pipe_prefill_cmd(struct mdss_mdp_prefill_params
  * @pipe:	Source pipe struct containing updated pipe params
  * @perf:	Structure containing values that should be updated for
  *		performance tuning
+ * @apply_fudge:	Boolean to determine if mdp clock fudge is applicable
  *
  * Function calculates the minimum required performance calculations in order
  * to avoid MDP underflow. The calculations are based on the way MDP
