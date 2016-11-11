@@ -129,5 +129,6 @@
 		/* kernel configure the lcd id gpio, do nothing, 20131225*/
 		qcom,gn_lcd_adc0_gpio = <&msmgpio 81 0>;
 		qcom,gn_lcd_adc1_gpio = <&msmgpio 82 0>;
+		qcom,ulps-enabled;
 	};
 };

@@ -254,8 +254,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			return rc;
 		}
 		if (!pinfo->cont_splash_enabled) {
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 #if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
 		set_vol_tps65132_positive();
 		mdelay(1);
@@ -272,7 +272,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->rst_gpio),
 				pdata->panel_info.rst_seq[i]);
 			if (pdata->panel_info.rst_seq[++i])
-				usleep(pdata->panel_info.rst_seq[i] * 1000);
+					usleep(pinfo->rst_seq[i] * 1000);
 		}
 #endif
 
