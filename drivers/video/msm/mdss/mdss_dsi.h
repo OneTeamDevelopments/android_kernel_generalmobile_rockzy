@@ -92,7 +92,7 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
 	BL_LM3630,
 #endif
 	UNKNOWN_CTRL,
@@ -296,10 +296,8 @@ struct mdss_dsi_ctrl_pdata {
 	u8 ctrl_state;
 	int panel_mode;
 	int irq_cnt;
-	int mdss_dsi_clk_on;
 	int rst_gpio;
 	int disp_en_gpio;
-	int disp_te_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
 	int pwm_period;
@@ -318,7 +316,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_hw *dsi_hw;
 	struct mdss_panel_recovery *recovery;
 
-#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
 	int tps_en_gpio;
 #endif
 	struct dsi_panel_cmds on_cmds;
@@ -525,8 +523,4 @@ static inline bool mdss_dsi_ulps_feature_enabled(
 	return pdata->panel_info.ulps_feature_enabled;
 }
 
-#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
-void set_vol_tps65132_positive(void);
-void set_vol_tps65132_nagetive(void);
-#endif
 #endif /* MDSS_DSI_H */

@@ -102,11 +102,8 @@ static void mdss_dsi_panel_bklt_pwm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	ctrl->pwm_enabled = 1;
 }
 
-#ifdef CONFIG_MACH_OPPO
-static char dcs_cmd[2] = {0x56, 0x00}; /* DTYPE_DCS_READ */
-#else
 static char dcs_cmd[2] = {0x54, 0x00}; /* DTYPE_DCS_READ */
-#endif
+
 static struct dsi_cmd_desc dcs_read_cmd = {
 	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(dcs_cmd)},
 	dcs_cmd
