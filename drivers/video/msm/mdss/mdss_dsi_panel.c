@@ -257,12 +257,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 #if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
-		set_vol_tps65132_positive();
-		mdelay(1);
-		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
-		{
-			gpio_set_value((ctrl_pdata->tps_en_gpio), 1);
-			set_vol_tps65132_nagetive();
+		if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
+			gpio_direction_output(ctrl_pdata->tps_en_gpio, 1);
 		}
 #endif
 
@@ -289,18 +285,18 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
 #if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-		mdelay(1);
+        if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
-		mdelay(3);
+		}
 #endif
 	} else {
+	    if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		
+        }		
 #if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
-		mdelay(10); // add for IC request
-		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
+		if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
 			gpio_set_value((ctrl_pdata->tps_en_gpio), 0);
-		mdelay(1);
+        }
 #endif
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
