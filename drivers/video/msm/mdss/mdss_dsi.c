@@ -1591,33 +1591,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		pr_err("%s:%d, Disp_en gpio not specified\n",
 						__func__, __LINE__);
 
-#ifdef CONFIG_GN_Q_BSP_LCD_TE_ANALOG_SUPPORT
-    ctrl_pdata->disp_te_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
-						"qcom,platform-te-gpio", 0);
-	if (gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-		rc = gpio_request(ctrl_pdata->disp_te_gpio, "disp_te");
-		if (rc) {
-			pr_err("request TE gpio failed, rc=%d\n", rc);
-			return -ENODEV;
-		}
-		rc = gpio_tlmm_config(GPIO_CFG(
-				ctrl_pdata->disp_te_gpio, 1,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_DOWN,
-				GPIO_CFG_2MA),
-				GPIO_CFG_ENABLE);
-		if (rc) {
-			pr_err("%s: unable to config tlmm = %d\n",
-				__func__, ctrl_pdata->disp_te_gpio);
-			gpio_free(ctrl_pdata->disp_te_gpio);
-			return -ENODEV;
-		}
-	} else {
-			pr_err("%s:%d, set_direction for disp_en gpio failed\n",
-			            __func__, __LINE__);
-	}
-#endif
-
 #ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
 	ctrl_pdata->tps_en_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
 						 "qcom,tps-enable-gpio", 0);
