@@ -1613,7 +1613,7 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			return -ENODEV;
 		}
 	} else {
-			pr_err("set_direction for disp_en gpio failed, rc=%d\n",
+			pr_err("%s:%d, set_direction for disp_en gpio failed\n",
 			            __func__, __LINE__);
 	}
 #endif
