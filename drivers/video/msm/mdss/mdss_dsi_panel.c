@@ -244,7 +244,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio) &&
 				gpio_is_valid(ctrl_pdata->rst_gpio)) {
 #endif
@@ -256,20 +256,17 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
-		if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
-			gpio_direction_output(ctrl_pdata->tps_en_gpio, 1);
-		}
-#endif
 
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-#else
-		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
-			gpio_set_value((ctrl_pdata->rst_gpio),
-				pdata->panel_info.rst_seq[i]);
-			if (pdata->panel_info.rst_seq[++i])
+			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+				gpio_set_value((ctrl_pdata->rst_gpio),
+					pdata->panel_info.rst_seq[i]);
+				if (pdata->panel_info.rst_seq[++i])
 					usleep(pinfo->rst_seq[i] * 1000);
-		}
+			}
+#ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
+            if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
+		    gpio_direction_output(ctrl_pdata->tps_en_gpio, 1);
+			}
 #endif
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
@@ -278,25 +275,22 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			else if (pinfo->mode_gpio_state == MODE_GPIO_LOW)
 				gpio_set_value((ctrl_pdata->mode_gpio), 0);
 		}
+#ifdef CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT
+        if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
+		    gpio_direction_output(ctrl_pdata->rst_gpio, 1);
+		}
+#endif
 		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 			pr_debug("%s: Panel Not properly turned OFF\n",
 						__func__);
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-        if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
-		gpio_set_value((ctrl_pdata->rst_gpio), 1);
-		}
-#endif
 	} else {
-	    if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-        }		
-#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
 		if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
-			gpio_set_value((ctrl_pdata->tps_en_gpio), 0);
-        }
+			gpio_direction_output(ctrl_pdata->tps_en_gpio, 0);
+		}
 #endif
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
@@ -429,7 +423,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	case BL_DCS_CMD:
 		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
 		break;
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
 	case BL_LM3630:
 		lm3630_lcd_backlight_set_level(bl_level);
 		break;
@@ -1141,7 +1135,7 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 		}
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
 	else if (!strncmp(data, "bl_ctrl_lm3630", 14)) {
 			ctrl_pdata->bklt_ctrl = BL_LM3630;
 	}
@@ -1339,7 +1333,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo = &ctrl_pdata->panel_data.panel_info;
 
 	pr_debug("%s:%d\n", __func__, __LINE__);
-	#ifdef CONFIG_GN_Q_BSP_LCD_COMPATIBILITY_SUPPORT
+#ifdef CONFIG_GN_Q_BSP_LCD_COMPATIBILITY_SUPPORT
 	{
 		int lcd_adc0_gpio, lcd_adc1_gpio;
 
@@ -1382,7 +1376,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 		}	
 
 	}
-	#endif
+#endif
 	panel_name = of_get_property(node, "qcom,mdss-dsi-panel-name", NULL);
 	if (!panel_name)
 		pr_info("%s:%d, Panel name not specified\n",
