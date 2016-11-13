@@ -299,9 +299,6 @@ struct mdss_dsi_ctrl_pdata {
 	int rst_gpio;
 	int disp_en_gpio;
 	int mode_gpio;
-#ifdef CONFIG_GN_Q_BSP_LCD_TE_ANALOG_SUPPORT
-	int disp_te_gpio;
-#endif
 	int bklt_ctrl;	/* backlight ctrl */
 	int pwm_period;
 	int pwm_pmic_gpio;
