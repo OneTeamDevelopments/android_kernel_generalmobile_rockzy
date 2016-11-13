@@ -213,14 +213,6 @@ disp_en_gpio_err:
 	return rc;
 }
 
-static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
-static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
-
-static struct dsi_cmd_desc partial_update_enable_cmd[] = {
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(caset)}, caset},
-	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset)}, paset},
-};
-
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -273,6 +265,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		    gpio_direction_output(ctrl_pdata->tps_en_gpio, 1);
 			}
 #endif
+		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
@@ -281,8 +274,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				gpio_set_value((ctrl_pdata->mode_gpio), 0);
 		}
 #ifdef CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT
-        if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
-		    gpio_direction_output(ctrl_pdata->rst_gpio, 1);
 		}
 #endif
 		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
@@ -310,6 +301,14 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 	return rc;
 }
+
+static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
+static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
+
+static struct dsi_cmd_desc partial_update_enable_cmd[] = {
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(caset)}, caset},
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(paset)}, paset},
+};
 
 static int mdss_dsi_panel_partial_update(struct mdss_panel_data *pdata)
 {
@@ -419,17 +418,25 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 	case BL_DCS_CMD:
 		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
+		if (mdss_dsi_is_master_ctrl(ctrl_pdata)) {
+			struct mdss_dsi_ctrl_pdata *sctrl =
+				mdss_dsi_get_slave_ctrl();
+			if (!sctrl) {
+				pr_err("%s: Invalid slave ctrl data\n",
+					__func__);
+				return;
+			}
+			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
+		}
 		break;
-#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
-	case BL_LM3630:
-		lm3630_lcd_backlight_set_level(bl_level);
-		break;
-#endif
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
 		break;
 	}
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
+	lm3630_lcd_backlight_set_level(bl_level);
+#endif
 }
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
@@ -1132,11 +1139,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 		}
-#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
-	else if (!strncmp(data, "bl_ctrl_lm3630", 14)) {
-			ctrl_pdata->bklt_ctrl = BL_LM3630;
-	}
-#endif
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);

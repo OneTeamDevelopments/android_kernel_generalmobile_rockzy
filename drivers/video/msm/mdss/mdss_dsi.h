@@ -92,9 +92,6 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
-#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
-	BL_LM3630,
-#endif
 	UNKNOWN_CTRL,
 };
 
