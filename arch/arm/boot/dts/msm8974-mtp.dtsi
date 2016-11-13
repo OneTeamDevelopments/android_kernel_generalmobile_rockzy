@@ -37,6 +37,7 @@
 	qcom,hdmi_tx@fd922100 {
 		status = "disabled";
 	};
+
 	i2c@f9924000 {
 		synaptics@20 {
                 compatible = "synaptics,rmi4";
@@ -64,6 +65,7 @@
                 synaptics,reg-en;
 
 		};
+
 		atmel_mxt_ts@4a {
 			compatible = "atmel,mxt-ts";
 			reg = <0x4a>;
@@ -226,7 +228,6 @@
 				219 221 223 225 227 228 230 232 235 238 240 243 246 249 252
 				255>;
 		};
-	};
                 tps65132@3e {
                 	status = "ok";
                         reg = <0x3e>;
