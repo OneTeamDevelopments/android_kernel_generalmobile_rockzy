@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013,2015 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -83,24 +83,14 @@
 		qcom,mdss-dsi-panel-timings = [b0 23 1b 00 94 93 1e 25  15 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1b>;
-		qcom,mdss-dsi-bl-min-level = <60>;
+		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-		qcom,mdss-dsi-reset-sequence = <1 20>, <0 200>, <1 20>;
-		cm,mdss-livedisplay-cabc-cmd = [
-			15 01 00 00 10 00 02 55 00];
-		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
-		cm,mdss-livedisplay-cabc-image-value = <0x02>;
-		cm,mdss-livedisplay-cabc-video-value = <0x03>;
-		cm,mdss-livedisplay-sre-weak-value = <0x50>;
-		cm,mdss-livedisplay-sre-medium-value = <0x60>;
-		cm,mdss-livedisplay-sre-strong-value = <0x70>;
-		cm,mdss-livedisplay-aco-value = <0x80>;
-		cm,mdss-livedisplay-post-cmd = [
-			05 01 00 00 10 00 02 29 00];
 		qcom,mdss-dsi-pan-enable-dynamic-fps;
-		qcom,mdss-dsi-pan-fps-update = "dfps_suspend_resume_mode";
+		qcom,mdss-dsi-pan-fps-update = "dfps_immediate_porch_mode";
+		qcom,mdss-dsi-min-refresh-rate = <45>;
+		qcom,mdss-dsi-reset-sequence = <1 20>, <0 200>, <1 20>;
 	};
 };
