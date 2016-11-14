@@ -1332,6 +1332,50 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo = &ctrl_pdata->panel_data.panel_info;
 
 	pr_debug("%s:%d\n", __func__, __LINE__);
+	#ifdef CONFIG_GN_Q_BSP_LCD_COMPATIBILITY_SUPPORT
+	{
+		int lcd_adc0_gpio, lcd_adc1_gpio;
+
+		lcd_adc0_gpio = of_get_named_gpio(node, "qcom,gn_lcd_adc0_gpio", 0);
+		lcd_adc1_gpio = of_get_named_gpio(node, "qcom,gn_lcd_adc1_gpio", 0);
+
+		if (!gpio_is_valid(lcd_adc0_gpio)) {
+			pr_err("%s:%d, compatibility gpio not specified\n",__func__, __LINE__);
+		}
+		else {
+			rc = gpio_request(lcd_adc0_gpio, "lcd_compatibility");
+			if (rc) {
+				pr_err("request lcd compatibility gpio failed, rc=%d\n",rc);
+				gpio_free(lcd_adc0_gpio);
+				return -ENODEV;
+			}
+		}
+		if (!gpio_is_valid(lcd_adc1_gpio)) {
+			pr_err("%s:%d, compatibility gpio not specified\n",__func__, __LINE__);
+		}
+		else {
+			rc = gpio_request(lcd_adc1_gpio, "lcd_compatibility");
+			if (rc) {
+				pr_err("request lcd compatibility gpio failed, rc=%d\n",rc);
+				gpio_free(lcd_adc1_gpio);
+				return -ENODEV;
+			}
+		}
+		rc = gpio_tlmm_config(GPIO_CFG(lcd_adc0_gpio, 1,GPIO_CFG_INPUT,GPIO_CFG_PULL_DOWN,GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: unable to config tlmm = %d\n",__func__, lcd_adc0_gpio);
+			gpio_free(lcd_adc0_gpio);
+			return -ENODEV;
+		}											
+		rc = gpio_tlmm_config(GPIO_CFG(lcd_adc1_gpio, 1,GPIO_CFG_INPUT,GPIO_CFG_PULL_DOWN,GPIO_CFG_2MA),GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: unable to config tlmm = %d\n",__func__, lcd_adc1_gpio);
+			gpio_free(lcd_adc1_gpio);
+			return -ENODEV;
+		}	
+
+	}
+	#endif
 	panel_name = of_get_property(node, "qcom,mdss-dsi-panel-name", NULL);
 	if (!panel_name)
 		pr_info("%s:%d, Panel name not specified\n",
