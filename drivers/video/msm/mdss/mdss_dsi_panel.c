@@ -25,7 +25,7 @@
 #include "mdss_dsi.h"
 #include "mdss_livedisplay.h"
 
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK)
+#ifdef CONFIG_GN_DEVICE_TYPE_CHECK
 #include <linux/gn_device_check.h>
 extern int gn_set_device_info(struct gn_device_info gn_dev_info);
 #endif
@@ -1327,7 +1327,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 {
 	int rc = 0;
 	static const char *panel_name;
-#if defined(CONFIG_GN_DEVICE_TYPE_CHECK) 
+#ifdef CONFIG_GN_DEVICE_TYPE_CHECK 
 	static const char *device_panel_name;
 	struct gn_device_info gn_mydev_info;
 	gn_mydev_info.gn_dev_type = GN_DEVICE_TYPE_LCD;
