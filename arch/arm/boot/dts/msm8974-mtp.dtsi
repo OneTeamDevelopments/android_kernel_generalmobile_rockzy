@@ -795,9 +795,6 @@
 	};
 };
 
-&dsi_sharp_r63417_1080_cmd {
-	qcom,cont-splash-enabled;
-};
 &dsi_truly_r63417_1080_cmd {
 	qcom,cont-splash-enabled;
 };
