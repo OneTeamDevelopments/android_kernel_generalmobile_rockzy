@@ -17,6 +17,8 @@
  *---------------------------------------------------------------------------*/
 &mdss_mdp {
 	dsi_sharp_r63417_1080_cmd: qcom,mdss_dsi_sharp_r63417_1080p_cmd {
+		compatible = "qcom,mdss-dsi-panel";
+		status = "ok";
 		qcom,mdss-dsi-panel-name = "sharp r63417 1080p command mode dsi panel";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
@@ -91,7 +93,6 @@
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "burst_mode";
-		qcom,mdss-dsi-lane-map = <0>;
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
@@ -99,7 +100,8 @@
 		qcom,mdss-dsi-lane-2-state;
 		qcom,mdss-dsi-lane-3-state;
 		qcom,mdss-dsi-te-pin-select = <1>;
-		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
+		qcom,mdss-dsi-wr-mem-start = <0x2c>;
+		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
@@ -109,14 +111,14 @@
 		qcom,mdss-dsi-bl-min-level = <15>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
-		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_lm3630";
-		qcom,mdss-dsi-reset-sequence = <1 20>, <0 1>, <1 20>;
+		qcom,mdss-dsi-mdp-trigger = "trigger_sw";
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+		qcom,mdss-dsi-reset-sequence = <1 5>, <0 10>, <1 10>;
 		cm,mdss-livedisplay-cabc-cmd = [
 			15 01 00 00 10 00 02 55 00];
-		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
+		cm,mdss-livedisplay-cabc-ui-value = <0x02>;
 		cm,mdss-livedisplay-cabc-image-value = <0x02>;
-		cm,mdss-livedisplay-cabc-video-value = <0x03>;
+		cm,mdss-livedisplay-cabc-video-value = <0x02>;
 		cm,mdss-livedisplay-sre-weak-value = <0x50>;
 		cm,mdss-livedisplay-sre-medium-value = <0x60>;
 		cm,mdss-livedisplay-sre-strong-value = <0x70>;
@@ -129,6 +131,7 @@
 		/* kernel configure the lcd id gpio, do nothing, 20131225*/
 		qcom,gn_lcd_adc0_gpio = <&msmgpio 81 0>;
 		qcom,gn_lcd_adc1_gpio = <&msmgpio 82 0>;
+		qcom,cont-splash-enabled;
 		qcom,ulps-enabled;
 	};
 };
