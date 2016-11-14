@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,7 +23,7 @@
 #include <linux/err.h>
 #include <linux/sched.h>
 #include <linux/poll.h>
-#include <linux/wakelock.h>
+#include <linux/pm.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
@@ -100,6 +100,8 @@ if (msm_ipc_router_debug_mask & R2R_RAW_HDR) \
 #define IPC_ROUTER_LOG_EVENT_RX         0x02
 #define IPC_ROUTER_DUMMY_DEST_NODE	0xFFFFFFFF
 
+#define ipc_port_sk(port) ((struct sock *)(port))
+
 static LIST_HEAD(control_ports);
 static DECLARE_RWSEM(control_ports_lock_lha5);
 
@@ -158,7 +160,7 @@ struct msm_ipc_router_xprt_info {
 	uint32_t remote_node_id;
 	uint32_t initialized;
 	struct list_head pkt_list;
-	struct wake_lock wakelock;
+	struct wakeup_source ws;
 	struct mutex rx_lock_lhb2;
 	struct mutex tx_lock_lhb2;
 	uint32_t need_len;
@@ -282,7 +284,7 @@ struct rr_packet *rr_read(struct msm_ipc_router_xprt_info *xprt_info)
 				    struct rr_packet, list);
 	list_del(&temp_pkt->list);
 	if (list_empty(&xprt_info->pkt_list))
-		wake_unlock(&xprt_info->wakelock);
+		__pm_relax(&xprt_info->ws);
 	mutex_unlock(&xprt_info->rx_lock_lhb2);
 	return temp_pkt;
 }
@@ -814,7 +816,7 @@ static int post_pkt_to_port(struct msm_ipc_port *port_ptr,
 	}
 
 	mutex_lock(&port_ptr->port_rx_q_lock_lhb3);
-	wake_lock(&port_ptr->port_rx_wake_lock);
+	__pm_stay_awake(port_ptr->port_rx_ws);
 	list_add_tail(&temp_pkt->list, &port_ptr->port_rx_q);
 	wake_up(&port_ptr->port_rx_wait_q);
 	notify = port_ptr->notify;
@@ -909,18 +911,23 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 	INIT_LIST_HEAD(&port_ptr->port_rx_q);
 	mutex_init(&port_ptr->port_rx_q_lock_lhb3);
 	init_waitqueue_head(&port_ptr->port_rx_wait_q);
-	snprintf(port_ptr->rx_wakelock_name, MAX_WAKELOCK_NAME_SZ,
+	snprintf(port_ptr->rx_ws_name, MAX_WS_NAME_SZ,
 		 "ipc%08x_%s",
 		 port_ptr->this_port.port_id,
 		 current->comm);
-	wake_lock_init(&port_ptr->port_rx_wake_lock,
-			WAKE_LOCK_SUSPEND, port_ptr->rx_wakelock_name);
+	port_ptr->port_rx_ws = wakeup_source_register(port_ptr->rx_ws_name);
+	if (!port_ptr->port_rx_ws) {
+		kfree(port_ptr);
+		return NULL;
+	}
 
 	port_ptr->endpoint = endpoint;
 	port_ptr->notify = notify;
 	port_ptr->priv = priv;
 
 	msm_ipc_router_add_local_port(port_ptr);
+	if (endpoint)
+		sock_hold(ipc_port_sk(endpoint));
 	return port_ptr;
 }
 
@@ -2599,7 +2606,7 @@ int msm_ipc_router_read(struct msm_ipc_port *port_ptr,
 	}
 	list_del(&pkt->list);
 	if (list_empty(&port_ptr->port_rx_q))
-		wake_unlock(&port_ptr->port_rx_wake_lock);
+		__pm_relax(port_ptr->port_rx_ws);
 	*read_pkt = pkt;
 	mutex_unlock(&port_ptr->port_rx_q_lock_lhb3);
 	if (pkt->hdr.control_flag & CONTROL_FLAG_CONFIRM_RX)
@@ -2827,7 +2834,9 @@ int msm_ipc_router_close_port(struct msm_ipc_port *port_ptr)
 		up_write(&server_list_lock_lha2);
 	}
 
-	wake_lock_destroy(&port_ptr->port_rx_wake_lock);
+	wakeup_source_unregister(port_ptr->port_rx_ws);
+	if (port_ptr->endpoint)
+		sock_put(ipc_port_sk(port_ptr->endpoint));
 	kfree(port_ptr);
 	return 0;
 }
@@ -2853,7 +2862,7 @@ int msm_ipc_router_get_curr_pkt_size(struct msm_ipc_port *port_ptr)
 
 int msm_ipc_router_bind_control_port(struct msm_ipc_port *port_ptr)
 {
-	if (!port_ptr)
+	if (unlikely(!port_ptr || port_ptr->type != CLIENT_PORT))
 		return -EINVAL;
 
 	down_write(&local_ports_lock_lha2);
@@ -3170,8 +3179,7 @@ static int msm_ipc_router_add_xprt(struct msm_ipc_router_xprt *xprt)
 	INIT_LIST_HEAD(&xprt_info->pkt_list);
 	mutex_init(&xprt_info->rx_lock_lhb2);
 	mutex_init(&xprt_info->tx_lock_lhb2);
-	wake_lock_init(&xprt_info->wakelock,
-			WAKE_LOCK_SUSPEND, xprt->name);
+	wakeup_source_init(&xprt_info->ws, xprt->name);
 	xprt_info->need_len = 0;
 	xprt_info->abort_data_read = 0;
 	INIT_WORK(&xprt_info->read_data, do_read_data);
@@ -3223,7 +3231,7 @@ static void msm_ipc_router_remove_xprt(struct msm_ipc_router_xprt *xprt)
 
 		flush_workqueue(xprt_info->workqueue);
 		destroy_workqueue(xprt_info->workqueue);
-		wake_lock_destroy(&xprt_info->wakelock);
+		wakeup_source_trash(&xprt_info->ws);
 
 		xprt->priv = 0;
 		kfree(xprt_info);
@@ -3318,7 +3326,7 @@ void msm_ipc_router_xprt_notify(struct msm_ipc_router_xprt *xprt,
 
 	mutex_lock(&xprt_info->rx_lock_lhb2);
 	list_add_tail(&pkt->list, &xprt_info->pkt_list);
-	wake_lock(&xprt_info->wakelock);
+	__pm_stay_awake(&xprt_info->ws);
 	mutex_unlock(&xprt_info->rx_lock_lhb2);
 	queue_work(xprt_info->workqueue, &xprt_info->read_data);
 }
@@ -3330,7 +3338,7 @@ static int __init msm_ipc_router_init(void)
 
 	msm_ipc_router_debug_mask |= SMEM_LOG;
 	ipc_rtr_log_ctxt = ipc_log_context_create(IPC_RTR_LOG_PAGES,
-						  "ipc_router");
+						  "ipc_router", 0);
 	if (!ipc_rtr_log_ctxt)
 		pr_err("%s: Unable to create IPC logging for IPC RTR",
 			__func__);

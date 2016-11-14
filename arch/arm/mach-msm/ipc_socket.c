@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -280,17 +280,20 @@ static int msm_ipc_router_create(struct net *net,
 		return -ENOMEM;
 	}
 
+	sock->ops = &msm_ipc_proto_ops;
+	sock_init_data(sock, sk);
+	sk->sk_data_ready = NULL;
+	sk->sk_rcvtimeo = DEFAULT_RCV_TIMEO;
+
 	port_ptr = msm_ipc_router_create_raw_port(sk, NULL, NULL);
 	if (!port_ptr) {
 		pr_err("%s: port_ptr alloc failed\n", __func__);
-		sk_free(sk);
+		sock_put(sk);
+		sock->sk = NULL;
 		return -ENOMEM;
 	}
 
 	port_ptr->check_send_permissions = msm_ipc_check_send_permissions;
-	sock->ops = &msm_ipc_proto_ops;
-	sock_init_data(sock, sk);
-	sk->sk_rcvtimeo = DEFAULT_RCV_TIMEO;
 
 	msm_ipc_sk(sk)->port = port_ptr;
 
@@ -513,16 +516,20 @@ static int msm_ipc_router_ioctl(struct socket *sock,
 			break;
 		}
 		server_arg.num_entries_found = ret;
-
 		ret = copy_to_user((void *)arg, &server_arg,
 				   sizeof(server_arg));
-		if (srv_info_sz) {
+
+		n = min(server_arg.num_entries_found,
+			server_arg.num_entries_in_array);
+
+		if (ret == 0 && n) {
 			ret = copy_to_user((void *)(arg + sizeof(server_arg)),
-					   srv_info, srv_info_sz);
-			if (ret)
-				ret = -EFAULT;
-			kfree(srv_info);
+					   srv_info, n * sizeof (*srv_info));
 		}
+
+		if (ret)
+			ret = -EFAULT;
+		kfree(srv_info);
 		break;
 
 	case IPC_ROUTER_IOCTL_BIND_CONTROL_PORT:
@@ -626,13 +633,13 @@ void msm_ipc_router_ipc_log_init(void)
 {
 	ipc_req_resp_log_txt =
 		ipc_log_context_create(REQ_RESP_IPC_LOG_PAGES,
-			"ipc_rtr_req_resp");
+			"ipc_rtr_req_resp", 0);
 	if (!ipc_req_resp_log_txt) {
 		pr_err("%s: Unable to create IPC logging for Req/Resp",
 			__func__);
 	}
 	ipc_ind_log_txt =
-		ipc_log_context_create(IND_IPC_LOG_PAGES, "ipc_rtr_ind");
+		ipc_log_context_create(IND_IPC_LOG_PAGES, "ipc_rtr_ind", 0);
 	if (!ipc_ind_log_txt) {
 		pr_err("%s: Unable to create IPC logging for Indications",
 			__func__);
