@@ -90,7 +90,6 @@ config RD_LZO
 	  Support loading of a LZO encoded initial ramdisk or cpio buffer
 	  If unsure, say N.
 
-
 config RD_LZ4
 	bool "Support initial ramdisks compressed using LZ4" if EXPERT
 	default !EXPERT
