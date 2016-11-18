@@ -314,8 +314,6 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_panel_recovery *recovery;
 
 #ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
-    void set_vol_tps65132_positive(void);
-    void set_vol_tps65132_nagetive(void);
 	int tps_en_gpio;
 #endif
 	struct dsi_panel_cmds on_cmds;
@@ -360,6 +358,11 @@ struct dsi_status_data {
 	struct delayed_work check_status;
 	struct msm_fb_data_type *mfd;
 };
+
+#ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
+void set_vol_tps65132_positive(void);
+void set_vol_tps65132_nagetive(void);
+#endif
 
 int dsi_panel_device_register(struct device_node *pan_node,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata);
