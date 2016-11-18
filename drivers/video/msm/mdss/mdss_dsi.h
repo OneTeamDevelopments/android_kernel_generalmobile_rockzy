@@ -314,6 +314,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_panel_recovery *recovery;
 
 #ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
+    void set_vol_tps65132_positive(void);
+    void set_vol_tps65132_nagetive(void);
 	int tps_en_gpio;
 #endif
 	struct dsi_panel_cmds on_cmds;
