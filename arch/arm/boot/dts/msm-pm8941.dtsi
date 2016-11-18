@@ -27,7 +27,7 @@
 		reg = <0x900 0x100>;
 	};
 
-	qcom,revid@100 {
+	pm8941_revid: qcom,revid@100 {
 		compatible = "qcom,qpnp-revid";
 		reg = <0x100 0x100>;
 	};
@@ -51,25 +51,29 @@
 			     <0x0 0x8 0x5>;
 		interrupt-names = "kpdpwr", "resin",
 				"resin-bark", "kpdpwr-resin-bark";
-		qcom,pon-dbc-delay = <62500>; //<15625>;
+		qcom,pon-dbc-delay = <15625>;
 		qcom,system-reset;
 		qcom,s3-debounce = <32>;
 
 		qcom,pon_1 {
 			qcom,pon-type = <0>;
+			qcom,support-reset = <1>;
 			qcom,pull-up = <1>;
+			qcom,s1-timer = <10256>;
+			qcom,s2-timer = <2000>;
+			qcom,s2-type = <1>;
 			linux,code = <116>;
 		};
 
 		qcom,pon_2 {
 			qcom,pon-type = <1>;
-			//qcom,support-reset = <1>;
+			qcom,support-reset = <1>;
 			qcom,pull-up = <1>;
-			//qcom,s1-timer = <0>;
-			//qcom,s2-timer = <2000>;
-			//qcom,s2-type = <1>;
+			qcom,s1-timer = <0>;
+			qcom,s2-timer = <2000>;
+			qcom,s2-type = <1>;
 			linux,code = <114>;
-			//qcom,use-bark;
+			qcom,use-bark;
 		};
 
 		qcom,pon_3 {
@@ -120,9 +124,9 @@
 
 		qcom,r-sense-uohm = <10000>;
 		qcom,v-cutoff-uv = <3400000>;
-			qcom,max-voltage-uv = <4350000>;//<4200000>;
-			qcom,r-conn-mohm = <32>;//<0>;
-		qcom,shutdown-soc-valid-limit = <20>; //<100>;
+		qcom,max-voltage-uv = <4200000>;
+		qcom,r-conn-mohm = <0>;
+		qcom,shutdown-soc-valid-limit = <100>;
 		qcom,adjust-soc-low-threshold = <15>;
 		qcom,ocv-voltage-high-threshold-uv = <3750000>;
 		qcom,ocv-voltage-low-threshold-uv = <3650000>;
@@ -131,7 +135,7 @@
 		qcom,low-soc-calculate-soc-ms = <5000>;
 		qcom,calculate-soc-ms = <20000>;
 		qcom,chg-term-ua = <100000>;
-			qcom,batt-type = <6>; //<0>;
+		qcom,batt-type = <0>;
 		qcom,low-voltage-threshold = <3420000>;
 		qcom,tm-temp-margin = <5000>;
 		qcom,low-ocv-correction-limit-uv = <100>;
@@ -140,6 +144,10 @@
 		qcom,bms-vadc = <&pm8941_vadc>;
 		qcom,bms-iadc = <&pm8941_iadc>;
 		qcom,bms-adc_tm = <&pm8941_adc_tm>;
+
+		qcom,batt-pres-status@1208 {
+			reg = <0x1208 0x1>;
+		};
 
 		qcom,bms-iadc@3800 {
 			reg = <0x3800 0x100>;
@@ -191,31 +199,29 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		status = "disabled";
-			qcom,vddmax-mv = <4360>;//<4200>;
-			qcom,vddsafe-mv = <4380>;//<4230>;
-			qcom,vinmin-mv = <4400>;//<4300>
+
+		qcom,vddmax-mv = <4200>;
+		qcom,vddsafe-mv = <4230>;
+		qcom,vinmin-mv = <4300>;
 		qcom,ibatmax-ma = <1500>;
 		qcom,ibatterm-ma = <100>;
 		qcom,ibatsafe-ma = <1500>;
-			qcom,thermal-mitigation = <1500 1300 1100 1000>;//<1500 700 600 325>;
+		qcom,thermal-mitigation = <1500 700 600 325>;
 		qcom,cool-bat-decidegc = <100>;
-			qcom,cool-bat-mv = <4360>;//<4100>;
-			qcom,ibatmax-warm-ma = <1000>;//<350>;
+		qcom,cool-bat-mv = <4100>;
+		qcom,ibatmax-warm-ma = <350>;
 		qcom,warm-bat-decidegc = <450>;
 		qcom,warm-bat-mv = <4100>;
-			qcom,ibatmax-cool-ma = <1500>;//<350>;
+		qcom,ibatmax-cool-ma = <350>;
 		qcom,vbatdet-delta-mv = <100>;
 		qcom,resume-soc = <99>;
-			qcom,tchg-mins = <480>;//<150>;
-			qcom,batt-hot-percentage = <25>;//25 -> 60 deg C, 35 -> 45 deg C 
-			qcom,batt-cold-percentage = <70>;//70 -> 0 deg C, 80 -> -10 deg C
-			qcom,btc-disabled = <1>;
-                qcom,chg-vadc = <&pm8941_vadc>;
+		qcom,tchg-mins = <150>;
+		qcom,chg-vadc = <&pm8941_vadc>;
 		qcom,chg-iadc = <&pm8941_iadc>;
 		qcom,chg-adc_tm = <&pm8941_adc_tm>;
 		qcom,ibat-calibration-enabled;
 
-		qcom,chgr@1000 {
+		pm8941_chg_chgr: qcom,chgr@1000 {
 			status = "disabled";
 			reg = <0x1000 0x100>;
 			interrupts =	<0x0 0x10 0x0>,
@@ -558,7 +564,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		qcom,qpnp-rtc-write = <0>;
-		qcom,qpnp-rtc-alarm-pwrup = <1>;
+		qcom,qpnp-rtc-alarm-pwrup = <0>;
 
 		qcom,pm8941_rtc_rw@6000 {
 			reg = <0x6000 0x100>;
@@ -579,6 +585,7 @@
 		qcom,adc-bit-resolution = <15>;
 		qcom,adc-vdd-reference = <1800>;
 		qcom,vadc-poll-eoc;
+		qcom,pmic-revid = <&pm8941_revid>;
 
 		chan@0 {
 			label = "usb_in";
@@ -826,15 +833,12 @@
 		qcom,iadc-vadc = <&pm8941_vadc>;
 		qcom,iadc-poll-eoc;
 		qcom,use-default-rds-trim = <0>;
+		qcom,pmic-revid = <&pm8941_revid>;
 
 		chan@0 {
 			label = "internal_rsense";
 			reg = <0>;
 			qcom,decimation = <0>;
-			qcom,pre-div-channel-scaling = <1>;
-			qcom,calibration-type = "absolute";
-			qcom,scale-function = <0>;
-			qcom,hw-settle-time = <0>;
 			qcom,fast-avg-setup = <0>;
 		};
 	};
