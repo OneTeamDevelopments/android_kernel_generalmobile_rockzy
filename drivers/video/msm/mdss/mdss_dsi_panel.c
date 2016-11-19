@@ -33,7 +33,6 @@ DEFINE_LED_TRIGGER(bl_led_trigger);
 
 #ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
 extern void lm3630_lcd_backlight_set_level(int level);
-static bool u2_lcd_rsp_ic = 0;
 #endif
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -1389,11 +1388,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 						__func__, __LINE__);
 	else
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
-
-#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
-	if(strstr(panel_name,"jdi 1080p video mode dsi panel") || strstr(panel_name,"sharp r63417 1080p command mode dsi panel"))
-		u2_lcd_rsp_ic = 1;
-#endif
 
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
