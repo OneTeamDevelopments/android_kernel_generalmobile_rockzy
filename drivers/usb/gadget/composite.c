@@ -145,7 +145,7 @@ int config_ep_by_speed(struct usb_gadget *g,
 		}
 		/* else: fall through */
 	default:
-		speed_desc = f->descriptors;
+		speed_desc = f->fs_descriptors;
 	}
 	/* find descriptors */
 	for_each_ep_desc(speed_desc, d_spd) {
@@ -237,7 +237,7 @@ int usb_add_function(struct usb_configuration *config,
 	 * as full speed ... it's the function drivers that will need
 	 * to avoid bulk and ISO transfers.
 	 */
-	if (!config->fullspeed && function->descriptors)
+	if (!config->fullspeed && function->fs_descriptors)
 		config->fullspeed = true;
 	if (!config->highspeed && function->hs_descriptors)
 		config->highspeed = true;
@@ -395,7 +395,7 @@ static int config_buf(struct usb_configuration *config,
 			descriptors = f->hs_descriptors;
 			break;
 		default:
-			descriptors = f->descriptors;
+			descriptors = f->fs_descriptors;
 		}
 
 		if (!descriptors)
@@ -593,6 +593,7 @@ static void reset_config(struct usb_composite_dev *cdev)
 		bitmap_zero(f->endpoints, 32);
 	}
 	cdev->config = NULL;
+	cdev->delayed_status = 0;
 }
 
 static int set_config(struct usb_composite_dev *cdev,
@@ -603,6 +604,16 @@ static int set_config(struct usb_composite_dev *cdev,
 	int			result = -EINVAL;
 	unsigned		power = gadget_is_otg(gadget) ? 8 : 100;
 	int			tmp;
+
+	/*
+	 * ignore 2nd time SET_CONFIGURATION
+	 * only for same config value twice.
+	 */
+	if (cdev->config && (cdev->config->bConfigurationValue == number)) {
+		DBG(cdev, "already in the same config with value %d\n",
+				number);
+		return 0;
+	}
 
 	if (number) {
 		list_for_each_entry(c, &cdev->configs, list) {
@@ -651,13 +662,18 @@ static int set_config(struct usb_composite_dev *cdev,
 		 */
 		switch (gadget->speed) {
 		case USB_SPEED_SUPER:
+			if (!f->ss_descriptors) {
+				pr_err("%s(): No SS desc for function:%s\n",
+							__func__, f->name);
+				return -EINVAL;
+			}
 			descriptors = f->ss_descriptors;
 			break;
 		case USB_SPEED_HIGH:
 			descriptors = f->hs_descriptors;
 			break;
 		default:
-			descriptors = f->descriptors;
+			descriptors = f->fs_descriptors;
 		}
 
 		for (; *descriptors; ++descriptors) {
@@ -1135,7 +1151,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 					DBG(cdev, "Config SS device in HS\n");
 				}
 			} else if (gadget->l1_supported) {
-				cdev->desc.bcdUSB = cpu_to_le16(0x0210);
+				cdev->desc.bcdUSB = cpu_to_le16(0x0201);
 				DBG(cdev, "Config HS device with LPM(L1)\n");
 			}
 
@@ -1230,7 +1246,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		 * upon set config#1. Call set_alt for non-zero
 		 * alternate setting.
 		 */
-		if (!w_value && cdev->config) {
+		if (!w_value && cdev->config && !f->get_alt) {
 			value = 0;
 			break;
 		}

@@ -256,27 +256,6 @@
 
 #include "gadget_chips.h"
 
-#if defined (GN_OVERSEA_PRODUCT)
-#include "gn_oversea_custom_usb_name.h"
-
-#ifdef GN_USB_VENDOR_ID_8C
-	#define GN_VENDOR_ID GN_USB_VENDOR_ID_8C
-#else
-	#define GN_VENDOR_ID "Linux   "
-#endif
-
-#ifdef GN_USB_DISK_ID_16C
-	#define GN_DISK_ID GN_USB_DISK_ID_16C
-#else
-	#define GN_DISK_ID "File-Stor Gadget"
-#endif
-
-#ifdef GN_USB_CDROM_ID_16C
-	#define GN_CDROM_ID GN_USB_CDROM_ID_16C
-#else
-	#define GN_CDROM_ID "File-CD Gadget  "
-#endif
-#endif/*GN_OVERSEA_PRODUCT*/
 
 
 /*
@@ -1601,15 +1580,10 @@ static int do_verify(struct fsg_dev *fsg)
 static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 {
 	u8	*buf = (u8 *) bh->buf;
-#if defined (GN_OVERSEA_PRODUCT)
-	static char vendor_id[] = GN_VENDOR_ID;
-	static char product_disk_id[] = GN_DISK_ID;
-	static char product_cdrom_id[] = GN_CDROM_ID;
-#else
+
 	static char vendor_id[] = "Linux   ";
 	static char product_disk_id[] = "File-Stor Gadget";
 	static char product_cdrom_id[] = "File-CD Gadget  ";
-#endif/*GN_OVERSEA_PRODUCT*/
 
 	if (!fsg->curlun) {		// Unsupported LUNs are okay
 		fsg->bad_lun_okay = 1;
