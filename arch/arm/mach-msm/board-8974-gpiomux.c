@@ -577,6 +577,13 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
 		},
 	},
+	{
+		.gpio = 91,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm_lcd_te_configs[] __initdata = {
@@ -589,6 +596,7 @@ static struct msm_gpiomux_config msm_lcd_te_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting sdc4_suspend_cfg;
 static struct msm_gpiomux_config msm_epm_configs[] __initdata = {
 	{
 		.gpio      = 81,		/* EPM enable */
@@ -605,7 +613,8 @@ static struct msm_gpiomux_config msm_epm_configs[] __initdata = {
 	{
 		.gpio      = 96,		/* EPM MARKER1 */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_epm_marker_config,
+			[GPIOMUX_ACTIVE] = &sdc4_suspend_cfg,
+			[GPIOMUX_SUSPENDED] = &sdc4_suspend_cfg,
 		},
 	},
 };
@@ -750,7 +759,7 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	{
 		.gpio      = 55,		/* BLSP2 QUP4 SPI_CS0_N */
 		.settings = {
-			//[GPIOMUX_ACTIVE] = &gpio_spi_config,
+			[GPIOMUX_ACTIVE] = &gpio_spi_config,
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
 		},
 	},
@@ -960,13 +969,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 91, /* CAM2_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
 		.gpio = 92, /* CAM2_RST_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
@@ -1083,13 +1085,6 @@ static struct msm_gpiomux_config msm_sensor_configs_dragonboard[] __initdata = {
 	},
 	{
 		.gpio = 90, /* CAM1_RST_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 91, /* CAM2_STANDBY_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
@@ -1455,15 +1450,7 @@ static struct msm_gpiomux_config msm8974_sdc4_configs[] __initdata = {
 		/* DAT0 */
 		.gpio      = 96,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc4_cmd_data_0_3_actv_cfg,
-			[GPIOMUX_SUSPENDED] = &sdc4_suspend_cfg,
-		},
-	},
-	{
-		/* CMD */
-		.gpio      = 91,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc4_cmd_data_0_3_actv_cfg,
+			[GPIOMUX_ACTIVE]    = &sdc4_suspend_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc4_suspend_cfg,
 		},
 	},
@@ -1567,7 +1554,7 @@ void __init msm_8974_init_gpiomux(void)
 				    ARRAY_SIZE(msm_mhl_configs));
 	else
 		msm_gpiomux_install(msm_lcd_te_configs,
-					ARRAY_SIZE(msm_lcd_te_configs));
+				    ARRAY_SIZE(msm_lcd_te_configs));
 
 	if (of_board_is_liquid() ||
 	    (of_board_is_dragonboard() && machine_is_apq8074()))
