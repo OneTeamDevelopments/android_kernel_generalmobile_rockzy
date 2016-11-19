@@ -287,6 +287,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
+          }
 	} else {
 #ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
 		if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
