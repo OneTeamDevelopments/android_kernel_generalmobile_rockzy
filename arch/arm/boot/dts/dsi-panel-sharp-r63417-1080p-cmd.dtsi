@@ -14,15 +14,13 @@
 	dsi_sharp_r63417_1080_cmd: qcom,mdss_dsi_sharp_r63417_1080p_cmd {
 		compatible = "qcom,mdss-dsi-panel";
 		status = "ok";
-		qcom,mdss-pan-physical-width-dimension = <59>;
-		qcom,mdss-pan-physical-height-dimension = <104>;
 		qcom,mdss-dsi-panel-name = "sharp r63417 1080p command mode dsi panel";
-		qcom,mdss-dsi-panel-manufacture = "SHARP";
+		qcom,mdss-dsi-panel-manufacture = "sharp";
 		qcom,mdss-dsi-panel-version = "R63417";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
-		qcom,mdss-dsi-panel-framerate = <63>;
+		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <1080>;
@@ -39,54 +37,29 @@
 		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
-		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-color-order = <0>;
+		qcom,mdss-dsi-underflow-color = <0x00>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-on-command = [
-					23 01 00 00 00 00 02
-						b0 04
-					23 01 00 00 00 00 02
-						d6 01
-					29 01 00 00 00 00 1F 
-						c7 00 09 10 18 28 38 42 4e 30 39 45 55 5f 69 7f
-						   00 09 10 18 28 38 42 4e 30 39 45 55 5f 69 7f
-					29 01 00 00 00 00 14 
-						C8 01 00 00 07 00 ff 00 00 00 00 08 b0 00 00 00 00 08 d0 00
-					29 01 00 00 00 00 21 
-						ca 01 80 80 ff ff ff ff ff 08 20 80 a0 0a 4a 37 a0 55 f8 0c 
-						0c 20 10 3f 3f f0 00 10 10 3f 3f 3f 3f 	
-					29 01 00 00 00 00 1A
-						D3 1B 33 BB BB B3 33 33 33 00 01 00 A0 88 
-						A0 08 3f 3f 33 3b 37 72 07 3D BF 55
-					29 01 00 00 00 00 07
-						b8 07 90 1e 10 1e 32 
-					29 01 00 00 00 00 07
-						b9 07 82 3c 10 3c 87
-					29 01 00 00 00 00 07
-						ba 07 78 64 10 64 b4
-					15 01 00 00 00 00 02 
-						51 FF
-					15 01 00 00 00 00 02 
-						53 24
-					15 01 00 00 00 00 02 
-						55 03
-					39 01 00 00 00 00 05
-						2a 00 00 04 37
-					39 01 00 00 00 00 05
-						2b 00 00 07 7f
-					05 01 00 00 78 00 02
-						11 00
-					15 01 00 00 14 00 02
-						36 00
-					15 01 00 00 00 00 02
-						3a 77
-					15 01 00 00 00 00 02
-						35 00
-					05 01 00 00 14 00 02
-						29 00
-					];
-	
-		qcom,mdss-dsi-off-command = [05 01 00 00 14 00 02 28 00
-					05 01 00 00 78 00 02 10 00];
+			23 01 00 00 01 00 02 b0 04
+			29 01 00 00 01 00 07 b3 04 00 00 22 00 00
+			29 01 00 00 01 00 1f c7 02 12 1A 25 34 45 51 60 42 4C 55 60 64 6D 76 02 13 1B 25 31 3C 42 51 35 3D 45 57 5E 69 74
+			29 01 00 00 01 00 14 c8 01 00 00 00 02 C8 00 00 00 00 02 C8 00 00 00 00 02 FC 00
+			29 01 00 00 01 00 21 ca 01 80 90 80 80 80 A0 80 08 20 00 80 0A 4A 00 FF 00 FF 0C 0C 20 10 3F 3F 00 DF 10 10 3F 3F 3F 3F
+			29 01 00 00 01 00 1a d3 1B 33 BB BB B3 33 33 33 00 01 00 A0 D8 A0 00 4D 39 33 3B 37 72 57 3D BF 99
+			23 01 00 00 01 00 02 d6 01
+			23 01 00 00 01 00 02 3a 77
+			29 01 00 00 01 00 05 2a 00 00 04 37
+			29 01 00 00 01 00 05 2b 00 00 07 7f
+			15 01 00 00 01 00 02 35 00
+			15 01 00 00 01 00 02 2c 00
+			05 01 00 00 78 00 02 11 00
+			39 01 00 00 01 00 02 51 ff
+			15 01 00 00 01 00 02 53 2c];
+		qcom,mdss-dsi-off-command = [
+			15 01 00 00 01 00 02 53 00
+			05 01 00 00 32 00 02 28 00
+			05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
@@ -103,10 +76,10 @@
 		qcom,mdss-dsi-te-dcs-command = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
-		qcom,mdss-dsi-panel-timings = [dd 48 3c 00 61 59 3b 4a 5f 03 04 00];
-		qcom,mdss-dsi-t-clk-post = <0x1e>;
-		qcom,mdss-dsi-t-clk-pre = <0x38>;
-		qcom,mdss-dsi-bl-min-level = <15>;
+		qcom,mdss-dsi-panel-timings = [f9 3d 34 00 58 4d 36 3f 53 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x20>;
+		qcom,mdss-dsi-t-clk-pre = <0x3e>;
+		qcom,mdss-dsi-bl-min-level = <1>;
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "trigger_sw";
@@ -114,9 +87,9 @@
 		qcom,mdss-dsi-reset-sequence = <1 5>, <0 10>, <1 10>;
 		cm,mdss-livedisplay-cabc-cmd = [
 			15 01 00 00 10 00 02 55 00];
-		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
+		cm,mdss-livedisplay-cabc-ui-value = <0x02>;
 		cm,mdss-livedisplay-cabc-image-value = <0x02>;
-		cm,mdss-livedisplay-cabc-video-value = <0x03>;
+		cm,mdss-livedisplay-cabc-video-value = <0x02>;
 		cm,mdss-livedisplay-sre-weak-value = <0x50>;
 		cm,mdss-livedisplay-sre-medium-value = <0x60>;
 		cm,mdss-livedisplay-sre-strong-value = <0x70>;
