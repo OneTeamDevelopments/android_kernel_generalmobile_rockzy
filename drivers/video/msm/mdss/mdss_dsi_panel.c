@@ -242,35 +242,31 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
-#ifdef CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-				gpio_direction_output(ctrl_pdata->rst_gpio, 0); 
-				}
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		mdelay(3);
 #endif
-		rc = mdss_dsi_request_gpios(ctrl_pdata);
-		if (rc) {
-			pr_err("gpio request failed\n");
-			return rc;
-		}
-		if (!pinfo->cont_splash_enabled) {
-			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-
-			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
-				gpio_set_value((ctrl_pdata->rst_gpio),
-					pdata->panel_info.rst_seq[i]);
-				if (pdata->panel_info.rst_seq[++i])
-					usleep(pinfo->rst_seq[i] * 1000);
-			}
-#ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
 		set_vol_tps65132_positive();
+		mdelay(1);
 		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
 		{
 			gpio_set_value((ctrl_pdata->tps_en_gpio), 1);
 			set_vol_tps65132_nagetive();
 		}
 #endif
+
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+#else
+		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+			gpio_set_value((ctrl_pdata->rst_gpio),
+				pdata->panel_info.rst_seq[i]);
+			if (pdata->panel_info.rst_seq[++i])
+				usleep(pdata->panel_info.rst_seq[i] * 1000);
 		}
+#endif
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
@@ -278,35 +274,29 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			else if (pinfo->mode_gpio_state == MODE_GPIO_LOW)
 				gpio_set_value((ctrl_pdata->mode_gpio), 0);
 		}
-#ifdef CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT
-		}
-#endif
 		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 			pr_debug("%s: Panel Not properly turned OFF\n",
 						__func__);
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
-          }
-	} else {
-#ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
-		if (gpio_is_valid(ctrl_pdata->tps_en_gpio)) {
-			gpio_set_value(ctrl_pdata->tps_en_gpio, 0);
-		}
+#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
+		mdelay(1);
+		gpio_set_value((ctrl_pdata->rst_gpio), 1);
+		mdelay(3);
 #endif
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+	} else {
+		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		
+#if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
+		mdelay(10); // add for IC request
+		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
+			gpio_set_value((ctrl_pdata->tps_en_gpio), 0);
+		mdelay(1);
+#endif
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-			gpio_free(ctrl_pdata->disp_en_gpio);
-		}
-		if (gpio_is_valid(ctrl_pdata->rst_gpio)) {
-			gpio_set_value((ctrl_pdata->rst_gpio), 0);
-			gpio_free(ctrl_pdata->rst_gpio);
-		}
-		if (gpio_is_valid(ctrl_pdata->mode_gpio))
-			gpio_free(ctrl_pdata->mode_gpio);
-		}
 	}
-	return rc;
 }
 
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
