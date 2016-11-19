@@ -222,6 +222,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 #else
 	int i;
 #endif
+	int rc = 0;
+
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -248,6 +250,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		mdelay(3);
 #endif
+		rc = mdss_dsi_request_gpios(ctrl_pdata);
+		if (rc) {
+			pr_err("gpio request failed\n");
+			return rc;
+		}
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 #if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
