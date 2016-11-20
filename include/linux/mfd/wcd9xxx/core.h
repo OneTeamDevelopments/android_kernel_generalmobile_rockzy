@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -133,6 +133,7 @@ struct wcd9xxx_codec_dai_data {
 	u16 grph;				/* slimbus group handle */
 	unsigned long ch_mask;
 	wait_queue_head_t dai_wait;
+	bool bus_down_in_recovery;
 };
 
 #define WCD9XXX_CH(xport, xshift) \
@@ -198,6 +199,8 @@ int wcd9xxx_interface_reg_read(struct wcd9xxx *wcd9xxx, unsigned short reg);
 int wcd9xxx_interface_reg_write(struct wcd9xxx *wcd9xxx, unsigned short reg,
 		u8 val);
 int wcd9xxx_get_logical_addresses(u8 *pgd_la, u8 *inf_la);
+int wcd9xxx_slim_write_repeat(struct wcd9xxx *wcd9xxx, unsigned short reg,
+			     int bytes, void *src);
 
 #if defined(CONFIG_WCD9310_CODEC) || \
 	defined(CONFIG_WCD9304_CODEC) || \
