@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,14 +23,6 @@
 #include <linux/err.h>
 
 #include "mdss_dsi.h"
-#include "mdss_livedisplay.h"
- 
-#define DT_CMD_HDR 6
-
-#define MIN_REFRESH_RATE 30
-
-DEFINE_LED_TRIGGER(bl_led_trigger);
-
 #ifdef CONFIG_GN_DEVICE_TYPE_CHECK
 #include <linux/gn_device_check.h>
 extern int gn_set_device_info(struct gn_device_info gn_dev_info);
@@ -222,27 +214,26 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 #else
 	int i;
 #endif
-	int rc = 0;
-
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
+		return;
 	}
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
 	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-		pr_debug("%s:%d, display enable line not configured\n",
+		pr_debug("%s:%d, reset line not configured\n",
 			   __func__, __LINE__);
 	}
 
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio)) {
 		pr_debug("%s:%d, reset line not configured\n",
 			   __func__, __LINE__);
+		return;
 	}
 
-	pr_debug("%s: enable = %d\n", __func__, enable);
+	pr_info("%s: enable = %d\n", __func__, enable);
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
@@ -1418,19 +1409,37 @@ int mdss_dsi_panel_init(struct device_node *node,
 		return rc;
 	}
 
-	if (!cmd_cfg_cont_splash)
-		pinfo->cont_splash_enabled = false;
-	pr_info("%s: Continuous splash %s", __func__,
-		pinfo->cont_splash_enabled ? "enabled" : "disabled");
+	if (cmd_cfg_cont_splash)
+		cont_splash_enabled = of_property_read_bool(node,
+				"qcom,cont-splash-enabled");
+	else
+		cont_splash_enabled = false;
+	if (!cont_splash_enabled) {
+		pr_info("%s:%d Continuous splash flag not found.\n",
+				__func__, __LINE__);
+		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 0;
+	} else {
+		pr_info("%s:%d Continuous splash flag enabled.\n",
+				__func__, __LINE__);
 
-	pinfo->dynamic_switch_pending = false;
-	pinfo->is_lpm_mode = false;
+		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 1;
+	}
+
+	partial_update_enabled = of_property_read_bool(node,
+						"qcom,partial-update-enabled");
+	if (partial_update_enabled) {
+		pr_info("%s:%d Partial update enabled.\n", __func__, __LINE__);
+		ctrl_pdata->panel_data.panel_info.partial_update_enabled = 1;
+		ctrl_pdata->partial_update_fnc = mdss_dsi_panel_partial_update;
+	} else {
+		pr_info("%s:%d Partial update disabled.\n", __func__, __LINE__);
+		ctrl_pdata->panel_data.panel_info.partial_update_enabled = 0;
+		ctrl_pdata->partial_update_fnc = NULL;
+	}
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
-	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
-	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 
 	return 0;
 }

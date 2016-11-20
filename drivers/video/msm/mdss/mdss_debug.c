@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2013, 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,6 +30,21 @@
 #define GROUP_BYTES 4
 #define ROW_BYTES 16
 #define MAX_VSYNC_COUNT 0xFFFFFFF
+struct mdss_debug_data {
+	struct dentry *root;
+	struct list_head base_list;
+};
+
+struct mdss_debug_base {
+	struct mdss_debug_data *mdd;
+	void __iomem *base;
+	size_t off;
+	size_t cnt;
+	size_t max_offset;
+	char *buf;
+	size_t buf_len;
+	struct list_head head;
+};
 
 static int mdss_debug_base_open(struct inode *inode, struct file *file)
 {
@@ -90,7 +105,7 @@ static ssize_t mdss_debug_base_offset_read(struct file *file,
 {
 	struct mdss_debug_base *dbg = file->private_data;
 	int len = 0;
-	char buf[24] = {'\0'};
+	char buf[24];
 
 	if (!dbg)
 		return -ENODEV;
@@ -99,10 +114,10 @@ static ssize_t mdss_debug_base_offset_read(struct file *file,
 		return 0;	/* the end */
 
 	len = snprintf(buf, sizeof(buf), "0x%08x %x\n", dbg->off, dbg->cnt);
-	if (len < 0 || len >= sizeof(buf))
+	if (len < 0)
 		return 0;
 
-	if ((count < sizeof(buf)) || copy_to_user(buff, buf, len))
+	if (copy_to_user(buff, buf, len))
 		return -EFAULT;
 
 	*ppos += len;	/* increase offset */
@@ -250,14 +265,12 @@ int mdss_debug_register_base(const char *name, void __iomem *base,
 	if (!dbg)
 		return -ENOMEM;
 
-	if (name)
-		strlcpy(dbg->name, name, sizeof(dbg->name));
 	dbg->base = base;
 	dbg->max_offset = max_offset;
 	dbg->off = 0;
 	dbg->cnt = DEFAULT_BASE_REG_CNT;
 
-	if (name && strcmp(name, "mdp"))
+	if (name)
 		prefix_len = snprintf(dn, sizeof(dn), "%s_", name);
 
 	strlcpy(dn + prefix_len, "off", sizeof(dn) - prefix_len);
@@ -382,14 +395,6 @@ int mdss_debugfs_init(struct mdss_data_type *mdata)
 	debugfs_create_u32("min_mdp_clk", 0644, mdd->root,
 			(u32 *)&mdata->min_mdp_clk);
 
-	debugfs_create_bool("allow_cx_vddmin", 0644, mdd->root,
-		(u32 *)&mdata->allow_cx_vddmin);
-
-	if (mdss_create_xlog_debug(mdd)) {
-		mdss_debugfs_cleanup(mdd);
-		return -ENODEV;
-	}
-
 	mdata->debug_inf.debug_data = mdd;
 
 	return 0;
@@ -403,29 +408,6 @@ int mdss_debugfs_remove(struct mdss_data_type *mdata)
 	mdata->debug_inf.debug_data = NULL;
 
 	return 0;
-}
-
-void mdss_dump_reg(char __iomem *base, int len)
-{
-	char *addr;
-	u32 x0, x4, x8, xc;
-	int i;
-
-	addr = base;
-	if (len % 16)
-		len += 16;
-	len /= 16;
-
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-	for (i = 0; i < len; i++) {
-		x0 = readl_relaxed(addr+0x0);
-		x4 = readl_relaxed(addr+0x4);
-		x8 = readl_relaxed(addr+0x8);
-		xc = readl_relaxed(addr+0xc);
-		pr_info("%p : %08x %08x %08x %08x\n", addr, x0, x4, x8, xc);
-		addr += 16;
-	}
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 }
 
 int vsync_count;
@@ -492,7 +474,7 @@ static inline struct mdss_mdp_misr_map *mdss_misr_get_map(u32 block_id)
 {
 	struct mdss_mdp_misr_map *map;
 
-	if (block_id > DISPLAY_MISR_HDMI && block_id != DISPLAY_MISR_MDP) {
+	if (block_id > DISPLAY_MISR_MDP) {
 		pr_err("MISR Block id (%d) out of range\n", block_id);
 		return NULL;
 	}
@@ -515,19 +497,12 @@ int mdss_misr_set(struct mdss_data_type *mdata,
 	u32 config = 0, val = 0;
 	u32 mixer_num = 0;
 	bool is_valid_wb_mixer = true;
-
-	if (!mdata || !req || !ctl) {
-		pr_err("Invalid input params: mdata = %p req = %p ctl = %p",
-			mdata, req, ctl);
-		return -EINVAL;
-	}
-
 	map = mdss_misr_get_map(req->block_id);
 	if (!map) {
 		pr_err("Invalid MISR Block=%d\n", req->block_id);
 		return -EINVAL;
 	}
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	if (req->block_id == DISPLAY_MISR_MDP) {
 		mixer = mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_DEFAULT);
 		mixer_num = mixer->num;
@@ -580,7 +555,7 @@ int mdss_misr_set(struct mdss_data_type *mdata,
 		pr_debug("MISR_CTRL = 0x%x",
 				readl_relaxed(mdata->mdp_base + map->ctrl_reg));
 	}
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	return 0;
 }
 
@@ -598,8 +573,7 @@ int mdss_misr_get(struct mdss_data_type *mdata,
 		pr_err("Invalid MISR Block=%d\n", resp->block_id);
 		return -EINVAL;
 	}
-
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 	switch (map->crc_op_mode) {
 	case MISR_OP_SFM:
 	case MISR_OP_MFM:
@@ -652,7 +626,7 @@ int mdss_misr_get(struct mdss_data_type *mdata,
 		break;
 	}
 
-	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	return ret;
 }
 
