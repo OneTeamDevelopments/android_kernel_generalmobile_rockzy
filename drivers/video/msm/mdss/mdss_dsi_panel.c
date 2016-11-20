@@ -31,9 +31,6 @@
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
-#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
-extern void lm3630_lcd_backlight_set_level(int level);
-#endif
 #ifdef CONFIG_GN_DEVICE_TYPE_CHECK
 #include <linux/gn_device_check.h>
 extern int gn_set_device_info(struct gn_device_info gn_dev_info);
@@ -312,6 +309,13 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	return rc;
 }
 
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
+void mdss_dsi_panel_lm3630(unsigned int bl_level)
+{
+	set_backlight_lm3630(bl_level);
+}
+#endif
+
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
 static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
 
@@ -428,25 +432,17 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		break;
 	case BL_DCS_CMD:
 		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
-		if (mdss_dsi_is_master_ctrl(ctrl_pdata)) {
-			struct mdss_dsi_ctrl_pdata *sctrl =
-				mdss_dsi_get_slave_ctrl();
-			if (!sctrl) {
-				pr_err("%s: Invalid slave ctrl data\n",
-					__func__);
-				return;
-			}
-			mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
-		}
 		break;
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
+	case BL_LM3630:
+		mdss_dsi_panel_lm3630(bl_level);
+		break;
+#endif
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
 		break;
 	}
-#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
-	lm3630_lcd_backlight_set_level(bl_level);
-#endif
 }
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
@@ -1149,6 +1145,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		} else if (!strncmp(data, "bl_ctrl_dcs", 11)) {
 			ctrl_pdata->bklt_ctrl = BL_DCS_CMD;
 		}
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
+	else if (!strncmp(data, "bl_ctrl_lm3630", 14)) {
+			ctrl_pdata->bklt_ctrl = BL_LM3630;
+	}
+#endif
 	}
 	rc = of_property_read_u32(np, "qcom,mdss-brightness-max-level", &tmp);
 	pinfo->brightness_max = (!rc ? tmp : MDSS_MAX_BL_BRIGHTNESS);

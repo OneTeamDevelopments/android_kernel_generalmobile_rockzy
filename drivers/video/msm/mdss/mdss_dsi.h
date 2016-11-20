@@ -92,6 +92,9 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
+	BL_LM3630,
+#endif
 	UNKNOWN_CTRL,
 };
 
@@ -358,6 +361,10 @@ struct dsi_status_data {
 	struct delayed_work check_status;
 	struct msm_fb_data_type *mfd;
 };
+
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
+void set_backlight_lm3630(unsigned int level);
+#endif
 
 #ifdef CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT
 void set_vol_tps65132_positive(void);
