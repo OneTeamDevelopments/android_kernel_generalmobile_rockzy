@@ -178,8 +178,8 @@ void __init msm8974_init(void)
 
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
-	msm8974_config_ramconsole();
 	msm8974_add_drivers();
+	msm8974_config_ramconsole();
 }
 
 static const char *msm8974_dt_match[] __initconst = {
