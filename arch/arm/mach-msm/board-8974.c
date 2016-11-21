@@ -130,20 +130,19 @@ static void __init msm8974_config_display(void)
 		return;
 	}
 
-		rc = gpio_request(DISP_LCD_UNK_GPIO, "lcd_unk");
-		if (rc) {
-			pr_err("%s: request DISP_UNK GPIO failed, rc: %d",
-					__func__, rc);
-			return;
-		}
+	rc = gpio_request(DISP_LCD_UNK_GPIO, "lcd_unk");
+	if (rc) {
+		pr_err("%s: request DISP_UNK GPIO failed, rc: %d",
+				__func__, rc);
+		return;
+	}
 
-		rc = gpio_direction_output(DISP_LCD_UNK_GPIO, 0);
-		if (rc) {
-			pr_err("%s: set direction for DISP_LCD_UNK GPIO failed, rc: %d",
-					__func__, rc);
-			gpio_free(DISP_LCD_UNK_GPIO);
-			return;
-		}
+	rc = gpio_direction_output(DISP_LCD_UNK_GPIO, 0);
+	if (rc) {
+		pr_err("%s: set direction for DISP_LCD_UNK GPIO failed, rc: %d",
+				__func__, rc);
+		gpio_free(DISP_LCD_UNK_GPIO);
+		return;
 	}
 }
 
