@@ -50,6 +50,7 @@
 #include "modem_notifier.h"
 #include "platsmp.h"
 #include <linux/persistent_ram.h>
+#include <linux/gpio.h>
 
 static struct platform_device *ram_console_dev;
 
@@ -94,6 +95,56 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+}
+
+#define DISP_ESD_GPIO 28
+#define DISP_LCD_UNK_GPIO 62
+static void __init msm8974_config_display(void)
+{
+	int rc;
+
+	rc = gpio_request(DISP_ESD_GPIO, "disp_esd");
+	if (rc) {
+		pr_err("%s: request DISP_ESD GPIO failed, rc: %d",
+				__func__, rc);
+		return;
+	}
+
+	rc = gpio_tlmm_config(GPIO_CFG(DISP_ESD_GPIO, 0,
+				GPIO_CFG_INPUT,
+				GPIO_CFG_PULL_DOWN,
+				GPIO_CFG_2MA),
+			GPIO_CFG_ENABLE);
+	if (rc) {
+		pr_err("%s: unable to configure DISP_ESD GPIO, rc: %d",
+				__func__, rc);
+		gpio_free(DISP_ESD_GPIO);
+		return;
+	}
+
+	rc = gpio_direction_input(DISP_ESD_GPIO);
+	if (rc) {
+		pr_err("%s: set direction for DISP_ESD GPIO failed, rc: %d",
+				__func__, rc);
+		gpio_free(DISP_ESD_GPIO);
+		return;
+	}
+
+		rc = gpio_request(DISP_LCD_UNK_GPIO, "lcd_unk");
+		if (rc) {
+			pr_err("%s: request DISP_UNK GPIO failed, rc: %d",
+					__func__, rc);
+			return;
+		}
+
+		rc = gpio_direction_output(DISP_LCD_UNK_GPIO, 0);
+		if (rc) {
+			pr_err("%s: set direction for DISP_LCD_UNK GPIO failed, rc: %d",
+					__func__, rc);
+			gpio_free(DISP_LCD_UNK_GPIO);
+			return;
+		}
+	}
 }
 
 static void __init msm8974_config_ramconsole(void)
@@ -179,6 +230,7 @@ void __init msm8974_init(void)
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
 	msm8974_add_drivers();
+	msm8974_config_display();
 	msm8974_config_ramconsole();
 }
 
