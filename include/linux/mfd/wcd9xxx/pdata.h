@@ -168,9 +168,6 @@ struct wcd9xxx_pdata {
 	int irq_base;
 	int num_irqs;
 	int reset_gpio;
-#ifdef CONFIG_GN_Q_BSP_AUDIO_HEADSET_SUPPORT	
-    int pa_gpio;
-#endif
 	struct wcd9xxx_amic amic_settings;
 	struct slim_device slimbus_slave_device;
 	struct wcd9xxx_micbias_setting micbias;
