@@ -200,7 +200,7 @@ config SND_SOC_CS4271
 
 config SND_SOC_CX20442
 	tristate
-        
+
 config SND_SOC_JZ4740_CODEC
 	tristate
 
@@ -450,6 +450,9 @@ config SND_SOC_MAX9877
 	tristate
 
 config SND_SOC_TPA6130A2
+	tristate
+
+config SND_SOC_TAS2552
 	tristate
 
 config SND_SOC_MSM_STUB

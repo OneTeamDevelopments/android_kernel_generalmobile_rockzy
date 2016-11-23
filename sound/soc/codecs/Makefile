@@ -51,8 +51,8 @@ snd-soc-uda1380-objs := uda1380.o
 snd-soc-wcd9304-objs := wcd9304.o wcd9304-tables.o
 snd-soc-wcd9310-objs := wcd9310.o wcd9310-tables.o
 snd-soc-cs8427-objs := cs8427.o
-snd-soc-wcd9320-objs := wcd9xxx-resmgr.o wcd9320.o wcd9320-tables.o wcd9xxx-mbhc.o wcd9xxx-common.o
-snd-soc-wcd9306-objs := wcd9306.o wcd9306-tables.o wcd9xxx-common.o
+snd-soc-wcd9320-objs := wcd9xxx-resmgr.o wcd9320.o wcd9320-tables.o wcd9xxx-mbhc.o wcd9xxx-common.o wcdcal-hwdep.o
+snd-soc-wcd9306-objs := wcd9306.o wcd9306-tables.o wcd9xxx-common.o wcdcal-hwdep.o
 snd-soc-msm8x10-wcd-objs := msm8x10-wcd.o msm8x10-wcd-tables.o wcd9xxx-common.o
 snd-soc-wl1273-objs := wl1273.o
 snd-soc-wm1250-ev1-objs := wm1250-ev1.o
@@ -104,11 +104,12 @@ snd-soc-wm-hubs-objs := wm_hubs.o
 
 snd-soc-timpani-objs := timpani.o
 snd-soc-msm-stub-objs := msm_stub.o
-snd-soc-msm-hdmi-rx-objs := msm_hdmi_codec_rx.o
+obj-$(CONFIG_SND_SOC_MSM_HDMI_CODEC_RX) := msm_hdmi_codec_rx.o
 
 # Amp
 snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
+snd-soc-tas2552-objs := tas2552.o
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AC97_CODEC)	+= snd-soc-ac97.o
@@ -214,8 +215,8 @@ obj-$(CONFIG_SND_SOC_WM9712)	+= snd-soc-wm9712.o
 obj-$(CONFIG_SND_SOC_WM9713)	+= snd-soc-wm9713.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_MSM_STUB)  += snd-soc-msm-stub.o
-obj-$(CONFIG_SND_SOC_MSM_HDMI_CODEC_RX)  += snd-soc-msm-hdmi-rx.o
 
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
+obj-$(CONFIG_SND_SOC_TAS2552)	+= snd-soc-tas2552.o

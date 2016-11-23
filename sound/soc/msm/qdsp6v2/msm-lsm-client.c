@@ -19,6 +19,7 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
+#include <linux/freezer.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -81,7 +82,7 @@ static void lsm_event_handler(uint32_t opcode, uint32_t token,
 	}
 }
 
-static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
+static int msm_lsm_ioctl_shared(struct snd_pcm_substream *substream,
 			 unsigned int cmd, void *arg)
 {
 	unsigned long flags;
@@ -89,8 +90,7 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	struct snd_lsm_sound_model snd_model;
 	int rc = 0;
 	int xchg = 0;
-	int size = 0;
-	struct snd_lsm_event_status *event_status = NULL;
+	u32 size = 0;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct lsm_priv *prtd = runtime->private_data;
 	struct snd_lsm_event_status *user = arg;
@@ -99,14 +99,7 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	switch (cmd) {
 	case SNDRV_LSM_REG_SND_MODEL:
 		pr_debug("%s: Registering sound model\n", __func__);
-		if (copy_from_user(&snd_model, (void *)arg,
-				   sizeof(struct snd_lsm_sound_model))) {
-			rc = -EFAULT;
-			pr_err("%s: copy from user failed, size %d\n", __func__,
-			       sizeof(struct snd_lsm_sound_model));
-			break;
-		}
-
+		memcpy(&snd_model, arg, sizeof(struct snd_lsm_sound_model));
 		rc = q6lsm_snd_model_buf_alloc(prtd->lsm_client,
 					       snd_model.data_size);
 		if (rc) {
@@ -144,53 +137,28 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	case SNDRV_LSM_EVENT_STATUS:
 		pr_debug("%s: Get event status\n", __func__);
 		atomic_set(&prtd->event_wait_stop, 0);
-		rc = wait_event_interruptible(prtd->event_wait,
+		rc = wait_event_freezable(prtd->event_wait,
 				(cmpxchg(&prtd->event_avail, 1, 0) ||
 				 (xchg = atomic_cmpxchg(&prtd->event_wait_stop,
 							1, 0))));
-		pr_debug("%s: wait_event_interruptible %d event_wait_stop %d\n",
+		pr_debug("%s: wait_event_freezable %d event_wait_stop %d\n",
 			 __func__, rc, xchg);
 		if (!rc && !xchg) {
 			pr_debug("%s: New event available %ld\n", __func__,
 				 prtd->event_avail);
 			spin_lock_irqsave(&prtd->event_lock, flags);
-			if (prtd->event_status) {
-				size = sizeof(*event_status) +
-				       prtd->event_status->payload_size;
-				event_status = kmemdup(prtd->event_status, size,
-						       GFP_ATOMIC);
-			}
+			if (prtd->event_status)
+				size = sizeof(*(prtd->event_status)) +
+				prtd->event_status->payload_size;
 			spin_unlock_irqrestore(&prtd->event_lock, flags);
-			if (!event_status) {
-				pr_err("%s: Couldn't allocate %d bytes\n",
-				       __func__, size);
-				/*
-				 * Don't use -ENOMEM as userspace will check
-				 * it for increasing buffer
-				 */
-				rc = -EFAULT;
-			} else {
-				if (!access_ok(VERIFY_READ, user,
-					sizeof(struct snd_lsm_event_status)))
-					rc = -EFAULT;
-				if (user->payload_size <
-				    event_status->payload_size) {
-					pr_debug("%s: provided %dbytes isn't enough, needs %dbytes\n",
-						 __func__, user->payload_size,
-						 size);
-					rc = -ENOMEM;
-				} else if (!access_ok(VERIFY_WRITE, arg,
-						      size)) {
-					rc = -EFAULT;
-				} else {
-					rc = copy_to_user(arg, event_status,
-							  size);
-					if (rc)
-						pr_err("%s: copy to user failed %d\n",
-						       __func__, rc);
-				}
-				kfree(event_status);
-			}
+			if (user->payload_size <
+			    prtd->event_status->payload_size) {
+				pr_debug("%s: provided %dbytes isn't enough, needs %dbytes\n",
+					 __func__, user->payload_size,
+					 prtd->event_status->payload_size);
+				rc = -ENOMEM;
+			} else
+				memcpy(user, prtd->event_status, size);
 		} else if (xchg) {
 			pr_debug("%s: Wait aborted\n", __func__);
 			rc = 0;
@@ -241,6 +209,81 @@ static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
 	return rc;
 }
 
+static int msm_lsm_ioctl(struct snd_pcm_substream *substream,
+			 unsigned int cmd, void *arg)
+{
+	int err = 0;
+	u32 size = 0;
+
+	if (!substream) {
+		pr_err("%s: Invalid params\n", __func__);
+		return -EINVAL;
+	}
+	switch (cmd) {
+	case SNDRV_LSM_REG_SND_MODEL: {
+		struct snd_lsm_sound_model snd_model;
+		if (!arg) {
+			pr_err("%s: Invalid params snd_model\n", __func__);
+			return -EINVAL;
+		}
+		if (copy_from_user(&snd_model, arg, sizeof(snd_model))) {
+			err = -EFAULT;
+			pr_err("%s: copy from user failed, size %zd\n",
+			__func__, sizeof(struct snd_lsm_sound_model));
+		}
+		if (!err)
+			err = msm_lsm_ioctl_shared(substream, cmd, &snd_model);
+		if (err)
+			pr_err("%s REG_SND_MODEL failed err %d\n",
+			__func__, err);
+		return err;
+	}
+	case SNDRV_LSM_EVENT_STATUS: {
+		struct snd_lsm_event_status *user = NULL, userarg;
+		if (!arg) {
+			pr_err("%s: Invalid params event status\n", __func__);
+			return -EINVAL;
+		}
+		if (copy_from_user(&userarg, arg, sizeof(userarg))) {
+			pr_err("%s: err copyuser event_status\n",
+			__func__);
+			return -EFAULT;
+		}
+		size = sizeof(struct snd_lsm_event_status) +
+		userarg.payload_size;
+		user = kmalloc(size, GFP_KERNEL);
+		if (!user) {
+			pr_err("%s: Allocation failed event status size %d\n",
+			__func__, size);
+			err = -EFAULT;
+		} else {
+			user->payload_size = userarg.payload_size;
+			err = msm_lsm_ioctl_shared(substream, cmd, user);
+		}
+		/* Update size with actual payload size */
+		size = sizeof(*user) + user->payload_size;
+		if (!err && !access_ok(VERIFY_WRITE, arg, size)) {
+			pr_err("%s: write verify failed size %d\n",
+			__func__, size);
+			err = -EFAULT;
+		}
+		if (!err && (copy_to_user(arg, user, size))) {
+			pr_err("%s: failed to copy payload %d",
+			__func__, size);
+			err = -EFAULT;
+		}
+		kfree(user);
+		if (err)
+			pr_err("%s: lsmevent failed %d", __func__, err);
+		return err;
+	}
+	default:
+		err = msm_lsm_ioctl_shared(substream, cmd, arg);
+	break;
+	}
+	return err;
+}
+
 static int msm_lsm_open(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -265,10 +308,10 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 	ret = q6lsm_open(prtd->lsm_client);
 	if (ret < 0) {
 		pr_err("%s: lsm open failed, %d\n", __func__, ret);
-		q6lsm_client_free(prtd->lsm_client);
 		kfree(prtd);
 		return ret;
 	}
+	prtd->lsm_client->opened = true;
 
 	pr_debug("%s: Session ID %d\n", __func__, prtd->lsm_client->session);
 	prtd->lsm_client->started = false;
@@ -276,6 +319,7 @@ static int msm_lsm_open(struct snd_pcm_substream *substream)
 	init_waitqueue_head(&prtd->event_wait);
 	runtime->private_data = prtd;
 
+	prtd->lsm_client->opened = false;
 	return 0;
 }
 
@@ -284,10 +328,37 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 	unsigned long flags;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct lsm_priv *prtd = runtime->private_data;
+	int ret = 0;
 
 	pr_debug("%s\n", __func__);
+	if (prtd->lsm_client->started) {
+		ret = q6lsm_stop(prtd->lsm_client, true);
+		if (ret)
+			pr_err("%s: session stop failed, err = %d\n",
+				__func__, ret);
+		else
+			pr_debug("%s: LSM client session stopped %d\n",
+				 __func__, ret);
 
-	q6lsm_close(prtd->lsm_client);
+		/*
+		 * Go Ahead and try de-register sound model,
+		 * even if stop failed
+		 */
+		prtd->lsm_client->started = false;
+
+		ret = q6lsm_deregister_sound_model(prtd->lsm_client);
+		if (ret)
+			pr_err("%s: dereg_snd_model failed, err = %d\n",
+				__func__, ret);
+		else
+			pr_debug("%s: dereg_snd_model succesful\n",
+				 __func__);
+	}
+
+	if (prtd->lsm_client->opened) {
+		q6lsm_close(prtd->lsm_client);
+		prtd->lsm_client->opened = false;
+	}
 	q6lsm_client_free(prtd->lsm_client);
 
 	spin_lock_irqsave(&prtd->event_lock, flags);
@@ -295,6 +366,7 @@ static int msm_lsm_close(struct snd_pcm_substream *substream)
 	prtd->event_status = NULL;
 	spin_unlock_irqrestore(&prtd->event_lock, flags);
 	kfree(prtd);
+	runtime->private_data = NULL;
 
 	return 0;
 }
