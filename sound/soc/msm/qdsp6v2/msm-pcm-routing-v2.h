@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,6 +39,7 @@
 #define LPASS_BE_QUAT_MI2S_RX "QUAT_MI2S_RX"
 #define LPASS_BE_QUAT_MI2S_TX "QUAT_MI2S_TX"
 #define LPASS_BE_SEC_MI2S_RX "SEC_MI2S_RX"
+#define LPASS_BE_SEC_MI2S_RX_VIBRA "SEC_MI2S_RX_VIBRA"
 #define LPASS_BE_SEC_MI2S_TX "SEC_MI2S_TX"
 #define LPASS_BE_PRI_MI2S_RX "PRI_MI2S_RX"
 #define LPASS_BE_PRI_MI2S_TX "PRI_MI2S_TX"
@@ -138,6 +139,7 @@ enum {
 	MSM_BACKEND_DAI_AUDIO_I2S_RX,
 	MSM_BACKEND_DAI_SEC_AUXPCM_RX,
 	MSM_BACKEND_DAI_SEC_AUXPCM_TX,
+	MSM_BACKEND_DAI_SECONDARY_MI2S_RX_VIBRA,
 	MSM_BACKEND_DAI_MAX,
 };
 
@@ -151,7 +153,7 @@ enum msm_pcm_routing_event {
  * dspst_id:  DSP audio stream ID
  * stream_type: playback or capture
  */
-int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode, int dspst_id,
+void msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode, int dspst_id,
 	int stream_type);
 void msm_pcm_routing_reg_psthr_stream(int fedai_id, int dspst_id,
 		int stream_type);
@@ -161,7 +163,7 @@ struct msm_pcm_routing_evt {
 	void *priv_data;
 };
 
-int msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
+void msm_pcm_routing_reg_phy_stream_v2(int fedai_id, bool perf_mode,
 				       int dspst_id, int stream_type,
 				       struct msm_pcm_routing_evt event_info);
 

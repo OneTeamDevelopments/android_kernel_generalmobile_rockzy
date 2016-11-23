@@ -1,624 +1,576 @@
 /*
- * Copyright (C) 2012 Motorola Mobility, Inc.
+ * tas2552.c  --  smart PA driver for TAS2552
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2014-2015 Xiaomi Corporation
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Author: Nannan Wang <wangnannan@xiaomi.com>
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
- * 02111-1307, USA
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
  */
-#include <linux/clk.h>
-#include <linux/debugfs.h>
-#include <linux/delay.h>
-#include <linux/err.h>
-#include <linux/errno.h>
-#include <linux/export.h>
+
+#include <linux/i2c.h>
+#include <linux/module.h>
+#include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
-#include <linux/i2c.h>
-#include <linux/io.h>
-#include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/miscdevice.h>
-#include <linux/seq_file.h>
-#include <linux/slab.h>
-#include <linux/string.h>
-#include <linux/uaccess.h>
+#include <linux/delay.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
 #include <sound/soc.h>
-#include <linux/hrtimer.h>
-#include <linux/workqueue.h>
+#include <sound/tlv.h>
 
-#ifdef CONFIG_MACH_N3
-/* xiaojun.lv@PhoneDpt.AudioDrv, 2014/06/25, add for 14021 tas2552 smartPA driver */
-#include "tas2552-core.h"
+#include "tas2552.h"
 
-#define NAME "tas2552"
 
-#define I2C_RETRY_DELAY		5	/* ms */
-#define I2C_RETRIES		5
-#define SPK_POP_DELAY 35000000	//10000000 /* unit ns, 10ms */
+#define TAS2552_PLL_CLK_48000		24576000
+#define TAS2552_PLL_CLK_44100		22579200
 
-extern void create_opalum_proc(void);
-static struct i2c_client *tas2552_client;
-static int opalum_proc_created = 0;	//John.Xu@Audio.Driver Add begin for F0 test
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, add timer and workqueue for avoid pop sound */
-struct hrtimer speaker_timer;
-static struct work_struct speaker_work;
-static struct workqueue_struct *speaker_workqueue = NULL;
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, add timer and workqueue for avoid pop sound end */
 
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/25 add for tas2552 current limit */
-/* 0x0---1.5A
- * 0x1---2.0A
- * 0x2---2.5A default
- * 0x3---3.0A
- */
-enum {
-	TAS2552_CURRENT_1P5A = 0x0,
-	TAS2552_CURRENT_2P0A = 0x1,
-	TAS2552_CURRENT_2P5A = 0x2,
-	TAS2552_CURRENT_3P0A = 0x3,
-	TAS2552_CURRENT_MAX,
-} TAS2552_CURRENT_E;
-static u8 tas2552_current = TAS2552_CURRENT_2P5A;	//2.5A
-
-struct tas2552_data {
-	uint8_t power_state;
+struct tas2552_priv {
+	unsigned int sysclk;
 	int enable_gpio;
 };
 
-static const u8 tas2552_reg_init[][2] = {
-	{0x01, 0x16},		//init to mute and power down
-	{0x08, 0x10},
-	{0x03, 0xDD},		//init to analog input
-	{0x04, 0x00},
-	{0x05, 0x10},
-	{0x06, 0x00},
-	{0x07, 0xC8},
-	{0x09, 0x00},
-	{0x0A, 0x00},
-	{0x12, 0x15},		//14dB
-	{0x14, 0x0F},
-	{0x0D, 0xC0},
-	{0x02, 0xEA},
-	{0x01, 0x12},
+struct tas2552_reg_preset {
+	u8 reg;
+	u8 value;
 };
 
-/* Boost Current Limit register set sequence */
-static const u8 tas2552_reg_current[][2] = {
-	{0x21, 0x02},
-	{0x21, 0x01},
-	{0x21, 0x04},
-	{0x21, 0x07},
-	{0x32, 0xAF},		//current limit register
-	{0x21, 0x07},
+static const struct tas2552_reg_preset tas2552_preset[] = {
+	{TAS2552_REG_CONFIG1,				0x02},
+	{TAS2552_REG_CONFIG2,				0xE3},
+	{TAS2552_REG_CONFIG3,				0x5D},
+	{TAS2552_REG_OUTPUT_DATA,			0xC8},
+	{TAS2552_REG_PGA_GAIN,				0x16},
+	{TAS2552_REG_BOOST_AUTO_PASS_THROUGH_CTRL,	0x0F},
 };
 
-/* I2C Read/Write Functions */
-static int tas2552_i2c_read(struct tas2552_data *tas2552, u8 reg, u8 * value)
+/*
+ * PLL_CLK = (0.5 * PLL_CLKIN * J.D) / (1 << P)
+ *
+ * J = 4, 5, 6, ... 96
+ * D = 0, 1, 2, ... 9999
+ * P = 0, 1
+ *
+ * D = 0, 512kHz <= (PLL_CLKIN / (1 << P)) <= 12.288MHz
+ * D != 0, 1.1MHz <= (PLL_CLKIN / (1 << P)) <= 9.2MHz
+ *
+ * sample rate	sys clock	pll clock	p,j,d,
+ * 48kHz	12.288MHz	24.5760MHz	0,4,0
+ * 44.1kHz	12.288MHz	22.5792MHz	1,7,35
+ *
+ */
+static int tas2552_set_pll_clk(struct snd_soc_codec *codec,
+				unsigned int sample_rate)
 {
-	int err;
-	int tries = 0;
+	struct tas2552_priv *tas2552 = snd_soc_codec_get_drvdata(codec);
+	unsigned int j, d, p;
+	u64 jd;
+	unsigned int target_clk;
+	unsigned int value = 0;
 
-	struct i2c_msg msgs[] = {
-		{
-		 .addr = tas2552_client->addr,
-		 .flags = 0,
-		 .len = 1,
-		 .buf = &reg,
-		 },
-		{
-		 .addr = tas2552_client->addr,
-		 .flags = I2C_M_RD,
-		 .len = 1,
-		 .buf = value,
-		 },
-	};
+	dev_dbg(codec->dev, "%s: sysclk %d, sample rate %d\n", __func__,
+		tas2552->sysclk, sample_rate);
+	target_clk = (sample_rate == 48000) ?
+			TAS2552_PLL_CLK_48000 : TAS2552_PLL_CLK_44100;
 
-	do {
-		err = i2c_transfer(tas2552_client->adapter, msgs,
-				   ARRAY_SIZE(msgs));
-		if (err != ARRAY_SIZE(msgs))
-			msleep_interruptible(I2C_RETRY_DELAY);
-	} while ((err != ARRAY_SIZE(msgs)) && (++tries < I2C_RETRIES));
-
-	if (err != ARRAY_SIZE(msgs)) {
-		dev_err(&tas2552_client->dev, "read transfer error %d\n", err);
-		err = -EIO;
+	if (tas2552->sysclk == target_clk) {
+		/* bypass PLL */
+		value = 1 << TAS2552_PLLCTRL2_BYPASS_POS;
+		snd_soc_update_bits(codec, TAS2552_REG_PLLCTRL2,
+			TAS2552_PLLCTRL2_BYPASS_MSK, value);
 	} else {
-		err = 0;
+		for (p = 0; p <= 1; p++) {
+			jd = ((u64)target_clk << (p + 1)) * 10000;
+			do_div(jd, tas2552->sysclk);
+			d = do_div(jd, 10000);
+			j = jd;
+
+			if ((j >= 4 && j <= 96) && (d <= 9999)) {
+				if (d == 0) {
+					if ((tas2552->sysclk / (1 << p)) >= 512000 &&
+						(tas2552->sysclk / (1 << p)) <= 12288000)
+						break;
+				} else {
+					if ((tas2552->sysclk / (1 << p)) >= 1100000 &&
+						(tas2552->sysclk / (1 << p)) <= 9200000)
+						break;
+				}
+			}
+		}
+
+		if (p > 1) {
+			dev_err(codec->dev, "%s: Failed to set PLL clock\n", __func__);
+			dev_err(codec->dev, "%s: sys clock %d, sample rate %d\n", __func__,
+				tas2552->sysclk, sample_rate);
+			return -EINVAL;
+		}
+
+		dev_dbg(codec->dev, "%s: J=%d, P=%d, D=%d\n", __func__, j, p, d);
+
+		/* disable PLL bypass */
+		snd_soc_update_bits(codec, TAS2552_REG_PLLCTRL2,
+			TAS2552_PLLCTRL2_BYPASS_MSK, 0);
+
+		/* set J and P value */
+		value = ((p << TAS2552_PLLCTRL1_P_POS) & TAS2552_PLLCTRL1_P_MSK) |\
+			(j & TAS2552_PLLCTRL1_J_MSK);
+		snd_soc_update_bits(codec, TAS2552_REG_PLLCTRL1,
+			TAS2552_PLLCTRL1_J_MSK | TAS2552_PLLCTRL1_P_MSK, value);
+
+		/* set D value */
+		value = d & 0xFF;
+		snd_soc_update_bits(codec, TAS2552_REG_PLLCTRL3,
+			TAS2552_PLLCTRL3_D_BIT7_0_MSK, value);
+		value = (d >> 8) & 0x3F;
+		snd_soc_update_bits(codec, TAS2552_REG_PLLCTRL2,
+			TAS2552_PLLCTRL2_D_BIT13_8_MSK, value);
 	}
 
-	return err;
+	return 0;
 }
 
-static int tas2552_i2c_write(struct tas2552_data *tas2552, u8 reg, u8 value)
+static int tas2552_probe(struct snd_soc_codec *codec)
 {
-	int err;
-	int tries = 0;
-	u8 buf[2] = { 0, 0 };
+	struct tas2552_priv *tas2552;
+	int i, ret;
 
-	struct i2c_msg msgs[] = {
-		{
-		 .addr = tas2552_client->addr,
-		 .flags = 0,
-		 .len = 2,
-		 .buf = buf,
-		 },
-	};
-
-	buf[0] = reg;
-	buf[1] = value;
-	do {
-		err = i2c_transfer(tas2552_client->adapter, msgs,
-				   ARRAY_SIZE(msgs));
-		if (err != ARRAY_SIZE(msgs))
-			msleep_interruptible(I2C_RETRY_DELAY);
-	} while ((err != ARRAY_SIZE(msgs)) && (++tries < I2C_RETRIES));
-
-	if (err != ARRAY_SIZE(msgs)) {
-		dev_err(&tas2552_client->dev, "write transfer error\n");
-		err = -EIO;
-	} else {
-		err = 0;
+	dev_dbg(codec->dev, "%s: enter\n", __func__);
+	tas2552 = kzalloc(sizeof(struct tas2552_priv), GFP_KERNEL);
+	if (tas2552 == NULL) {
+		dev_err(codec->dev, "%s: Failed to alloc tas2552_priv\n", __func__);
+		return -ENOMEM;
 	}
 
-	return err;
-}
+	tas2552->enable_gpio = of_get_named_gpio(codec->dev->of_node,
+				"ti,enable-gpio", 0);
+	if (tas2552->enable_gpio < 0) {
+		ret = tas2552->enable_gpio;
+		dev_err(codec->dev, "%s: Failed to parse gpio %d\n", __func__, ret);
+		kfree(tas2552);
+		return ret;
+	}
 
-static int tas2552_reg_read(struct tas2552_data *tas2552, u8 reg, u8 * value)
-{
-	int ret = -EINVAL;
-	if (tas2552->power_state)
-		ret = tas2552_i2c_read(tas2552, reg, value);
+	/* request enable gpio and set output to high */
+	ret = gpio_request(tas2552->enable_gpio, "tas2552 enable");
+	if (ret < 0) {
+		dev_err(codec->dev, "%s: Failed to request enable gpio %d\n",
+			__func__, ret);
+		kfree(tas2552);
+		return ret;
+	}
+	gpio_direction_output(tas2552->enable_gpio, 1);
+
+	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_I2C);
+	if (ret < 0) {
+		dev_err(codec->dev, "%s: Failed to set cache I/O(%d)\n", __func__, ret);
+		gpio_set_value(tas2552->enable_gpio, 0);
+		gpio_free(tas2552->enable_gpio);
+		kfree(tas2552);
+		return ret;
+	}
+
+	/* set registers preset value */
+	for (i = 0; i < ARRAY_SIZE(tas2552_preset); i++)
+		snd_soc_write(codec, tas2552_preset[i].reg, tas2552_preset[i].value);
+
+	snd_soc_codec_set_drvdata(codec, tas2552);
 
 	return ret;
 }
 
-static int tas2552_reg_write(struct tas2552_data *tas2552,
-			     u8 reg, u8 value, u8 mask)
+static int tas2552_remove(struct snd_soc_codec *codec)
 {
-	int retval;
-	u8 old_value;
+	struct tas2552_priv *tas2552 = snd_soc_codec_get_drvdata(codec);
 
-	value &= mask;
-
-	retval = tas2552_reg_read(tas2552, reg, &old_value);
-
-	pr_debug("Old value = 0x%08X reg no. = 0x%02X\n", old_value, reg);
-
-	if (retval != 0)
-		goto error;
-
-	old_value &= ~mask;
-	value |= old_value;
-
-	pr_debug("New value = 0x%08X  reg no. = 0x%02X\n", value, reg);
-	if (tas2552->power_state)
-		retval = tas2552_i2c_write(tas2552, reg, value);
-
-error:
-	return retval;
-}
-
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, add timer and workqueue for avoid pop sound */
-static enum hrtimer_restart speaker_timer_func(struct hrtimer *timer)
-{
-	queue_work(speaker_workqueue, &speaker_work);
-	return HRTIMER_NORESTART;
-}
-
-void speaker_work_callback(struct work_struct *work)
-{
-	struct tas2552_data *tas2552 = i2c_get_clientdata(tas2552_client);
-	tas2552_reg_write(tas2552, TAS2552_CFG3_REG, 0x00, 0x80);
-	pr_info("%s exit\n", __func__);
-	return;
-}
-
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, add timer and workqueue for avoid pop sound end*/
-
-static int tas2552_reset(void)
-{
-	int retval = 0;
-	struct tas2552_data *tas2552 = i2c_get_clientdata(tas2552_client);
-	retval = tas2552_reg_write(tas2552, 0x01, 0x01, 0xff);
-	mdelay(1);
-	return retval;
-}
-
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/25 add for tas2552 current limit */
-static int tas2552_set_current(void)
-{
-	int i = 0, retval = 0;
-	u8 cur = 0;
-	struct tas2552_data *tas2552 = i2c_get_clientdata(tas2552_client);
-	pr_info("%s tas2552_current:0x%02x\n", __func__, tas2552_current);
-	/* if current below 2.5A, means need to modify the PGA gain,
-	 * because everytime turn on the tas2552, we reset it, after reset,
-	 * the gain is reset, so we need to modify it everytime to 8dB */
-
-	if (tas2552_current < TAS2552_CURRENT_2P5A) {
-		tas2552_reg_read(tas2552, TAS2552_PGA_GAIN_REG, &cur);
-		pr_debug("gain bf reg:0x12 value:0x%02x\n", cur);
-		cur = 0x0F;	//0x0F --- 8dB
-		retval =
-		    tas2552_reg_write(tas2552, TAS2552_PGA_GAIN_REG, cur, 0xff);
-		pr_debug("gain af reg:0x12 value:0x%02x\n", cur);
-	} else {
-		tas2552_reg_read(tas2552, TAS2552_PGA_GAIN_REG, &cur);
-		pr_debug("recover gain bf reg:0x12 value:0x%02x\n", cur);
-		cur = 0x15;	//0x15 --- 14dB
-		retval =
-		    tas2552_reg_write(tas2552, TAS2552_PGA_GAIN_REG, cur, 0xff);
-		pr_debug("recover gain af reg:0x12 value:0x%02x\n", cur);
+	if (tas2552->enable_gpio > 0) {
+		gpio_set_value(tas2552->enable_gpio, 0);
+		gpio_free(tas2552->enable_gpio);
 	}
-	for (i = 0; i < ARRAY_SIZE(tas2552_reg_current); i++) {
-		if (tas2552_reg_current[i][0] == 0x32)	//set current reg
-		{
-			tas2552_reg_read(tas2552, tas2552_reg_current[i][0],
-					 &cur);
-			pr_debug("bf reg:0x%02x value:0x%02x\n",
-				 tas2552_reg_current[i][0], cur);
-			cur &= 0x3f;	//clear the bit 7 and bit 6
-			cur |= (tas2552_current << 6);	//set the bit 7 and bit 6 for current
-			retval =
-			    tas2552_reg_write(tas2552,
-					      tas2552_reg_current[i][0], cur,
-					      0xff);
-			pr_debug("af reg:0x%02x value:0x%02x\n",
-				 tas2552_reg_current[i][0], cur);
-			continue;
-		}
-		retval = tas2552_reg_write(tas2552, tas2552_reg_current[i][0],
-					   tas2552_reg_current[i][1], 0xff);
-		pr_debug("reg:0x%02x value:0x%02x\n", tas2552_reg_current[i][0],
-			 tas2552_reg_current[i][1]);
-		if (retval < 0) {
-			return retval;
-		}
-	}
-	return retval;
-}
 
-static int tas2552_init_reg(void)
-{
-	int i = 0, retval = 0;
-	struct tas2552_data *tas2552 = i2c_get_clientdata(tas2552_client);
-
-	if (tas2552_reset() != 0)
-		goto error;
-
-	/* Initialize device registers */
-	for (i = 0; i < ARRAY_SIZE(tas2552_reg_init); i++) {
-		retval = tas2552_reg_write(tas2552, tas2552_reg_init[i][0],
-					   tas2552_reg_init[i][1], 0xff);
-		pr_debug("reg:0x%02x value:0x%02x\n", tas2552_reg_init[i][0],
-			 tas2552_reg_init[i][1]);
-		if (retval != 0)
-			goto error;
-	}
-	tas2552_set_current();	//set the tas2552 current
-error:
-	return retval;
-
-}
-
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/25 add for tas2552 current limit */
-void tas2552_current_set(u8 cur)
-{
-	pr_info("%s tas2552_current:%d -> %d\n", __func__, tas2552_current,
-		cur);
-	if ((tas2552_current != cur) && (cur < TAS2552_CURRENT_MAX)) {
-		tas2552_current = cur;
-		tas2552_set_current();	//set the current immediate
-	}
-	return;
-}
-
-EXPORT_SYMBOL_GPL(tas2552_current_set);
-
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, new sequence for avoid pop sound */
-void tas2552_ext_amp_on(int on)
-{
-	struct tas2552_data *tas2552 = i2c_get_clientdata(tas2552_client);
-	pr_info("tas2552 amp event %d\n", on);
-	if (!tas2552) {
-		pr_err("tas2552 do not probed,please check !!!!\n");
-		return;
-	}
-	if (on) {
-		tas2552_init_reg();
-		tas2552_reg_write(tas2552, TAS2552_CFG1_REG, 0,
-				  TAS2552_SHUTDOWN);
-		tas2552_reg_write(tas2552, TAS2552_CFG1_REG, 0, TAS2552_MUTE);
-		//start timer to avoid pop
-		pr_info("%s hrtimer_start\n", __func__);
-		hrtimer_start(&speaker_timer, ktime_set(0, SPK_POP_DELAY),
-			      HRTIMER_MODE_REL);
-	} else {
-		tas2552_reg_write(tas2552, TAS2552_CFG3_REG, 0x80, 0x80);	//switch analog input to avoid pop
-		tas2552_reg_write(tas2552, TAS2552_CFG1_REG, TAS2552_MUTE,
-				  TAS2552_MUTE);
-		msleep(10);
-		tas2552_reg_write(tas2552, TAS2552_CFG1_REG, TAS2552_SHUTDOWN,
-				  TAS2552_SHUTDOWN);
-	}
-}
-
-EXPORT_SYMBOL_GPL(tas2552_ext_amp_on);
-
-#ifdef CONFIG_DEBUG_FS
-
-static struct dentry *tas2552_dir;
-static struct dentry *tas2552_reg_file;
-static struct dentry *tas2552_set_reg_file;
-
-static int tas2552_registers_print(struct seq_file *s, void *p)
-{
-	struct tas2552_data *tas2552 = s->private;
-	u8 reg;
-	u8 value;
-	pr_info("%s: print registers", __func__);
-	seq_printf(s, "tas2552 registers:\n");
-	if (tas2552->power_state) {
-		for (reg = 0; reg < TAS2552_REG_LIST_SIZE; reg++) {
-			tas2552_reg_read(tas2552, reg, &value);
-			seq_printf(s, "[0x%x]:  0x%x\n", reg, value);
-		}
-	}
+	kfree(tas2552);
 
 	return 0;
 }
 
-static int tas2552_registers_open(struct inode *inode, struct file *file)
+static int tas2552_set_bias_level(struct snd_soc_codec *codec,
+				  enum snd_soc_bias_level level)
 {
-	return single_open(file, tas2552_registers_print, inode->i_private);
-}
+	dev_dbg(codec->dev, "%s: level %d\n", __func__, level);
 
-static int tas2552_set_reg_open_file(struct inode *inode, struct file *file)
-{
-	file->private_data = inode->i_private;
+	switch (level) {
+	case SND_SOC_BIAS_ON:
+		/* mute data */
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG1,
+			TAS2552_CONFIG1_MUTE_MSK, TAS2552_CONFIG1_MUTE);
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG3,
+			TAS2552_CONFIG3_SOURCE_SELECT_MSK,
+			TAS2552_CONFIG3_SOURCE_SELECT_NONE);
+		/* initialization chip to power up */
+		snd_soc_write(codec, TAS2552_REG_LIMITER_LEVEL_CTRL,
+			TAS2552_LIMITER_LEVEL_CTRL_INIT_EN);
+		snd_soc_update_bits(codec, TAS2552_REG_LIMITER_AR_HT,
+			TAS2552_LIMITER_AR_HT_INIT_MSK,
+			TAS2552_LIMITER_AR_HT_INIT_EN);
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG2,
+			TAS2552_CONFIG2_INIT_MSK,
+			TAS2552_CONFIG2_INIT_EN);
+		/* enable PLL */
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG2,
+			TAS2552_CONFIG2_PLL_EN_MSK,
+			TAS2552_CONFIG2_PLL_EN_ENABLE);
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG1,
+			TAS2552_CONFIG1_SWS_MSK, 0);
+		break;
+	default:
+		/* disable PLL */
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG2,
+			TAS2552_CONFIG2_PLL_EN_MSK, 0);
+		/* SWS */
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG1,
+			TAS2552_CONFIG1_SWS_MSK, TAS2552_CONFIG1_SWS);
+		/* reset chip to default status */
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG2,
+			TAS2552_CONFIG2_INIT_MSK,
+			TAS2552_CONFIG2_INIT_DEFAULT);
+		snd_soc_update_bits(codec, TAS2552_REG_LIMITER_AR_HT,
+			TAS2552_LIMITER_AR_HT_INIT_MSK,
+			TAS2552_LIMITER_AR_HT_INIT_DEFAULT);
+		snd_soc_write(codec, TAS2552_REG_LIMITER_LEVEL_CTRL,
+			TAS2552_LIMITER_LEVEL_CTRL_INIT_DEFAULT);
+		break;
+	}
+
+	codec->dapm.bias_level = level;
 	return 0;
 }
 
-static ssize_t tas2552_set_reg(struct file *file,
-			       const char __user * user_buf,
-			       size_t count, loff_t * ppos)
+static const char * const tas2552_src_sel_text[] = {
+	"None", "Left", "Right", "Mono",
+};
+
+static const SOC_ENUM_SINGLE_DECL(
+	tas2552_src_sel_enum, TAS2552_REG_CONFIG3,
+	TAS2552_CONFIG3_SOURCE_SELECT_POS, tas2552_src_sel_text);
+
+static const DECLARE_TLV_DB_SCALE(
+	tas2552_vol_tlv, -700, 100, 0);
+
+static const struct snd_kcontrol_new tas2552_controls[] = {
+	SOC_ENUM("TAS2552 Input Channel Mux", tas2552_src_sel_enum),
+	SOC_SINGLE_TLV("TAS2552 Volume", TAS2552_REG_PGA_GAIN,
+		TAS2552_PGA_GAIN_POS, TAS2552_PAG_GAIN_MAX,
+		0, tas2552_vol_tlv),
+};
+
+static const u8 tas2552_reg[0x1A] = {
+	[0x00] = 0x00,	/* TAS2552_REG_DEVICE_STATUS */
+	[0x01] = 0x22,	/* TAS2552_REG_CONFIG1 */
+	[0x02] = 0xFF,	/* TAS2552_REG_CONFIG2 */
+	[0x03] = 0x80,	/* TAS2552_REG_CONFIG3 */
+	[0x04] = 0x00,	/* TAS2552_REG_DOUT_TRISTATE_MODE */
+	[0x05] = 0x00,	/* TAS2552_REG_I2SCTRL1 */
+	[0x06] = 0x00,	/* TAS2552_REG_I2SCTRL2 */
+	[0x07] = 0xC0,	/* TAS2552_REG_OUTPUT_DATA */
+	[0x08] = 0x10,	/* TAS2552_REG_PLLCTRL1 */
+	[0x09] = 0x00,	/* TAS2552_REG_PLLCTRL2 */
+	[0x0A] = 0x00,	/* TAS2552_REG_PLLCTRL3 */
+	[0x0B] = 0x8F,	/* TAS2552_REG_BATTERY_GUARD_INFLECTION_PT */
+	[0x0C] = 0x80,	/* TAS2552_REG_BATTERY_GUARD_SLOPE_CTRL */
+	[0x0D] = 0xBE,	/* TAS2552_REG_LIMITER_LEVEL_CTRL */
+	[0x0E] = 0x08,	/* TAS2552_REG_LIMITER_AR_HT */
+	[0x0F] = 0x05,	/* TAS2552_REG_LIMITER_RELEASE_RATE */
+	[0x10] = 0x00,	/* TAS2552_REG_LIMITER_INTEGRATION_COUNT_CTRL */
+	[0x11] = 0x01,	/* TAS2552_REG_PDM_CONFIG */
+	[0x12] = 0x00,	/* TAS2552_REG_PGA_GAIN */
+	[0x13] = 0x40,	/* TAS2552_REG_CLASS_D_EDGE_RATE_CTRL */
+	[0x14] = 0x00,	/* TAS2552_REG_BOOST_AUTO_PASS_THROUGH_CTRL */
+	[0x15] = 0x00,	/* TAS2552_REG_RESERVED */
+	[0x16] = 0x00,	/* TAS2552_REG_VERSION_NUMBER */
+	[0x17] = 0x00,	/* TAS2552_REG_INTERRUPT_MASK */
+	[0x18] = 0x00,	/* TAS2552_REG_VBOOST_DATA */
+	[0x19] = 0x00,	/* TAS2552_REG_VBAT_DATA */
+};
+
+static const struct snd_soc_codec_driver tas2552_drv = {
+	.probe = tas2552_probe,
+	.remove = tas2552_remove,
+	.controls = tas2552_controls,
+	.num_controls = ARRAY_SIZE(tas2552_controls),
+	.reg_cache_size = ARRAY_SIZE(tas2552_reg),
+	.reg_word_size = sizeof(tas2552_reg[0]),
+	.reg_cache_default = tas2552_reg,
+	.set_bias_level = tas2552_set_bias_level,
+	.idle_bias_off = 1,
+};
+
+#define TAS2552_FORMATS		(SNDRV_PCM_FMTBIT_S16_LE |\
+				SNDRV_PCM_FMTBIT_S24_LE |\
+				SNDRV_PCM_FMTBIT_S32_LE)
+
+#define TAS2552_RATES		(SNDRV_PCM_RATE_44100 |\
+				SNDRV_PCM_RATE_48000)
+
+static int tas2552_set_sysclk(struct snd_soc_dai *codec_dai,
+				int clk_id, unsigned int freq, int dir)
 {
-	struct tas2552_data *tas2552 = file->private_data;
-	char buf[32];
-	ssize_t buf_size;
-	unsigned int user_reg;
-	unsigned int user_value;
-	u8 reg_read_back;
-	/* Get userspace string and assure termination */
-	buf_size = min(count, (sizeof(buf) - 1));
-	if (copy_from_user(buf, user_buf, buf_size))
-		return -EFAULT;
-	buf[buf_size] = 0;
+	struct snd_soc_codec *codec = codec_dai->codec;
+	struct tas2552_priv *tas2552 = snd_soc_codec_get_drvdata(codec);
+	unsigned int value = 0;
 
-	if (sscanf(buf, "0x%02x  0x%02x", &user_reg, &user_value) != 2)
-		return -EFAULT;
-
-	if (user_reg > TAS2552_MAX_REGISTER_VAL) {
-		pr_info("%s: val check failed", __func__);
+	switch (clk_id) {
+	case TAS2552_SCLK_S_MCLK:
+		value = TAS2552_CONFIG1_PLL_SRC_MCLK;
+		break;
+	case TAS2552_SCLK_S_BCLK:
+		value = TAS2552_CONFIG1_PLL_SRC_BCLK;
+		break;
+	case TAS2552_SCLK_S_IVCLKIN:
+		value = TAS2552_CONFIG1_PLL_SRC_IVCLKIN;
+		break;
+	case TAS2552_SCLK_S_INTERNAL_1P8:
+		value = TAS2552_CONFIG1_PLL_SRC_INTERNAL_1P8;
+		break;
+	default:
+		dev_err(codec->dev, "%s: Unknown clock source: %d\n", __func__, clk_id);
 		return -EINVAL;
 	}
 
-	pr_info("%s: set register 0x%02x value 0x%02x", __func__,
-		user_reg, user_value);
+	snd_soc_update_bits(codec, TAS2552_REG_CONFIG1,
+		TAS2552_CONFIG1_PLL_SRC_MSK, value);
 
-	tas2552_reg_write(tas2552, user_reg & 0xFF, user_value & 0XFF, 0xFF);
-	tas2552_reg_read(tas2552, user_reg, &reg_read_back);
-
-	pr_info
-	    ("%s: debug write reg[0x%02x] with 0x%02x after readback: 0x%02x\n",
-	     __func__, user_reg, user_value, reg_read_back);
-
-	return buf_size;
-}
-
-static const struct file_operations tas2552_registers_fops = {
-	.open = tas2552_registers_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-	.owner = THIS_MODULE,
-};
-
-static const struct file_operations tas2552_get_set_reg_fops = {
-	.open = tas2552_set_reg_open_file,
-	.write = tas2552_set_reg,
-	.owner = THIS_MODULE,
-};
-
-static void tas2552_setup_debugfs(struct tas2552_data *tas2552)
-{
-	if (!tas2552)
-		goto exit_no_debugfs;
-
-	tas2552_dir = debugfs_create_dir("tas2552", NULL);
-	if (!tas2552_dir)
-		goto exit_no_debugfs;
-
-	tas2552_reg_file = debugfs_create_file("registers",
-					       S_IRUGO, tas2552_dir, tas2552,
-					       &tas2552_registers_fops);
-	if (!tas2552_reg_file)
-		goto exit_destroy_dir;
-
-	tas2552_set_reg_file = debugfs_create_file("set_reg",
-						   S_IWUSR, tas2552_dir,
-						   tas2552,
-						   &tas2552_get_set_reg_fops);
-	if (!tas2552_set_reg_file)
-		goto exit_destroy_set_reg;
-
-	return;
-
-exit_destroy_set_reg:
-	debugfs_remove(tas2552_reg_file);
-exit_destroy_dir:
-	debugfs_remove(tas2552_dir);
-exit_no_debugfs:
-
-	return;
-}
-
-static inline void tas2552_remove_debugfs(void)
-{
-	debugfs_remove(tas2552_set_reg_file);
-	debugfs_remove(tas2552_reg_file);
-	debugfs_remove(tas2552_dir);
-}
-#else
-static inline void tas2552_setup_debugfs(struct tas2552_data *tas2552)
-{
-}
-
-static inline void tas2552_remove_debugfs(void)
-{
-}
-#endif
-
-static int __devinit tas2552_probe(struct i2c_client *client,
-				   const struct i2c_device_id *id)
-{
-	struct tas2552_data *tas2552;
-	int err = 0;
-	u8 dev_ver = 0;
-
-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		dev_err(&client->dev, "check_functionality failed\n");
-		return -EIO;
-	}
-
-	tas2552 = kzalloc(sizeof(*tas2552), GFP_KERNEL);
-	if (tas2552 == NULL) {
-		dev_err(&client->dev,
-			"Failed to allocate memory for module data\n");
-		return -ENOMEM;
-	}
-
-	/* set global variables */
-	tas2552_client = client;
-	i2c_set_clientdata(client, tas2552);
-
-	/* get enable gpio */
-	tas2552->enable_gpio = of_get_named_gpio(client->dev.of_node,
-						 "tas2552,enable-gpio", 0);
-	if (tas2552->enable_gpio < 0) {
-		dev_err(&client->dev,
-			"Looking up %s property in node %s failed %d\n",
-			"tas2552,enable-gpio", client->dev.of_node->full_name,
-			tas2552->enable_gpio);
-	}
-	if (tas2552->enable_gpio > 0) {
-		err = gpio_request(tas2552->enable_gpio, "TAS2552_EN");
-		if (err) {
-			pr_err("%s: Failed to request gpio %d\n", __func__,
-			       tas2552->enable_gpio);
-			tas2552->enable_gpio = 0;
-		}
-	}
-	if (tas2552->enable_gpio > 0) {
-		gpio_set_value(tas2552->enable_gpio, 1);
-	}
-
-	tas2552->power_state = 1;
-
-	/* read version no */
-	err = tas2552_reg_read(tas2552, TAS2552_VER_NUMBER_REG, &dev_ver);
-	pr_info("tas2552 probed err:%d value:0x%#x\n", err, dev_ver);
-
-	err = tas2552_init_reg();
-	if (err != 0) {
-		dev_err(&client->dev, "Failed to initialize tas2552!\n");
-		goto init_fail;
-	}
-	/* setup debug fs interfaces */
-	tas2552_setup_debugfs(tas2552);
-
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, add timer and workqueue for avoid pop sound */
-	/* add timer for avoid pop sound */
-	hrtimer_init(&speaker_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	speaker_timer.function = speaker_timer_func;
-	speaker_workqueue = create_workqueue("speaker_workqueue");
-	INIT_WORK(&speaker_work, speaker_work_callback);
-/* xiaojun.lv@PhoneSW.AudioDrv, 2014/10/17, add timer and workqueue for avoid pop sound end */
-
-	pr_info("tas2552 probed successfully\n");
-
-/* OPPO 2014-10-14 John.Xu@Audio.Driver Add begin for f0 test */
-	if (!opalum_proc_created) {
-		create_opalum_proc();
-		opalum_proc_created = 1;
-	}
-
-/* OPPO 2014-10-14 John.Xu@Audio.Driver Add end */
-	return 0;
-
-init_fail:
-	kfree(tas2552);
-	return err;
-}
-
-static int __devexit tas2552_remove(struct i2c_client *client)
-{
-	struct tas2552_data *tas2552 = i2c_get_clientdata(client);
-
-	tas2552_remove_debugfs();
-	kfree(tas2552);
+	tas2552->sysclk = freq;
 	return 0;
 }
 
-static const struct i2c_device_id tas2552_id[] = {
-	{NAME, 0},
-	{},
+static int tas2552_set_format(struct snd_soc_dai *codec_dai, unsigned int fmt)
+{
+	struct snd_soc_codec *codec = codec_dai->codec;
+	unsigned int value = 0;
+
+	/* interface format */
+	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
+	case SND_SOC_DAIFMT_I2S:
+		value |= TAS2552_I2SCTRL1_PCM_DATAFMT_I2S;
+		break;
+	case SND_SOC_DAIFMT_RIGHT_J:
+		value |= TAS2552_I2SCTRL1_PCM_DATAFMT_RJF;
+		break;
+	case SND_SOC_DAIFMT_LEFT_J:
+		value |= TAS2552_I2SCTRL1_PCM_DATAFMT_LJF;
+		break;
+	default:
+		dev_err(codec->dev, "Invalid interface format\n");
+		return -EINVAL;
+	}
+
+	snd_soc_update_bits(codec, TAS2552_REG_I2SCTRL1,
+		TAS2552_I2SCTRL1_PCM_DATAFMT_MSK, value);
+
+	/* clock inversion */
+	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+	case SND_SOC_DAIFMT_NB_NF:
+		break;
+	default:
+		dev_err(codec->dev, "Invalid clock inversion\n");
+		return -EINVAL;
+	}
+
+	/* set master/slave audio interface */
+	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+	case SND_SOC_DAIFMT_CBS_CFS:
+		/* set BCLK & WCLK as input */
+		snd_soc_update_bits(codec, TAS2552_REG_I2SCTRL1,
+			TAS2552_I2SCTRL1_PCM_BCLKDIR_MSK |
+			TAS2552_I2SCTRL1_PCM_WCLKDIR_MSK, 0);
+		break;
+	case SND_SOC_DAIFMT_CBM_CFM:
+		/* set BCLK & WCLK as output */
+		snd_soc_update_bits(codec, TAS2552_REG_I2SCTRL1,
+			TAS2552_I2SCTRL1_PCM_BCLKDIR_MSK |
+			TAS2552_I2SCTRL1_PCM_WCLKDIR_MSK,
+			TAS2552_I2SCTRL1_PCM_BCLKDIR_OUTPUT |
+			TAS2552_I2SCTRL1_PCM_WCLKDIR_OUTPUT);
+		break;
+	case SND_SOC_DAIFMT_CBS_CFM:
+		/* set BCLK as input, and WCLK as output */
+		snd_soc_update_bits(codec, TAS2552_REG_I2SCTRL1,
+			TAS2552_I2SCTRL1_PCM_BCLKDIR_MSK |
+			TAS2552_I2SCTRL1_PCM_WCLKDIR_MSK,
+			TAS2552_I2SCTRL1_PCM_WCLKDIR_OUTPUT);
+		break;
+	case SND_SOC_DAIFMT_CBM_CFS:
+		/* set BCLK as output, and WCLK as input */
+		snd_soc_update_bits(codec, TAS2552_REG_I2SCTRL1,
+			TAS2552_I2SCTRL1_PCM_BCLKDIR_MSK |
+			TAS2552_I2SCTRL1_PCM_WCLKDIR_MSK,
+			TAS2552_I2SCTRL1_PCM_BCLKDIR_OUTPUT);
+		break;
+	default:
+		dev_err(codec->dev, "Invalid master/slave setting\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int tas2552_digital_mute(struct snd_soc_dai *dai, int mute)
+{
+	struct snd_soc_codec *codec = dai->codec;
+
+	snd_soc_update_bits(codec, TAS2552_REG_CONFIG1,
+			TAS2552_CONFIG1_MUTE_MSK,
+			mute ? TAS2552_CONFIG1_MUTE : 0);
+
+	if (!mute) {
+		/* sleep 10ms to wait signal is clean */
+		usleep(10000);
+		dev_dbg(codec->dev, "unmute, set source selete to mix\n");
+		snd_soc_update_bits(codec, TAS2552_REG_CONFIG3,
+				TAS2552_CONFIG3_SOURCE_SELECT_MSK,
+				TAS2552_CONFIG3_SOURCE_SELECT_MONO);
+	}
+
+	return 0;
+}
+
+static int tas2552_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params,
+			struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	unsigned int value = 0;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		value = TAS2552_I2SCTRL1_PCM_FMT_16;
+		value |= TAS2552_I2SCTRL1_PCM_BCLK_32;
+		break;
+/*	case SNDRV_PCM_FORMAT_S20_3LE:
+		value = TAS2552_I2SCTRL1_PCM_FMT_20;
+		value |= TAS2552_I2SCTRL1_PCM_BCLK_64;
+		break;*/
+	case SNDRV_PCM_FORMAT_S24_LE:
+		value = TAS2552_I2SCTRL1_PCM_FMT_24;
+		value |= TAS2552_I2SCTRL1_PCM_BCLK_64;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		value = TAS2552_I2SCTRL1_PCM_FMT_32;
+		value |= TAS2552_I2SCTRL1_PCM_BCLK_64;
+		break;
+	default:
+		dev_err(codec->dev, "%s: Invalid format!\n", __func__);
+		return -EINVAL;
+	}
+
+	snd_soc_update_bits(codec, TAS2552_REG_I2SCTRL1,
+		TAS2552_I2SCTRL1_PCM_FMT_MSK | TAS2552_I2SCTRL1_PCM_BCLK_MSK,
+		value);
+
+	switch (params_rate(params)) {
+	case 48000:
+	case 44100:
+		value = TAS2552_CONFIG3_WCLK_44100_48000;
+		break;
+/*	case 32000:
+		value = TAS2552_CONFIG3_WCLK_32000;
+		break;
+	case 24000:
+	case 22050:
+		value = TAS2552_CONFIG3_WCLK_22050_24000;
+		break;
+	case 16000:
+		value = TAS2552_CONFIG3_WCLK_16000;
+		break;
+	case 12000:
+	case 11025:
+		value = TAS2552_CONFIG3_WCLK_11025_12000;
+		break;
+	case 8000:
+		value = TAS2552_CONFIG3_WCLK_8000;
+		break;*/
+	default:
+		dev_err(codec->dev, "%s: Invalid sample rate!\n", __func__);
+		return -EINVAL;
+	}
+
+	snd_soc_update_bits(codec, TAS2552_REG_CONFIG3,
+			TAS2552_CONFIG3_WCLK_MSK, value);
+
+	return tas2552_set_pll_clk(codec, params_rate(params));
+}
+
+static const struct snd_soc_dai_ops tas2552_dai_ops = {
+	.set_sysclk = tas2552_set_sysclk,
+	.set_fmt = tas2552_set_format,
+	.digital_mute = tas2552_digital_mute,
+	.hw_params = tas2552_hw_params,
 };
 
-static const struct of_device_id tas2552_match[] = {
-	{.compatible = "ti,tas2552"},
-	{},
+
+static struct snd_soc_dai_driver tas2552_dai = {
+	.name = "tas2552-dai",
+	.ops = &tas2552_dai_ops,
+	.capture = {
+		.stream_name = "Capture",
+		.formats = TAS2552_FORMATS,
+		.rates = TAS2552_RATES,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	.playback = {
+		.stream_name = "Playback",
+		.formats = TAS2552_FORMATS,
+		.rates = TAS2552_RATES,
+		.channels_min = 2,
+		.channels_max = 2,
+	},
+	.symmetric_rates = 1,
 };
 
-MODULE_DEVICE_TABLE(i2c, tas2552_id);
+static int tas2552_i2c_probe(struct i2c_client *client,
+				const struct i2c_device_id *id)
+{
+	dev_dbg(&client->dev, "%s: enter\n", __func__);
+	return snd_soc_register_codec(&client->dev,
+			&tas2552_drv, &tas2552_dai, 1);
+}
 
-static struct i2c_driver tas2552_driver = {
+static int tas2552_i2c_remove(struct i2c_client *client)
+{
+	snd_soc_unregister_codec(&client->dev);
+	return 0;
+}
+
+static const struct of_device_id tas2552_of_match[] = {
+	{.compatible = "ti, tas2552"},
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tas2552_of_match);
+
+static const struct i2c_device_id tas2552_i2c_id[] = {
+	{"tas2552", 0},
+	{ },
+};
+MODULE_DEVICE_TABLE(i2c, tas2552_id_table);
+
+static struct i2c_driver tas2552_i2c_driver = {
 	.driver = {
-		   .name = NAME,
-		   .owner = THIS_MODULE,
-		   .of_match_table = tas2552_match,
-		   },
-	.probe = tas2552_probe,
-	.remove = __devexit_p(tas2552_remove),
-	.id_table = tas2552_id,
+		.name = "tas2552",
+		.owner = THIS_MODULE,
+		.of_match_table = tas2552_of_match,
+	},
+	.probe = tas2552_i2c_probe,
+	.remove = tas2552_i2c_remove,
+	.id_table = tas2552_i2c_id,
 };
 
-static int __init tas2552_init(void)
-{
-	return i2c_add_driver(&tas2552_driver);
-}
+module_i2c_driver(tas2552_i2c_driver);
 
-static void __exit tas2552_exit(void)
-{
-	i2c_del_driver(&tas2552_driver);
-	return;
-}
-
-module_init(tas2552_init);
-module_exit(tas2552_exit);
-#endif /* CONFIG_MACH_N3 */
-
-MODULE_DESCRIPTION("tas2552 driver");
+MODULE_AUTHOR("Nannan Wang <wangnannan@xiaomi.com>");
+MODULE_DESCRIPTION("TI TAS2552 chip driver");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("OPPO");

@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2015 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -243,7 +244,6 @@ struct wcd9xxx_mbhc_config {
 	unsigned long micbias_enable_flags;
 	/* swap_gnd_mic returns true if extern GND/MIC swap switch toggled */
 	bool (*swap_gnd_mic) (struct snd_soc_codec *);
-	bool (*reset_gnd_mic) (struct snd_soc_card *);
 	unsigned long cs_enable_flags;
 	bool use_int_rbias;
 	bool do_recalibration;
@@ -289,7 +289,7 @@ struct wcd9xxx_mbhc_cb {
 	void (*pull_mb_to_vddio) (struct snd_soc_codec *, bool);
 	struct firmware_cal * (*get_hwdep_fw_cal) (struct snd_soc_codec *,
 				enum wcd_cal_type);
-	int (*enable_hpmic_switch) (struct snd_soc_codec *, bool);
+
 };
 
 struct wcd9xxx_mbhc {
@@ -361,6 +361,7 @@ struct wcd9xxx_mbhc {
 	bool impedance_detect;
 	/* impedance of hphl and hphr */
 	uint32_t zl, zr;
+	uint32_t impedance_offset;
 
 	u32 rco_clk_rate;
 
@@ -370,17 +371,10 @@ struct wcd9xxx_mbhc {
 	/* Holds codec specific interrupt mapping */
 	const struct wcd9xxx_mbhc_intr *intr_ids;
 
-	/* Indicates status of current source switch */
-	bool is_cs_enabled;
-
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_poke;
 	struct dentry *debugfs_mbhc;
 #endif
-
-	struct mutex mbhc_lock;
-
-	bool force_linein;
 };
 
 #define WCD9XXX_MBHC_CAL_SIZE(buttons, rload) ( \
