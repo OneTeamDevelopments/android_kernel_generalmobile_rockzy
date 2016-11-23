@@ -4,6 +4,7 @@
  * Author:		Liam Girdwood
  * Created:		Aug 11th 2005
  * Copyright:	Wolfson Microelectronics. PLC.
+ * Copyright (C) 2015 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -20,7 +21,6 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/regmap.h>
-#include <linux/async.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/compress_driver.h>
@@ -191,21 +191,6 @@
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = (unsigned long)&xenum }
 
-#define SND_SOC_BYTES(xname, xbase, xregs)            \
-{   .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,   \
-	.info = snd_soc_bytes_info, .get = snd_soc_bytes_get, \
-	.put = snd_soc_bytes_put, .private_value =        \
-		((unsigned long)&(struct soc_bytes)           \
-		{.base = xbase, .num_regs = xregs }) }
-
-#define SND_SOC_BYTES_MASK(xname, xbase, xregs, xmask)        \
-{   .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,   \
-	.info = snd_soc_bytes_info, .get = snd_soc_bytes_get, \
-	.put = snd_soc_bytes_put, .private_value =        \
-		((unsigned long)&(struct soc_bytes)           \
-		{.base = xbase, .num_regs = xregs,        \
-		 .mask = xmask }) }
-
 #define SOC_DOUBLE_R_SX_TLV(xname, xreg_left, xreg_right, xshift,\
 		xmin, xmax, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
@@ -346,11 +331,6 @@ enum snd_soc_dpcm_trigger {
 	SND_SOC_DPCM_TRIGGER_PRE		= 0,
 	SND_SOC_DPCM_TRIGGER_POST,
 	SND_SOC_DPCM_TRIGGER_BESPOKE,
-};
-
-enum snd_soc_card_subclass {
-	SND_SOC_CARD_CLASS_INIT	= 0,
-	SND_SOC_CARD_CLASS_PCM	= 1,
 };
 
 int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
@@ -817,14 +797,6 @@ struct snd_soc_platform {
 #endif
 };
 
-enum snd_soc_async_ops {
-	ASYNC_DPCM_SND_SOC_OPEN = 1 << 0,
-	ASYNC_DPCM_SND_SOC_CLOSE = 1 << 1,
-	ASYNC_DPCM_SND_SOC_PREPARE = 1 << 2,
-	ASYNC_DPCM_SND_SOC_HW_PARAMS = 1 << 3,
-	ASYNC_DPCM_SND_SOC_FREE = 1 << 4,
-};
-
 struct snd_soc_dai_link {
 	/* config - must be set by machine driver */
 	const char *name;			/* Codec name */
@@ -868,9 +840,6 @@ struct snd_soc_dai_link {
 	/* machine stream operations */
 	struct snd_soc_ops *ops;
 	struct snd_soc_compr_ops *compr_ops;
-
-	/* this value determines what all ops can be started asynchronously */
-	enum snd_soc_async_ops async_ops;
 };
 
 struct snd_soc_codec_conf {
@@ -914,6 +883,7 @@ struct snd_soc_card {
 	struct mutex dapm_power_mutex;
 	struct mutex dsp_mutex;
 	spinlock_t dsp_spinlock;
+	int version;
 
 	bool instantiated;
 
@@ -1023,10 +993,6 @@ struct snd_soc_pcm_runtime {
 	int fe_compr;
 
 	long pmdown_time;
-	unsigned char pop_wait:1;
-
-	/* err in case of ops failed */
-	int err_ops;
 
 	/* runtime devices */
 	struct snd_pcm *pcm;
@@ -1049,13 +1015,6 @@ struct soc_mixer_control {
 	int min, max, platform_max;
 	unsigned int reg, rreg, shift, rshift, invert;
 };
-
-struct soc_bytes {
-	int base;
-	int num_regs;
-	u32 mask;
-};
-
 struct soc_multi_mixer_control {
 	int min, max, platform_max, count;
 	unsigned int reg, rreg, shift, rshift, invert;
