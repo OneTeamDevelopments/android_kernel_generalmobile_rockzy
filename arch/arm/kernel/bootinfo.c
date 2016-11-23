@@ -28,7 +28,6 @@ static const char * const powerup_reasons[PU_REASON_MAX] = {
 	[PU_REASON_EVENT_USB_CHG]	= "usb_chg",
 	[PU_REASON_EVENT_DC_CHG]	= "dc_chg",
 	[PU_REASON_EVENT_HWRST]		= "hw_reset",
-	[PU_REASON_EVENT_LPK]		= "long_power_key",
 };
 
 static const char * const reset_reasons[RS_REASON_MAX] = {
@@ -92,9 +91,6 @@ static ssize_t powerup_reason_show(struct kobject *kobj, struct kobj_attribute *
 		};
 	} else {
 		if (pu_reason & BIT(PU_REASON_EVENT_HWRST)) {
-			if (qpnp_pon_is_lpk())
-				pu_reason_index = PU_REASON_EVENT_LPK;
-			else
 				pu_reason_index = PU_REASON_EVENT_HWRST;
 		}
 		else if (pu_reason & BIT(PU_REASON_EVENT_SMPL))
