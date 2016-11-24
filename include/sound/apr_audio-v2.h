@@ -1,5 +1,4 @@
 /* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
-* Copyright (C) 2015 XiaoMi, Inc.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -758,7 +757,6 @@ struct adm_cmd_connect_afe_port_v5 {
 #define AFE_PORT_ID_SECONDARY_PCM_RX        0x100C
 #define AFE_PORT_ID_SECONDARY_PCM_TX        0x100D
 #define AFE_PORT_ID_MULTICHAN_HDMI_RX       0x100E
-#define AFE_PORT_ID_SECONDARY_MI2S_RX_VIBRA	0x1010
 #define  AFE_PORT_ID_RT_PROXY_PORT_001_RX   0x2000
 #define  AFE_PORT_ID_RT_PROXY_PORT_001_TX   0x2001
 #define AFE_PORT_ID_INTERNAL_BT_SCO_RX      0x3000
@@ -2257,7 +2255,6 @@ struct afe_port_cmdrsp_get_param_v2 {
 #define VPM_TX_SM_ECNS_COPP_TOPOLOGY			0x00010F71
 #define VPM_TX_DM_FLUENCE_COPP_TOPOLOGY			0x00010F72
 #define VPM_TX_QMIC_FLUENCE_COPP_TOPOLOGY		0x00010F75
-#define VPM_TX_DM_RFECNS_COPP_TOPOLOGY			0x00010F86
 
 /* Memory map regions command payload used by the
  * #ASM_CMD_SHARED_MEM_MAP_REGIONS ,#ADM_CMD_SHARED_MEM_MAP_REGIONS
@@ -6708,7 +6705,6 @@ struct srs_trumedia_params {
 #define LSM_SESSION_CMD_STOP				(0x00012A87)
 
 #define LSM_SESSION_EVENT_DETECTION_STATUS		(0x00012B00)
-#define LSM_SESSION_EVENT_DETECTION_STATUS_V2		(0x00012B01)
 
 #define LSM_MODULE_ID_VOICE_WAKEUP			(0x00012C00)
 #define LSM_PARAM_ID_ENDPOINT_DETECT_THRESHOLD		(0x00012C01)
@@ -6718,7 +6714,7 @@ struct srs_trumedia_params {
 #define LSM_PARAM_ID_KEYWORD_DETECT_SENSITIVITY		(0x00012C05)
 #define LSM_PARAM_ID_USER_DETECT_SENSITIVITY		(0x00012C06)
 #define LSM_PARAM_ID_FEATURE_COMPENSATION_DATA		(0x00012C07)
-#define LSM_PARAM_ID_MIN_CONFIDENCE_LEVELS		(0x00012C07)
+
 
 /* HW MAD specific */
 #define AFE_MODULE_HW_MAD				(0x00010230)
@@ -7175,75 +7171,8 @@ struct afe_svc_cmd_set_clip_bank_selection {
 /* Ultrasound supported formats */
 #define US_POINT_EPOS_FORMAT_V2 0x0001272D
 #define US_RAW_FORMAT_V2        0x0001272C
-#define US_PROX_FORMAT_V4       0x0001273B
+#define US_PROX_FORMAT_V2       0x0001272E
 #define US_RAW_SYNC_FORMAT      0x0001272F
 #define US_GES_SYNC_FORMAT      0x00012730
-
-#define AFE_MODULE_GROUP_DEVICE	0x00010254
-#define AFE_PARAM_ID_GROUP_DEVICE_CFG	0x00010255
-#define AFE_PARAM_ID_GROUP_DEVICE_ENABLE 0x00010256
-#define AFE_GROUP_DEVICE_ID_SECONDARY_MI2S_RX	0x1102
-
-/*  Payload of the #AFE_PARAM_ID_GROUP_DEVICE_CFG
- * parameter, which configures max of 8 AFE ports
- * into a group.
- * The fixed size of this structure is sixteen bytes.
- */
-struct afe_group_device_group_cfg {
-	u32 minor_version;
-	u16 group_id;
-	u16 num_channels;
-	u16 port_id[8];
-} __packed;
-
-
-/*  Payload of the #AFE_PARAM_ID_GROUP_DEVICE_ENABLE
- * parameter, which enables or
- * disables any module.
- * The fixed size of this structure is four bytes.
- */
-
-struct afe_group_device_enable {
-	u16 group_id;
-	/* valid value is AFE_GROUP_DEVICE_ID_SECONDARY_MI2S_RX */
-	u16 enable;
-/* Enables (1) or disables (0) the module. */
-} __packed;
-
-struct afe_port_group_create {
-	struct apr_hdr hdr;
-	struct afe_svc_cmd_set_param param;
-	struct afe_port_param_data_v2 pdata;
-	union {
-		struct afe_group_device_group_cfg group_cfg;
-		struct afe_group_device_enable group_enable;
-	} __packed data;
-} __packed;
-
-/* Structures for AFE communication */
-struct afe_custom_opalum_set_config_t {
-	struct apr_hdr					 hdr;
-	struct afe_port_cmd_set_param_v2 param;
-	struct afe_port_param_data_v2    data;
-} __packed;
-
-struct afe_custom_opalum_get_config_t {
-	struct afe_port_cmd_get_param_v2 param;
-	struct afe_port_param_data_v2	 data;
-} __packed;
-
-struct opalum_process_enable_ctrl_t {
-	uint32_t	enable_flag; /**< Enable flag: 0 = disabled; nonzero = enabled. */
-};
-
-struct opalum_f0_calib_data_t {
-	int			f0;
-	int			ref_diff;
-};
-
-struct opalum_temp_calib_data_t {
-	int			acc;
-	int			count;
-};
 
 #endif /*_APR_AUDIO_V2_H_ */

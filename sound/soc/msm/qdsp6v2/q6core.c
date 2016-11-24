@@ -20,11 +20,10 @@
 #include <linux/slab.h>
 #include <mach/msm_smd.h>
 #include <mach/qdsp6v2/apr.h>
+#include "q6core.h"
 #include <mach/ocmem.h>
-#include <sound/q6core.h>
 
 #define TIMEOUT_MS 1000
-#define Q6_READY_TIMEOUT_MS 100
 
 struct q6core_str {
 	struct apr_svc *core_handle_q;
@@ -41,11 +40,6 @@ static int32_t aprv2_core_fn_q(struct apr_client_data *data, void *priv)
 	uint32_t *payload1;
 	uint32_t nseg;
 	int i, j;
-
-	if (data == NULL) {
-		pr_err("%s: data argument is null\n", __func__);
-		return -EINVAL;
-	}
 
 	pr_debug("core msg: payload len = %u, apr resp opcode = 0x%X\n",
 		data->payload_size, data->opcode);
@@ -238,7 +232,7 @@ bool q6core_is_adsp_ready(void)
 
 	rc = wait_event_timeout(q6core_lcl.bus_bw_req_wait,
 				(q6core_lcl.bus_bw_resp_received == 1),
-				msecs_to_jiffies(Q6_READY_TIMEOUT_MS));
+				msecs_to_jiffies(TIMEOUT_MS));
 	if (rc > 0 && q6core_lcl.bus_bw_resp_received) {
 		/* ensure to read updated param by callback thread */
 		rmb();

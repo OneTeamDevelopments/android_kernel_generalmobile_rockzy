@@ -1,5 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
- * Copyright (C) 2015 XiaoMi, Inc.
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -553,13 +552,7 @@ static int get_impedance_index(u32 imped)
 				__func__);
 		goto ret;
 	}
-	if (imped >= imped_index[ARRAY_SIZE(imped_index) - 1].imped_val) {
-		pr_debug("%s, detected impedance is greater than 32164 Ohm\n",
-				__func__);
-		i = ARRAY_SIZE(imped_index) - 1;
-		goto ret;
-	}
-	for (i = 0; i < ARRAY_SIZE(imped_index) - 1; i++) {
+	for (i = 0; i < ARRAY_SIZE(imped_index); i++) {
 		if (imped >= imped_index[i].imped_val &&
 			imped < imped_index[i + 1].imped_val)
 			break;
@@ -576,7 +569,7 @@ void wcd9xxx_clsh_imped_config(struct snd_soc_codec *codec,
 	int i  = 0;
 	int index = 0;
 	index = get_impedance_index(imped);
-	if (index >= ARRAY_SIZE(imped_index)) {
+	if (index > ARRAY_SIZE(imped_index)) {
 		pr_err("%s, invalid imped = %d\n", __func__, imped);
 		return;
 	}
@@ -854,7 +847,7 @@ static void wcd9xxx_clsh_state_hph_l(struct snd_soc_codec *codec,
 		wcd9xxx_chargepump_request(codec, true);
 		wcd9xxx_enable_anc_delay(codec, true);
 		wcd9xxx_clsh_comp_req(codec, clsh_d, CLSH_COMPUTE_HPH_L, true);
-		wcd9xxx_set_buck_mode(codec, BUCK_VREF_2V);
+		wcd9xxx_set_buck_mode(codec, BUCK_VREF_0P494V);
 		wcd9xxx_enable_buck(codec, clsh_d, true);
 		wcd9xxx_set_fclk_get_ncp(codec, clsh_d, NCP_FCLK_LEVEL_8);
 
@@ -881,7 +874,7 @@ static void wcd9xxx_clsh_state_hph_r(struct snd_soc_codec *codec,
 		wcd9xxx_chargepump_request(codec, true);
 		wcd9xxx_enable_anc_delay(codec, true);
 		wcd9xxx_clsh_comp_req(codec, clsh_d, CLSH_COMPUTE_HPH_R, true);
-		wcd9xxx_set_buck_mode(codec, BUCK_VREF_2V);
+		wcd9xxx_set_buck_mode(codec, BUCK_VREF_0P494V);
 		wcd9xxx_enable_buck(codec, clsh_d, true);
 		wcd9xxx_set_fclk_get_ncp(codec, clsh_d, NCP_FCLK_LEVEL_8);
 

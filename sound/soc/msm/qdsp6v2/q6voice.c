@@ -1,4 +1,4 @@
-/*  Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/*  Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,7 +29,7 @@
 #include "q6voice.h"
 
 
-#define TIMEOUT_MS 500
+#define TIMEOUT_MS 300
 
 
 #define CMD_STATUS_SUCCESS 0
@@ -141,7 +141,6 @@ static bool voice_is_valid_session_id(uint32_t session_id)
 	case VOLTE_SESSION_VSID:
 	case VOIP_SESSION_VSID:
 	case QCHAT_SESSION_VSID:
-	case VOWLAN_SESSION_VSID:
 	case ALL_SESSION_VSID:
 		ret = true;
 		break;
@@ -235,9 +234,6 @@ char *voc_get_session_name(u32 session_id)
 	} else if (session_id ==
 			common.voice[VOC_PATH_QCHAT_PASSIVE].session_id) {
 		session_name = QCHAT_SESSION_NAME;
-	} else if (session_id ==
-			common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id) {
-		session_name = VOWLAN_SESSION_NAME;
 	} else if (session_id == common.voice[VOC_PATH_FULL].session_id) {
 		session_name = VOIP_SESSION_NAME;
 	}
@@ -260,9 +256,6 @@ uint32_t voc_get_session_id(char *name)
 		else if (!strncmp(name, "QCHAT session", 13))
 			session_id =
 			common.voice[VOC_PATH_QCHAT_PASSIVE].session_id;
-		else if (!strncmp(name, "VoWLAN session", 14))
-			session_id =
-			common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id;
 		else
 			session_id = common.voice[VOC_PATH_FULL].session_id;
 
@@ -296,10 +289,6 @@ static struct voice_data *voice_get_session(u32 session_id)
 
 	case QCHAT_SESSION_VSID:
 		v = &common.voice[VOC_PATH_QCHAT_PASSIVE];
-		break;
-
-	case VOWLAN_SESSION_VSID:
-		v = &common.voice[VOC_PATH_VOWLAN_PASSIVE];
 		break;
 
 	case ALL_SESSION_VSID:
@@ -340,10 +329,6 @@ int voice_get_idx_for_session(u32 session_id)
 
 	case QCHAT_SESSION_VSID:
 		idx = VOC_PATH_QCHAT_PASSIVE;
-		break;
-
-	case VOWLAN_SESSION_VSID:
-		idx = VOC_PATH_VOWLAN_PASSIVE;
 		break;
 
 	case ALL_SESSION_VSID:
@@ -388,11 +373,6 @@ static bool is_voice2_session(u32 session_id)
 static bool is_qchat_session(u32 session_id)
 {
 	return (session_id == common.voice[VOC_PATH_QCHAT_PASSIVE].session_id);
-}
-
-static bool is_vowlan_session(u32 session_id)
-{
-	return (session_id == common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id);
 }
 
 static bool is_voc_state_active(int voc_state)
@@ -453,7 +433,6 @@ static void init_session_id(void)
 	common.voice[VOC_PATH_VOICE2_PASSIVE].session_id = VOICE2_SESSION_VSID;
 	common.voice[VOC_PATH_FULL].session_id = VOIP_SESSION_VSID;
 	common.voice[VOC_PATH_QCHAT_PASSIVE].session_id = QCHAT_SESSION_VSID;
-	common.voice[VOC_PATH_VOWLAN_PASSIVE].session_id = VOWLAN_SESSION_VSID;
 }
 
 static int voice_apr_register(void)
@@ -682,10 +661,6 @@ static int voice_create_mvm_cvs_session(struct voice_data *v)
 				strlcpy(mvm_session_cmd.mvm_session.name,
 				QCHAT_SESSION_VSID_STR,
 				sizeof(mvm_session_cmd.mvm_session.name));
-			} else if (is_vowlan_session(v->session_id)) {
-				strlcpy(mvm_session_cmd.mvm_session.name,
-				VOWLAN_SESSION_VSID_STR,
-				sizeof(mvm_session_cmd.mvm_session.name));
 			} else {
 				strlcpy(mvm_session_cmd.mvm_session.name,
 				"default modem voice",
@@ -777,10 +752,6 @@ static int voice_create_mvm_cvs_session(struct voice_data *v)
 			} else if (is_qchat_session(v->session_id)) {
 				strlcpy(cvs_session_cmd.cvs_session.name,
 				QCHAT_SESSION_VSID_STR,
-				sizeof(cvs_session_cmd.cvs_session.name));
-			} else if (is_vowlan_session(v->session_id)) {
-				strlcpy(cvs_session_cmd.cvs_session.name,
-				VOWLAN_SESSION_VSID_STR,
 				sizeof(cvs_session_cmd.cvs_session.name));
 			} else {
 			strlcpy(cvs_session_cmd.cvs_session.name,
@@ -1523,77 +1494,6 @@ done:
 	return ret;
 }
 
-static int voice_config_cvs_vocoder_amr_rate(struct voice_data *v)
-{
-	int ret = 0;
-	void *apr_cvs;
-	u16 cvs_handle;
-	struct cvs_set_amr_enc_rate_cmd cvs_set_amr_rate;
-
-	if (v == NULL) {
-		pr_err("%s: v is NULL\n", __func__);
-
-		ret = -EINVAL;
-		goto done;
-	}
-	apr_cvs = common.apr_q6_cvs;
-
-	if (!apr_cvs) {
-		pr_err("%s: apr_cvs is NULL.\n", __func__);
-
-		ret = -EINVAL;
-		goto done;
-	}
-
-	cvs_handle = voice_get_cvs_handle(v);
-
-	pr_debug("%s: Setting AMR rate. Media Type: %d\n", __func__,
-		 common.mvs_info.media_type);
-
-	cvs_set_amr_rate.hdr.hdr_field =
-			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-			APR_HDR_LEN(APR_HDR_SIZE),
-			APR_PKT_VER);
-	cvs_set_amr_rate.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
-			       sizeof(cvs_set_amr_rate) - APR_HDR_SIZE);
-	cvs_set_amr_rate.hdr.src_port =
-			voice_get_idx_for_session(v->session_id);
-	cvs_set_amr_rate.hdr.dest_port = cvs_handle;
-	cvs_set_amr_rate.hdr.token = 0;
-
-	if (common.mvs_info.media_type == VSS_MEDIA_ID_AMR_NB_MODEM)
-		cvs_set_amr_rate.hdr.opcode =
-				VSS_ISTREAM_CMD_VOC_AMR_SET_ENC_RATE;
-	else if (common.mvs_info.media_type == VSS_MEDIA_ID_AMR_WB_MODEM)
-		cvs_set_amr_rate.hdr.opcode =
-				VSS_ISTREAM_CMD_VOC_AMRWB_SET_ENC_RATE;
-
-	cvs_set_amr_rate.amr_rate.mode = common.mvs_info.rate;
-
-	v->cvs_state = CMD_STATUS_FAIL;
-
-	ret = apr_send_pkt(apr_cvs, (uint32_t *) &cvs_set_amr_rate);
-	if (ret < 0) {
-		pr_err("%s: Error %d sending SET_AMR_RATE\n",
-		       __func__, ret);
-
-		goto done;
-	}
-	ret = wait_event_timeout(v->cvs_wait,
-				 (v->cvs_state == CMD_STATUS_SUCCESS),
-				 msecs_to_jiffies(TIMEOUT_MS));
-	if (!ret) {
-		pr_err("%s: wait_event timeout\n", __func__);
-
-		ret = -EINVAL;
-		goto done;
-	}
-
-	return 0;
-done:
-	return ret;
-}
-
 static int voice_config_cvs_vocoder(struct voice_data *v)
 {
 	int ret = 0;
@@ -1698,13 +1598,80 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 
 		break;
 	}
-	case VSS_MEDIA_ID_AMR_NB_MODEM:
-	case VSS_MEDIA_ID_AMR_WB_MODEM: {
-		ret = voice_config_cvs_vocoder_amr_rate(v);
-		if (ret) {
-			pr_err("%s: Failed to update vocoder rate. %d\n",
-			       __func__, ret);
+	case VSS_MEDIA_ID_AMR_NB_MODEM: {
+		struct cvs_set_amr_enc_rate_cmd cvs_set_amr_rate;
 
+		pr_debug("Setting AMR rate\n");
+
+		cvs_set_amr_rate.hdr.hdr_field =
+				APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+				APR_HDR_LEN(APR_HDR_SIZE),
+				APR_PKT_VER);
+		cvs_set_amr_rate.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
+				       sizeof(cvs_set_amr_rate) - APR_HDR_SIZE);
+		cvs_set_amr_rate.hdr.src_port =
+				voice_get_idx_for_session(v->session_id);
+		cvs_set_amr_rate.hdr.dest_port = cvs_handle;
+		cvs_set_amr_rate.hdr.token = 0;
+		cvs_set_amr_rate.hdr.opcode =
+					VSS_ISTREAM_CMD_VOC_AMR_SET_ENC_RATE;
+		cvs_set_amr_rate.amr_rate.mode = common.mvs_info.rate;
+
+		v->cvs_state = CMD_STATUS_FAIL;
+
+		ret = apr_send_pkt(apr_cvs, (uint32_t *) &cvs_set_amr_rate);
+		if (ret < 0) {
+			pr_err("%s: Error %d sending SET_AMR_RATE\n",
+			       __func__, ret);
+			goto fail;
+		}
+		ret = wait_event_timeout(v->cvs_wait,
+					 (v->cvs_state == CMD_STATUS_SUCCESS),
+					 msecs_to_jiffies(TIMEOUT_MS));
+		if (!ret) {
+			pr_err("%s: wait_event timeout\n", __func__);
+			goto fail;
+		}
+
+		ret = voice_set_dtx(v);
+		if (ret < 0)
+			goto fail;
+
+		break;
+	}
+	case VSS_MEDIA_ID_AMR_WB_MODEM: {
+		struct cvs_set_amrwb_enc_rate_cmd cvs_set_amrwb_rate;
+
+		pr_debug("Setting AMR WB rate\n");
+
+		cvs_set_amrwb_rate.hdr.hdr_field =
+				APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+				APR_HDR_LEN(APR_HDR_SIZE),
+				APR_PKT_VER);
+		cvs_set_amrwb_rate.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
+						sizeof(cvs_set_amrwb_rate) -
+						APR_HDR_SIZE);
+		cvs_set_amrwb_rate.hdr.src_port =
+				voice_get_idx_for_session(v->session_id);
+		cvs_set_amrwb_rate.hdr.dest_port = cvs_handle;
+		cvs_set_amrwb_rate.hdr.token = 0;
+		cvs_set_amrwb_rate.hdr.opcode =
+					VSS_ISTREAM_CMD_VOC_AMRWB_SET_ENC_RATE;
+		cvs_set_amrwb_rate.amrwb_rate.mode = common.mvs_info.rate;
+
+		v->cvs_state = CMD_STATUS_FAIL;
+
+		ret = apr_send_pkt(apr_cvs, (uint32_t *) &cvs_set_amrwb_rate);
+		if (ret < 0) {
+			pr_err("%s: Error %d sending SET_AMRWB_RATE\n",
+			       __func__, ret);
+			goto fail;
+		}
+		ret = wait_event_timeout(v->cvs_wait,
+					 (v->cvs_state == CMD_STATUS_SUCCESS),
+					 msecs_to_jiffies(TIMEOUT_MS));
+		if (!ret) {
+			pr_err("%s: wait_event timeout\n", __func__);
 			goto fail;
 		}
 
@@ -1729,31 +1696,6 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 
 fail:
 	return -EINVAL;
-}
-
-int voc_update_amr_vocoder_rate(uint32_t session_id)
-{
-	int ret = 0;
-	struct voice_data *v;
-
-	pr_debug("%s: session_id:%d", __func__, session_id);
-
-	v = voice_get_session(session_id);
-
-	if (v == NULL) {
-		pr_err("%s: v is NULL, session_id:%d\n", __func__,
-		       session_id);
-
-		ret = -EINVAL;
-		goto done;
-	}
-
-	mutex_lock(&v->lock);
-	ret = voice_config_cvs_vocoder_amr_rate(v);
-	mutex_unlock(&v->lock);
-
-done:
-	return ret;
 }
 
 static int voice_send_start_voice_cmd(struct voice_data *v)
@@ -3947,15 +3889,8 @@ static int voice_cvs_start_record(struct voice_data *v, uint32_t rec_mode)
 		cvs_start_record.hdr.token = 0;
 		cvs_start_record.hdr.opcode = VSS_IRECORD_CMD_START;
 
-		// In order to enable stereo recording,
-		// i.e. TX on the left and RX on the right
-		// the respective ports need to be explicitly specified:
-		// INCALL_RECORD_TX => 0x8003
-		// INCALL_RECORD_RX => 0x8004
-		/*cvs_start_record.rec_mode.port_id =
-					VSS_IRECORD_PORT_ID_DEFAULT; */
 		cvs_start_record.rec_mode.port_id =
-					VSS_IRECORD_PORT_ID_TX_RX;
+					VSS_IRECORD_PORT_ID_DEFAULT;
 		if (rec_mode == VOC_REC_UPLINK) {
 			cvs_start_record.rec_mode.rx_tap_point =
 					VSS_IRECORD_TAP_POINT_NONE;
@@ -3978,9 +3913,6 @@ static int voice_cvs_start_record(struct voice_data *v, uint32_t rec_mode)
 			ret = -EINVAL;
 			goto fail;
 		}
-
-		// request stereo recording
-		cvs_start_record.rec_mode.mode = VSS_IRECORD_MODE_TX_RX_STEREO;
 
 		v->cvs_state = CMD_STATUS_FAIL;
 
@@ -5104,12 +5036,10 @@ exit:
 
 void voc_register_mvs_cb(ul_cb_fn ul_cb,
 			   dl_cb_fn dl_cb,
-			   voip_ssr_cb ssr_cb,
 			   void *private_data)
 {
 	common.mvs_info.ul_cb = ul_cb;
 	common.mvs_info.dl_cb = dl_cb;
-	common.mvs_info.ssr_cb = ssr_cb;
 	common.mvs_info.private_data = private_data;
 }
 
@@ -5160,14 +5090,6 @@ static int32_t qdsp_mvm_callback(struct apr_client_data *data, void *priv)
 		} else {
 			pr_debug("%s: Reset event received in Voice service\n",
 				__func__);
-
-			if (common.mvs_info.ssr_cb) {
-				pr_debug("%s: Informing reset event to VoIP\n",
-					__func__);
-				common.mvs_info.ssr_cb(data->opcode,
-						common.mvs_info.private_data);
-			}
-
 			apr_reset(c->apr_q6_mvm);
 			c->apr_q6_mvm = NULL;
 
