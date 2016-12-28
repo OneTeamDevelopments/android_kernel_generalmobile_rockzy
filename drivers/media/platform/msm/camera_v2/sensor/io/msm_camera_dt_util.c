@@ -897,6 +897,7 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_LDO_EN]);
 	}
 
+#ifdef CONFIG_MACH_LGE
 	if (of_property_read_bool(of_node, "qcom,gpio-ois-reset") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-ois-reset", &val);
 		if (rc < 0) {
@@ -914,7 +915,7 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 		CDBG("%s qcom,gpio-ois-reset %d\n", __func__,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET]);
 	}
-
+#endif
 	if (of_property_read_bool(of_node, "qcom,gpio-ldaf-en") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-ldaf-en", &val);
 		if (rc < 0) {
@@ -1302,7 +1303,7 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 				continue;
 			}
 
-#if defined(CONFIG_MACH_LGE)
+#ifdef CONFIG_MACH_LGE
 			if((pd->seq_val == SENSOR_GPIO_RESET ||
 				pd->seq_val == SENSOR_GPIO_OIS_RESET) &&
 				ctrl->gpio_conf->gpio_num_info->gpio_num[pd->config_val] !=
