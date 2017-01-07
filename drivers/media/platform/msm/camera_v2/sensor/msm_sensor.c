@@ -559,6 +559,40 @@ static int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_RESET]);
 	}
 
+	if (of_property_read_bool(of_node, "qcom,gpio-vaf") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-vaf", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-vaf failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-vaf invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VAF] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-vaf %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VAF]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-af-pwdm") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-af-pwdm", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-af-pwdm failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-af-pwdm invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWDM] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-af-pwdm %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWDM]);
+	}
+
 	if (of_property_read_bool(of_node, "qcom,gpio-vana") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-vana", &val);
 		if (rc < 0) {
@@ -983,11 +1017,18 @@ static struct msm_cam_clk_info cam_8610_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 24000000},
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
-
+#ifdef CONFIG_GN_CAMERA_24M_MCLOCK_SUPPORT
 static struct msm_cam_clk_info cam_8974_clk_info[] = {
-	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
+	[SENSOR_CAM_MCLK] = {"cam_src_clk", 24000000},
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
+#else
+
+static struct msm_cam_clk_info cam_8974_clk_info[] = {
+  	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
+  	[SENSOR_CAM_CLK] = {"cam_clk", 0},
+};
+#endif
 
 int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -1781,7 +1822,21 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = -EFAULT;
 		}
 		break;
-
+    case CFG_SET_INIT_SETTING:
+         if(s_ctrl->gn_otp_func_tbl && s_ctrl->gn_otp_func_tbl->gn_sensor_otp_support) {
+		 	for (i = 0; i < 3; i ++) {
+				rc = s_ctrl->gn_otp_func_tbl->gn_sensor_otp_support(s_ctrl);
+				if (rc != 1) {
+					pr_err("%s: %s: sensor otp support failed [%d]\n", __func__,
+							s_ctrl->sensordata->sensor_name, i);
+				} else {
+					printk("%s: %s: sensor otp support success\n", __func__,
+							s_ctrl->sensordata->sensor_name);
+					break;
+				}
+			}
+		}
+        break;
 	case CFG_SET_STOP_STREAM_SETTING: {
 		struct msm_camera_i2c_reg_setting *stop_setting =
 			&s_ctrl->stop_setting;
