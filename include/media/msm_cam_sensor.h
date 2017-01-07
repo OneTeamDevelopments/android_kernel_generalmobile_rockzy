@@ -286,6 +286,7 @@ struct msm_camera_csid_vc_cfg {
 struct msm_camera_csid_lut_params {
 	uint8_t num_cid;
 	struct msm_camera_csid_vc_cfg *vc_cfg[MAX_CID];
+	uint32_t vc_cfg_size;
 };
 
 struct msm_camera_csid_params {
