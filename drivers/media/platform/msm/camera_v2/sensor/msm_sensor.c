@@ -587,10 +587,10 @@ static int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 					__func__, __LINE__, val);
 				goto ERROR;
 			}
-			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWDM] =
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_AF_PWDM] =
 				gpio_array[val];
 			CDBG("%s qcom,gpio-af-pwdm %d\n", __func__,
-				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWDM]);
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_AF_PWDM]);
 	}
 
 	if (of_property_read_bool(of_node, "qcom,gpio-vana") == true) {
