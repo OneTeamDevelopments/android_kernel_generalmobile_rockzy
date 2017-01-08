@@ -391,10 +391,18 @@ static struct msm_cam_clk_info cam_8610_clk_info[] = {
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
 
+#ifdef CONFIG_GN_CAMERA_24M_MCLOCK_SUPPORT
 static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 24000000},
-	[SENSOR_CAM_CLK] = {"cam_clk", 0},
+  	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
+#else
+
+static struct msm_cam_clk_info cam_8974_clk_info[] = {
+  	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
+  	[SENSOR_CAM_CLK] = {"cam_clk", 0},
+};
+#endif
 
 int msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -995,7 +1003,21 @@ int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			rc = -EFAULT;
 		}
 		break;
-
+     case CFG_SET_INIT_SETTING:
+         if(s_ctrl->gn_otp_func_tbl && s_ctrl->gn_otp_func_tbl->gn_sensor_otp_support) {
+		 	for (i = 0; i < 3; i ++) {
+				rc = s_ctrl->gn_otp_func_tbl->gn_sensor_otp_support(s_ctrl);
+				if (rc != 1) {
+					pr_err("%s: %s: sensor otp support failed [%d]\n", __func__,
+							s_ctrl->sensordata->sensor_name, i);
+				} else {
+					printk("%s: %s: sensor otp support success\n", __func__,
+							s_ctrl->sensordata->sensor_name);
+					break;
+				}
+			}
+		}
+        break;
 	case CFG_SET_STOP_STREAM_SETTING: {
 		struct msm_camera_i2c_reg_setting *stop_setting =
 			&s_ctrl->stop_setting;
