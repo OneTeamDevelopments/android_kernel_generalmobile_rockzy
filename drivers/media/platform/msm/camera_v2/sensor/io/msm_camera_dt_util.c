@@ -805,6 +805,57 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_FL_EN]);
 	}
 
+	if (of_property_read_bool(of_node, "qcom,gpio-vaf") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-vaf", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-vaf failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-vaf invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VAF] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-vaf %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VAF]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-af-pwdm") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-af-pwdm", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-af-pwdm failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-af-pwdm invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_AF_PWDM] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-af-pwdm %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_AF_PWDM]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-vana") == true) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-vana", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-vana failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-vana invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VANA] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-vana %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VANA]);
+	}
+
 	if (of_property_read_bool(of_node, "qcom,gpio-flash-now") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-flash-now", &val);
 		if (rc < 0) {
