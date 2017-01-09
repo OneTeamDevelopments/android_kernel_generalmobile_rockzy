@@ -11,8 +11,6 @@
  *
  */
 #include "msm_sensor.h"
-#include "msm_cci.h"
-#include "msm_camera_io_util.h"
 #include <linux/delay.h>
 #define GN_SUNNY_OV4688_SENSOR_NAME "gn_sunny_ov4688"
 #define RG_TYPICAL 0xE7	//0x138    
@@ -74,7 +72,7 @@ static struct msm_sensor_power_setting gn_sunny_ov4688_power_setting[] = {
 	{
 		.seq_type = SENSOR_CLK,
 		.seq_val = SENSOR_CAM_MCLK,
-		.config_val = 0,
+		.config_val = 24000000,
 		.delay = 5,
 	},
 	{
@@ -534,12 +532,6 @@ static void __exit gn_sunny_ov4688_exit_module(void)
 	return;
 }
 
-static struct msm_sensor_fn_t gn_sunny_ov4688_sensor_func_tbl = {
-	.sensor_power_up = msm_sensor_power_up,
-	.sensor_power_down = msm_sensor_power_down,
-	.sensor_match_id = msm_sensor_match_id,
-};
-
 static struct msm_sensor_ctrl_t gn_sunny_ov4688_s_ctrl = {
 	.sensor_i2c_client = &gn_sunny_ov4688_sensor_i2c_client,
 	.power_setting_array.power_setting = gn_sunny_ov4688_power_setting,
@@ -548,7 +540,6 @@ static struct msm_sensor_ctrl_t gn_sunny_ov4688_s_ctrl = {
 	.sensor_v4l2_subdev_info = gn_sunny_ov4688_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(gn_sunny_ov4688_subdev_info),
 	.gn_otp_func_tbl = &gn_otp_func,
-	.func_tbl = &gn_sunny_ov4688_sensor_func_tbl,
 };
 module_init(gn_sunny_ov4688_init_module);
 module_exit(gn_sunny_ov4688_exit_module);
