@@ -5109,7 +5109,13 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("cam_clk", gcc_gp1_clk.c, "202.qcom,camera"),
 	CLK_LOOKUP("cam_clk", gcc_gp1_clk.c, "203.qcom,camera"),
 	CLK_LOOKUP("cam_clk", gcc_gp1_clk.c, "204.qcom,camera"),      //ov8835 for front camera	
-
+	CLK_LOOKUP("cam_src_clk", mmss_gp0_clk_src.c, "0.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", gp1_clk_src.c, "2.qcom,camera"),
+	CLK_LOOKUP("cam_src_clk", mmss_gp1_clk_src.c, "1.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_gp0_clk.c, "0.qcom,camera"),
+	CLK_LOOKUP("cam_clk", gcc_gp1_clk.c, "2.qcom,camera"),
+	CLK_LOOKUP("cam_clk", camss_gp1_clk.c, "1.qcom,camera"),
+	
 	CLK_LOOKUP("cam_clk", camss_gp0_clk.c, "6e.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_gp0_clk.c, "20.qcom,camera"),
 	CLK_LOOKUP("cam_clk", camss_gp0_clk.c, "66.qcom,camera"),
