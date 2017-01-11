@@ -32,8 +32,9 @@
 		qcom,fault-info-reg = <0x0c>;
 		qcom,max-torch-current = <200>;
 		qcom,max-flash-current = <750>;
-		qcom,gpio-en = <23>;
-		qcom,gpio-torch-en = <24>;
+		qcom,gpio-en = <54>;
+		qcom,gpio-torch-en = <55>;
+		qcom,gpio-strobe-en = <56>;
 		qcom,regulator-name = "8941_lvs3";
 	};
 };
@@ -204,7 +205,7 @@
 		reg = <0x203>;
 		qcom,slave-id = <0x6c 0x300A 0x4688>;
 		qcom,csiphy-sd-index = <2>;
-		qcom,csid-sd-index = <0>;
+		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "gn_sunny_ov4688";
 		qcom,vdd-cx-supply = <&pm8841_s2>;
