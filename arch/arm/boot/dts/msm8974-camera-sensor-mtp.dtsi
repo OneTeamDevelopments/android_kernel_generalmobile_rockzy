@@ -32,9 +32,8 @@
 		qcom,fault-info-reg = <0x0c>;
 		qcom,max-torch-current = <200>;
 		qcom,max-flash-current = <750>;
-		qcom,gpio-en = <54>;
-		qcom,gpio-torch-en = <55>;
-		qcom,gpio-strobe-en = <56>;
+		qcom,gpio-en = <23>;
+		qcom,gpio-torch-en = <24>;
 		qcom,regulator-name = "8941_lvs3";
 	};
 };
