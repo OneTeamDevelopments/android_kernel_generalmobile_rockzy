@@ -407,6 +407,7 @@ int32_t RG_Ratio_Typical = RG_TYPICAL;
 int32_t BG_Ratio_Typical = BG_TYPICAL;
 static int32_t update_otp_wb(struct msm_sensor_ctrl_t *s_ctrl)
 {
+	struct gn_sunny_ov4688_otp_struct current_otp;
 	int i;
 	int otp_index;// bank 1,2,3
 	int temp;
