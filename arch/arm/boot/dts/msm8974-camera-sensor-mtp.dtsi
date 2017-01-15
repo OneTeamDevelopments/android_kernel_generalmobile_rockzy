@@ -385,11 +385,13 @@ qcom,camera@203 {
 			<&msmgpio 23 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
+		qcom,gpio-vdig = <3>;
 		qcom,gpio-req-tbl-num = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET1",
-					  "CAM_STANDBY";
+					  "CAM_STANDBY",
+					  "CAM_VDIG";
 		qcom,gpio-set-tbl-num = <2 1 1 >;
 		qcom,gpio-set-tbl-flags = <2 0 2>;
 		qcom,gpio-set-tbl-delay = <10000 1000 4000>;
