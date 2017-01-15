@@ -235,7 +235,7 @@ qcom,camera@205 {
 qcom,camera@201 {
 		compatible = "qcom,gn_sunny_ov16825";
 		reg = <0x201>;
-		qcom,slave-id = <0x6d 0x300A 0x0168>;
+		qcom,slave-id = <0x20 0x300A 0x0168>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&actuator0>;
