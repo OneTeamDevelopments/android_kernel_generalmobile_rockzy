@@ -232,10 +232,10 @@ qcom,camera@205 {
 		qcom,cci-master = <0>;
 		status = "ok";
 	};
-	 qcom,camera@201 {
+qcom,camera@201 {
 		compatible = "qcom,gn_sunny_ov16825";
 		reg = <0x201>;
-		qcom,slave-id = <0x20 0x300A 0x0168>;
+		qcom,slave-id = <0x6d 0x300A 0x0168>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&actuator0>;
@@ -276,7 +276,7 @@ qcom,camera@205 {
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1f>;
 		qcom,sensor-position = <0>;
-		qcom,sensor-mode = <1>;
+		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 		status = "ok";
 	};
@@ -363,8 +363,8 @@ qcom,camera@202 {
 qcom,camera@203 {
 		compatible = "qcom,gn_sunny_ov4688";
 		reg = <0x203>;
-		qcom,slave-id = <0x6c 0x300A 0x4688>;
-		qcom,csiphy-sd-index = <2>;
+		qcom,slave-id = <0x6f 0x300A 0x4688>;
+		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "gn_sunny_ov4688";
@@ -396,7 +396,7 @@ qcom,camera@203 {
 		qcom,csi-lane-mask = <0x7>;
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <1>;
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 		status = "ok";
 	};
 	qcom,camera@6e {
