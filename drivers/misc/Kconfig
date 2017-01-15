@@ -664,9 +664,10 @@ config TI_DRV2667
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called ti_drv2667.
+
 config GN_DEVICE_TYPE_CHECK
     tristate "Gionee Device Check"
-    default n
+    default y
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
