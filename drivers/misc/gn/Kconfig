@@ -53,6 +53,10 @@ config GN_SUNNY_OV16825
 	bool "GN_SUNNY_OV16825"
 	default y
 
+config GN_SUNNY_OV4688
+	bool "GN_SUNNY_OV4688"
+	default y
+
 config GN_Q_BSP_PM_NON_STANDARD_CHARGER_SUPPORT
 	bool "GN_Q_BSP_PM_NON_STANDARD_CHARGER_SUPPORT"
 	default y
