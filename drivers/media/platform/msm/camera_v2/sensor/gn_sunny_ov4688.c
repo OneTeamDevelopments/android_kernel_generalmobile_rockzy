@@ -34,6 +34,12 @@ static struct msm_sensor_power_setting gn_sunny_ov4688_power_setting[] = {
 	},
 	{
 		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VDIG,
+		.config_val = 0,
+		.delay = 0,
+	},
+	{
+		.seq_type = SENSOR_VREG,
 		.seq_val = CAM_VIO,
 		.config_val = 0,
 		.delay = 5,
