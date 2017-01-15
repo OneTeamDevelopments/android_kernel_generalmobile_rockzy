@@ -396,7 +396,7 @@ qcom,camera@203 {
 		qcom,csi-lane-mask = <0x7>;
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <1>;
-		qcom,cci-master = <1>;
+		qcom,cci-master = <0>;
 		status = "ok";
 	};
 	qcom,camera@6e {
