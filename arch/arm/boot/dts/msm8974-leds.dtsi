@@ -99,7 +99,12 @@ qcom,rgb_0 {
 	};
 
 	qcom,leds@d300 {
-		status = "okay";
+                compatible = "qcom,leds-qpnp";
+                reg = <0xd300 0x100>;
+                label = "flash";
+                flash-boost-supply = <&pm8941_chg_boost>;
+                torch-boost-supply = <&pm8941_boost>;
+                status = "okay";
 		pm8941_flash0: qcom,flash_0 {
 			qcom,max-current = <1000>;
 			qcom,default-state = "off";
@@ -109,8 +114,7 @@ qcom,rgb_0 {
 			qcom,startup-dly = <3>;
 			qcom,safety-timer;
 			label = "flash";
-			linux,default-trigger =
-				"flash0_trigger";
+			linux,default-trigger = "flash0_trigger";
 			qcom,id = <1>;
 			linux,name = "led:flash_0";
 			qcom,current = <625>;
@@ -124,8 +128,7 @@ qcom,rgb_0 {
 			qcom,clamp-curr = <200>;
 			qcom,startup-dly = <3>;
 			qcom,safety-timer;
-			linux,default-trigger =
-				"flash1_trigger";
+			linux,default-trigger = "flash1_trigger";
 			label = "flash";
 			qcom,id = <2>;
 			linux,name = "led:flash_1";
@@ -137,8 +140,7 @@ qcom,rgb_0 {
 			qcom,default-state = "off";
 			qcom,headroom = <0>;
 			qcom,startup-dly = <1>;
-			linux,default-trigger =
-				"torch_trigger";
+			linux,default-trigger = "torch_trigger";
 			label = "flash";
 			qcom,id = <2>;
 			linux,name = "led:flash_torch";
