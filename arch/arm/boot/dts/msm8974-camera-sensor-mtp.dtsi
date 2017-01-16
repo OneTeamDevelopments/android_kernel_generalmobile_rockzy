@@ -12,7 +12,7 @@
  */
 /include/ "msm8974-regulator.dtsi"
 
--&soc {
+&soc {
 	qcom,camera-led-flash {
 		cell-index = <0>;
 		compatible = "qcom,camera-led-flash";
