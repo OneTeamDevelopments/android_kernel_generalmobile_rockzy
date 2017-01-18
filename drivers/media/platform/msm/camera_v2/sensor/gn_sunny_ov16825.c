@@ -80,8 +80,8 @@ static struct msm_sensor_power_setting gn_sunny_ov16825_power_setting[] = {
 	{
 		.seq_type = SENSOR_CLK,
 		.seq_val = SENSOR_CAM_MCLK,
-		.config_val = 24000000,
-		.delay = 1,
+		.config_val = 0,
+		.delay = 5,
 	},
 	{
 		.seq_type = SENSOR_I2C_MUX,
