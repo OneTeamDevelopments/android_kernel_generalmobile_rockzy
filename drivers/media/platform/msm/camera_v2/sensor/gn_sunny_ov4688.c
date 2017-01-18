@@ -16,6 +16,7 @@
 #define RG_TYPICAL 0xE7	//0x138    
 #define BG_TYPICAL 0x10F //0x127
 DEFINE_MSM_MUTEX(gn_sunny_ov4688_mut);
+static struct gn_sunny_ov4688_otp_struct *current_otp;
 #ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
 #include <linux/gn_device_check.h>
 #endif
@@ -72,7 +73,7 @@ static struct msm_sensor_power_setting gn_sunny_ov4688_power_setting[] = {
 	{
 		.seq_type = SENSOR_CLK,
 		.seq_val = SENSOR_CAM_MCLK,
-		.config_val = 24000000,
+		.config_val = 0,
 		.delay = 5,
 	},
 	{
@@ -506,6 +507,7 @@ static int __init gn_sunny_ov4688_init_module(void)
 {
 	int32_t rc = 0;
 	pr_info("%s:%d\n", __func__, __LINE__);
+	current_otp = kzalloc(sizeof(struct gn_sunny_ov4688_otp_struct),GFP_KERNEL);
 	rc = platform_driver_probe(&gn_sunny_ov4688_platform_driver,
 		gn_sunny_ov4688_platform_probe);
 	if (!rc){
@@ -529,6 +531,7 @@ static void __exit gn_sunny_ov4688_exit_module(void)
 		platform_driver_unregister(&gn_sunny_ov4688_platform_driver);
 	} else
 		i2c_del_driver(&gn_sunny_ov4688_i2c_driver);
+	kzfree(current_otp);
 	return;
 }
 
@@ -539,7 +542,7 @@ static struct msm_sensor_ctrl_t gn_sunny_ov4688_s_ctrl = {
 	.msm_sensor_mutex = &gn_sunny_ov4688_mut,
 	.sensor_v4l2_subdev_info = gn_sunny_ov4688_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(gn_sunny_ov4688_subdev_info),
-	.gn_otp_func_tbl = &gn_otp_func,
+	.gn_otp_func_tbl = &gn_otp_func, 
 };
 module_init(gn_sunny_ov4688_init_module);
 module_exit(gn_sunny_ov4688_exit_module);
