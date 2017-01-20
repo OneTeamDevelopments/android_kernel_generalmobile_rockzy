@@ -616,7 +616,7 @@ qcom,camera@203 {
 	qcom,camera@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
-		reg = <0x201>;
+		reg = <0x0>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
@@ -649,7 +649,7 @@ qcom,camera@203 {
 	qcom,camera@1 {
 		cell-index = <1>;
 		compatible = "qcom,camera";
-		reg = <0x203>;
+		reg = <0x1>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <1>;
 		qcom,mount-angle = <270>;
