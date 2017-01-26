@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,6 +37,8 @@ struct msm_vidc_drv *vidc_driver;
 
 uint32_t msm_vidc_pwr_collapse_delay = 10000;
 
+uint32_t pm_qos_latency_us = 501;
+
 static inline struct msm_vidc_inst *get_vidc_inst(struct file *filp, void *fh)
 {
 	return container_of(filp->private_data,
@@ -58,6 +60,29 @@ static int msm_v4l2_open(struct file *filp)
 		core->id, vid_dev->type);
 		return -ENOMEM;
 	}
+
+	if (!pm_qos_request_active(&vidc_inst->pm_qos)) {
+		dprintk(VIDC_DBG, "pm_qos_add with latency %u usec\n",
+				pm_qos_latency_us);
+
+		/*
+		 * The default request type PM_QOS_REQ_ALL_CORES is
+		 * applicable to all CPU cores that are online and
+		 * would have a power impact when there are more
+		 * number of CPUs. PM_QOS_REQ_AFFINE_IRQ request
+		 * type shall update/apply the vote only to that CPU to
+		 * which IRQ's affinity is set to.
+		 */
+#ifdef CONFIG_SMP
+
+		vidc_inst->pm_qos.type = PM_QOS_REQ_AFFINE_IRQ;
+		vidc_inst->pm_qos.irq = core->resources.irq;
+
+#endif
+		pm_qos_add_request(&vidc_inst->pm_qos,
+				PM_QOS_CPU_DMA_LATENCY, pm_qos_latency_us);
+	}
+
 	clear_bit(V4L2_FL_USES_V4L2_FH, &vdev->flags);
 	filp->private_data = &(vidc_inst->event_handler);
 	return 0;
@@ -74,7 +99,15 @@ static int msm_v4l2_close(struct file *filp)
 		dprintk(VIDC_WARN,
 			"Failed in %s for release output buffers\n", __func__);
 
+	if (pm_qos_request_active(&vidc_inst->pm_qos)) {
+		dprintk(VIDC_DBG, "pm_qos_update and remove\n");
+		pm_qos_update_request(&vidc_inst->pm_qos,
+				PM_QOS_DEFAULT_VALUE);
+		pm_qos_remove_request(&vidc_inst->pm_qos);
+	}
+
 	rc = msm_vidc_close(vidc_inst);
+
 	return rc;
 }
 
@@ -285,7 +318,7 @@ static int read_platform_resources(struct msm_vidc_core *core,
 		struct platform_device *pdev)
 {
 	if (!core || !pdev) {
-		dprintk(VIDC_ERR, "%s: Invalid params %p %p\n",
+		dprintk(VIDC_ERR, "%s: Invalid params %pK %pK\n",
 			__func__, core, pdev);
 		return -EINVAL;
 	}
@@ -516,7 +549,7 @@ static int __devexit msm_vidc_remove(struct platform_device *pdev)
 	struct msm_vidc_core *core;
 
 	if (!pdev) {
-		dprintk(VIDC_ERR, "%s invalid input %p", __func__, pdev);
+		dprintk(VIDC_ERR, "%s invalid input %pK", __func__, pdev);
 		return -EINVAL;
 	}
 	core = pdev->dev.platform_data;
