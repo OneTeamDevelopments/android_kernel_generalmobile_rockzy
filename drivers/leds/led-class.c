@@ -24,7 +24,7 @@
 #define LED_BUFF_SIZE 50
 
 static struct class *leds_class;
-extern int32_t CamState;
+
 #define TORCH_BRITGHNESS 40
 static void led_update_brightness(struct led_classdev *led_cdev)
 {
@@ -62,12 +62,9 @@ static ssize_t led_brightness_store(struct device *dev,
 		    if (state == LED_OFF) 
 		        led_trigger_remove(led_cdev);
 		}
-          if (0 == CamState)  {
-              led_set_brightness(led_cdev, state);
-          }
-          else { //camera is opening or state!=40
-              if (TORCH_BRITGHNESS != state)
-                  led_set_brightness(led_cdev, state);
+                    //camera is opening or state!=40
+                    if (TORCH_BRITGHNESS != state) {
+                        led_set_brightness(led_cdev, state);
           }
 	}
 
