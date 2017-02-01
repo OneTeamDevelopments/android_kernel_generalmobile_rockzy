@@ -400,6 +400,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 	struct msm_camera_csi_lane_params *csi_lane_params;
 	uint16_t csi_lane_mask;
 	csi_lane_params = (struct msm_camera_csi_lane_params *)arg;
+	csi_lane_mask = (csi_lane_params->csi_lane_mask & 0x1F);
 
 	if (!csiphy_dev || !csiphy_dev->ref_count) {
 		pr_err("%s csiphy dev NULL / ref_count ZERO\n", __func__);
@@ -423,7 +424,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 				__LINE__, csi_lane_params);
 			return -EINVAL;
 		}
-		csi_lane_mask = (csi_lane_params->csi_lane_mask & 0x1F);
+		csi_lane_mask = (csi_lane_params->csi_lane_mask);
 
 		CDBG("%s csiphy_params, lane assign %x mask = %x\n",
 			__func__,
@@ -484,6 +485,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 	struct msm_camera_csi_lane_params *csi_lane_params;
 	uint16_t csi_lane_mask;
 	csi_lane_params = (struct msm_camera_csi_lane_params *)arg;
+	csi_lane_mask = (csi_lane_params->csi_lane_mask & 0x1F);
 
 	if (!csiphy_dev || !csiphy_dev->ref_count) {
 		pr_err("%s csiphy dev NULL / ref_count ZERO\n", __func__);
@@ -507,7 +509,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 				__LINE__, csi_lane_params);
 			return -EINVAL;
 		}
-		csi_lane_mask = (csi_lane_params->csi_lane_mask & 0x1F);
+		csi_lane_mask = (csi_lane_params->csi_lane_mask;
 
 		CDBG("%s csiphy_params, lane assign %x mask = %x\n",
 			__func__,
