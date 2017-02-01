@@ -509,7 +509,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 				__LINE__, csi_lane_params);
 			return -EINVAL;
 		}
-		csi_lane_mask = (csi_lane_params->csi_lane_mask;
+		csi_lane_mask = (csi_lane_params->csi_lane_mask);
 
 		CDBG("%s csiphy_params, lane assign %x mask = %x\n",
 			__func__,
