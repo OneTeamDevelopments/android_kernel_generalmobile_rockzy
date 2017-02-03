@@ -40,23 +40,15 @@
 #define MAX_ACTUATOR_REGION 5
 #define MAX_ACTUATOR_INIT_SET 12
 #define MAX_ACTUATOR_REG_TBL_SIZE 8
-#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024 
+#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
 
 #define MOVE_NEAR 0
 #define MOVE_FAR  1
+
 #define MSM_ACTUATOR_MOVE_SIGNED_FAR -1
 #define MSM_ACTUATOR_MOVE_SIGNED_NEAR  1
 
 #define MAX_EEPROM_NAME 32
-
-#define MAX_AF_ITERATIONS 3
-#define MAX_NUMBER_OF_STEPS 47
-
-enum flash_type {
-	LED_FLASH = 1,
-	STROBE_FLASH,
-	GPIO_FLASH
-};
 
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
@@ -92,11 +84,12 @@ enum msm_sensor_clk_type_t {
 enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_RESET,
 	SENSOR_GPIO_STANDBY,
-	SENSOR_GPIO_AF_PWDM,
-	SENSOR_GPIO_VIO,
 	SENSOR_GPIO_VANA,
 	SENSOR_GPIO_VDIG,
-	SENSOR_GPIO_VAF,
+	SENSOR_GPIO_VIO,
+	SENSOR_GPIO_VCM,
+	SENSOR_GPIO_OIS_LDO_EN,
+	SENSOR_GPIO_OIS_RESET,
 	SENSOR_GPIO_MAX,
 };
 
@@ -134,62 +127,6 @@ enum sensor_sub_module_t {
 	SUB_MODULE_MAX,
 };
 
-enum {
-	MSM_CAMERA_EFFECT_MODE_OFF,
-	MSM_CAMERA_EFFECT_MODE_MONO,
-	MSM_CAMERA_EFFECT_MODE_NEGATIVE,
-	MSM_CAMERA_EFFECT_MODE_SOLARIZE,
-	MSM_CAMERA_EFFECT_MODE_SEPIA,
-	MSM_CAMERA_EFFECT_MODE_POSTERIZE,
-	MSM_CAMERA_EFFECT_MODE_WHITEBOARD,
-	MSM_CAMERA_EFFECT_MODE_BLACKBOARD,
-	MSM_CAMERA_EFFECT_MODE_AQUA,
-	MSM_CAMERA_EFFECT_MODE_EMBOSS,
-	MSM_CAMERA_EFFECT_MODE_SKETCH,
-	MSM_CAMERA_EFFECT_MODE_NEON,
-	MSM_CAMERA_EFFECT_MODE_MAX
-};
-
-enum {
-	MSM_CAMERA_WB_MODE_AUTO,
-	MSM_CAMERA_WB_MODE_CUSTOM,
-	MSM_CAMERA_WB_MODE_INCANDESCENT,
-	MSM_CAMERA_WB_MODE_FLUORESCENT,
-	MSM_CAMERA_WB_MODE_WARM_FLUORESCENT,
-	MSM_CAMERA_WB_MODE_DAYLIGHT,
-	MSM_CAMERA_WB_MODE_CLOUDY_DAYLIGHT,
-	MSM_CAMERA_WB_MODE_TWILIGHT,
-	MSM_CAMERA_WB_MODE_SHADE,
-	MSM_CAMERA_WB_MODE_OFF,
-	MSM_CAMERA_WB_MODE_MAX
-};
-
-enum {
-	MSM_CAMERA_SCENE_MODE_OFF,
-	MSM_CAMERA_SCENE_MODE_AUTO,
-	MSM_CAMERA_SCENE_MODE_LANDSCAPE,
-	MSM_CAMERA_SCENE_MODE_SNOW,
-	MSM_CAMERA_SCENE_MODE_BEACH,
-	MSM_CAMERA_SCENE_MODE_SUNSET,
-	MSM_CAMERA_SCENE_MODE_NIGHT,
-	MSM_CAMERA_SCENE_MODE_PORTRAIT,
-	MSM_CAMERA_SCENE_MODE_BACKLIGHT,
-	MSM_CAMERA_SCENE_MODE_SPORTS,
-	MSM_CAMERA_SCENE_MODE_ANTISHAKE,
-	MSM_CAMERA_SCENE_MODE_FLOWERS,
-	MSM_CAMERA_SCENE_MODE_CANDLELIGHT,
-	MSM_CAMERA_SCENE_MODE_FIREWORKS,
-	MSM_CAMERA_SCENE_MODE_PARTY,
-	MSM_CAMERA_SCENE_MODE_NIGHT_PORTRAIT,
-	MSM_CAMERA_SCENE_MODE_THEATRE,
-	MSM_CAMERA_SCENE_MODE_ACTION,
-	MSM_CAMERA_SCENE_MODE_AR,
-	MSM_CAMERA_SCENE_MODE_FACE_PRIORITY,
-	MSM_CAMERA_SCENE_MODE_BARCODE,
-	MSM_CAMERA_SCENE_MODE_HDR,
-	MSM_CAMERA_SCENE_MODE_MAX
-};
-
 enum csid_cfg_type_t {
 	CSID_INIT,
 	CSID_CFG,
@@ -206,11 +143,6 @@ enum camera_vreg_type {
 	REG_LDO,
 	REG_VS,
 	REG_GPIO,
-};
-
-enum sensor_af_t {
-	SENSOR_AF_FOCUSSED,
-	SENSOR_AF_NOT_FOCUSSED,
 };
 
 struct msm_sensor_power_setting {
@@ -286,6 +218,7 @@ struct msm_camera_csid_vc_cfg {
 struct msm_camera_csid_lut_params {
 	uint8_t num_cid;
 	struct msm_camera_csid_vc_cfg *vc_cfg[MAX_CID];
+	uint32_t vc_cfg_size;
 };
 
 struct msm_camera_csid_params {
@@ -327,6 +260,28 @@ struct msm_sensor_info_t {
 	int32_t     subdev_id[SUB_MODULE_MAX];
 };
 
+struct msm_sensor_ois_info_t {
+	char ois_provider[MAX_SENSOR_NAME];
+	int16_t gyro[2];
+	int16_t target[2];
+	int16_t hall[2];
+	uint8_t is_stable;
+};
+
+enum ois_mode_t {
+	OIS_MODE_PREVIEW_CAPTURE,
+	OIS_MODE_VIDEO,
+	OIS_MODE_CAPTURE,
+	OIS_MODE_CENTERING_ONLY,
+	OIS_MODE_CENTERING_OFF
+};
+
+enum ois_ver_t {
+	OIS_VER_RELEASE,
+	OIS_VER_CALIBRATION,
+	OIS_VER_DEBUG
+};
+
 struct camera_vreg_t {
 	const char *reg_name;
 	enum camera_vreg_type type;
@@ -353,6 +308,7 @@ struct msm_sensor_init_params {
 	enum camb_position_t position;
 	/* sensor mount angle */
 	uint32_t            sensor_mount_angle;
+	int                 ois_supported;
 };
 
 struct sensorb_cfg_data {
@@ -360,15 +316,22 @@ struct sensorb_cfg_data {
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
+		struct msm_sensor_ois_info_t  ois_info;
 		void                         *setting;
 	} cfg;
+	uint32_t setting_size;
+};
+
+struct msm_sensor_csid_cfg_params {
+	struct msm_camera_csid_params *csid_params;
+	uint32_t                       csid_params_size;
 };
 
 struct csid_cfg_data {
 	enum csid_cfg_type_t cfgtype;
 	union {
 		uint32_t csid_version;
-		struct msm_camera_csid_params *csid_params;
+		struct msm_sensor_csid_cfg_params csid_cfg_params;
 	} cfg;
 };
 
@@ -378,6 +341,7 @@ struct csiphy_cfg_data {
 		struct msm_camera_csiphy_params *csiphy_params;
 		struct msm_camera_csi_lane_params *csi_lane_params;
 	} cfg;
+	uint32_t cfg_params_size;
 };
 
 enum eeprom_cfg_type_t {
@@ -386,26 +350,25 @@ enum eeprom_cfg_type_t {
 	CFG_EEPROM_READ_CAL_DATA,
 	CFG_EEPROM_WRITE_DATA,
 };
-
 struct eeprom_get_t {
-	uint32_t num_bytes;
+	uint16_t num_bytes;
 };
 
 struct eeprom_read_t {
 	uint8_t *dbuffer;
-	uint32_t num_bytes;
+	uint16_t num_bytes;
 };
 
 struct eeprom_write_t {
 	uint8_t *dbuffer;
-	uint32_t num_bytes;
+	uint16_t num_bytes;
 };
 
 struct msm_eeprom_cfg_data {
 	enum eeprom_cfg_type_t cfgtype;
 	uint8_t is_supported;
 	union {
-		char eeprom_name[MAX_SENSOR_NAME];
+		char eeprom_name[MAX_EEPROM_NAME];
 		struct eeprom_get_t get_data;
 		struct eeprom_read_t read_data;
 		struct eeprom_write_t write_data;
@@ -427,26 +390,18 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_RESOLUTION,
 	CFG_SET_STOP_STREAM,
 	CFG_SET_START_STREAM,
-	CFG_SET_SATURATION,
-	CFG_SET_CONTRAST,
-	CFG_SET_SHARPNESS,
-	CFG_SET_ISO,
-	CFG_SET_EXPOSURE_COMPENSATION,
-	CFG_SET_ANTIBANDING,
-	CFG_SET_BESTSHOT_MODE,
-	CFG_SET_EFFECT,
-	CFG_SET_WHITE_BALANCE,
-	CFG_SET_AUTOFOCUS,
-	CFG_CANCEL_AUTOFOCUS,
+	CFG_OIS_ON,
+	CFG_OIS_OFF,
+	CFG_GET_OIS_INFO,
+	CFG_SET_OIS_MODE,
+	CFG_OIS_MOVE_LENS
 };
 
 enum msm_actuator_cfg_type_t {
 	CFG_GET_ACTUATOR_INFO,
 	CFG_SET_ACTUATOR_INFO,
 	CFG_SET_DEFAULT_FOCUS,
-	CFG_SET_POSITION,
 	CFG_MOVE_FOCUS,
-	CFG_ACTUATOR_POWERDOWN, 
 };
 
 enum actuator_type {
@@ -488,7 +443,7 @@ struct msm_actuator_move_params_t {
 	int8_t sign_dir;
 	int16_t dest_step_pos;
 	int32_t num_steps;
-	uint16_t curr_lens_pos;
+	int32_t num_steps_inf_pos;
 	struct damping_params_t *ringing_params;
 };
 
@@ -539,17 +494,9 @@ enum af_camera_name {
 	ACTUATOR_MAIN_CAM_3,
 	ACTUATOR_MAIN_CAM_4,
 	ACTUATOR_MAIN_CAM_5,
-	ACTUATOR_MAIN_CAM_6,
 	ACTUATOR_WEB_CAM_0,
 	ACTUATOR_WEB_CAM_1,
 	ACTUATOR_WEB_CAM_2,
-};
-
-
-struct msm_actuator_set_position_t {
-	uint16_t number_of_steps;
-	uint16_t pos[MAX_NUMBER_OF_STEPS];
-	uint16_t delay[MAX_NUMBER_OF_STEPS];
 };
 
 struct msm_actuator_cfg_data {
@@ -559,7 +506,6 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_move_params_t move;
 		struct msm_actuator_set_info_t set_info;
 		struct msm_actuator_get_info_t get_info;
-		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
 };
@@ -587,8 +533,6 @@ enum msm_camera_led_config_t {
 
 struct msm_camera_led_cfg_t {
 	enum msm_camera_led_config_t cfgtype;
-	uint32_t torch_current;
-	uint32_t flash_current[2];
 };
 
 #define VIDIOC_MSM_SENSOR_CFG \
@@ -601,10 +545,10 @@ struct msm_camera_led_cfg_t {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 3, uint32_t)
 
 #define VIDIOC_MSM_CSIPHY_IO_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csid_cfg_data)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csiphy_cfg_data)
 
 #define VIDIOC_MSM_CSID_IO_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 5, struct csiphy_cfg_data)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 5, struct csid_cfg_data)
 
 #define VIDIOC_MSM_ACTUATOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 6, struct msm_actuator_cfg_data)
@@ -614,9 +558,6 @@ struct msm_camera_led_cfg_t {
 
 #define VIDIOC_MSM_EEPROM_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 8, struct msm_eeprom_cfg_data)
-
-#define VIDIOC_MSM_SENSOR_GET_AF_STATUS \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 9, uint32_t)
 
 #define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
 

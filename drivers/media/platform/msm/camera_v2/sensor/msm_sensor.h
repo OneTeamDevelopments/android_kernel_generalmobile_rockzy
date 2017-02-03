@@ -44,7 +44,7 @@ enum msm_sensor_state_t {
 
 struct gn_sunny_ov4688_otp_struct   
 {
-        int16_t customer_id;
+    int16_t customer_id;
 	int16_t module_integrator_id;
 	int16_t lens_id;
 	int16_t rg_ratio;
@@ -61,7 +61,7 @@ struct gn_sunny_ov4688_otp_struct
 
 struct gn_sunny_ov8835_otp_struct   
 {
-        int16_t customer_id;
+    int16_t customer_id;
 	int16_t module_integrator_id;
 	int16_t lens_id;
 	int16_t rg_ratio;
@@ -127,15 +127,4 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 
 int32_t msm_sensor_free_sensor_data(struct msm_sensor_ctrl_t *s_ctrl);
 
-int32_t msm_sensor_get_dt_gpio_req_tbl(struct device_node *of_node,
-	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
-	uint16_t gpio_array_size);
-
-int32_t msm_sensor_get_dt_gpio_set_tbl(struct device_node *of_node,
-	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
-	uint16_t gpio_array_size);
-
-int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
-	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
-	uint16_t gpio_array_size);
 #endif
