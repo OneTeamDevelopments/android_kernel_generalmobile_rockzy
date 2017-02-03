@@ -58,14 +58,9 @@ static ssize_t led_brightness_store(struct device *dev,
 	if (count == size) {
 		ret = count;
 
-        if (strcmp(led_cdev->name, "led:flash_torch")) {
-		    if (state == LED_OFF) 
-		        led_trigger_remove(led_cdev);
-		}
-                    //camera is opening or state!=40
-                    if (TORCH_BRITGHNESS != state) {
-                        led_set_brightness(led_cdev, state);
-          }
+		if (state == LED_OFF)
+			led_trigger_set_default(led_cdev);
+		led_set_brightness(led_cdev, state);
 	}
 
 	return ret;
