@@ -994,7 +994,7 @@ static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
-
+#endif
 int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0, index = 0;
