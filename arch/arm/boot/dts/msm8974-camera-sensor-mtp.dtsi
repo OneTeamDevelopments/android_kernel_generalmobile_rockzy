@@ -50,7 +50,7 @@
 		qcom,slave-addr = <0xa0>;
 		qcom,cci-master = <0>;
 		qcom,eeprom-name = "ov16825";
-		qcom,num-blocks = <6>;
+		qcom,num-blocks = <1>;
 		qcom,page0 = <0 0 1 0 1 1>;
 		qcom,poll0 = <0 0 1 0 1 1>;
 		qcom,mem0 = <26 0x0 1 0 1 0>;
