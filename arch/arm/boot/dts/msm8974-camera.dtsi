@@ -219,7 +219,6 @@ cci_master0: qcom,cci_master_0 {
 	qcom,hw-scl-stretch-en = <0>; 
 	qcom,hw-trdhld = <6>; 
 	qcom,hw-tsp = <3>; 
-	status = "ok";
 	*/
 	
 	qcom,hw-thigh = <78>;   
@@ -232,7 +231,6 @@ cci_master0: qcom,cci_master_0 {
 	qcom,hw-scl-stretch-en = <0>;
 	qcom,hw-trdhld = <6>;
 	qcom,hw-tsp = <1>;
-	status = "ok";
 };
 
 cci_master1: qcom,cci_master_1 {
@@ -247,7 +245,6 @@ cci_master1: qcom,cci_master_1 {
 	qcom,hw-scl-stretch-en = <0>; 
 	qcom,hw-trdhld = <6>; 
 	qcom,hw-tsp = <3>; 
-	status = "ok";
 	*/
 	
 	qcom,hw-thigh = <78>;   
@@ -260,5 +257,4 @@ cci_master1: qcom,cci_master_1 {
 	qcom,hw-scl-stretch-en = <0>;
 	qcom,hw-trdhld = <6>;
 	qcom,hw-tsp = <1>;
-	status = "ok";
 };
