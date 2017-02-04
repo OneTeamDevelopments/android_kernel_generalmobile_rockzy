@@ -94,7 +94,7 @@
 
 	qcom,ispif@fda0A000 {
 		cell-index = <0>;
-		compatible = ""qcom,ispif";
+		compatible = "qcom,ispif";
 		reg = <0xfda0A000 0x500>,
                       <0xfda00020 0x10>;
 		reg-names = "ispif", "csi_clk_mux";
