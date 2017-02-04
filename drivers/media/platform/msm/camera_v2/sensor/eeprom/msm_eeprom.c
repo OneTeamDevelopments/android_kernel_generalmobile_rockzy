@@ -748,7 +748,7 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	uint32_t temp;
-#ifndef CONFIG_IMX179
+#ifndef CONFIG_GN_SUNNY_OV16825
 	int32_t j = 0;
 #endif
 
