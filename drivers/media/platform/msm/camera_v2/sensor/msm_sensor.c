@@ -19,7 +19,7 @@
 #include <mach/rpm-regulator.h>
 #include <mach/rpm-regulator-smd.h>
 #include <linux/regulator/consumer.h>
-#ifdef CONFIG_GN_SUNNY_OV16825
+#ifdef CONFIG_MSM_EEPROM
 #include "msm_eeprom.h"
 #endif
 #ifdef CONFIG_OIS_CONTROLLER
@@ -1256,7 +1256,7 @@ int32_t msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 
 	CDBG("%s: read id: %x expected id %x:\n", __func__, chipid,
 		s_ctrl->sensordata->slave_info->sensor_id);
-#ifdef CONFIG_GN_SUNNY_OV16825
+#ifdef CONFIG_MSM_EEPROM
 	s_ctrl->sensordata->slave_info->sensor_id &= 0xfff;
 	chipid &= 0xfff;
 #endif
@@ -2020,7 +2020,7 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 		return rc;
 	}
 
-#ifdef CONFIG_GN_SUNNY_OV16825
+#ifdef CONFIG_MSM_EEPROM
 	if (strcmp(s_ctrl->sensordata->sensor_name, "ov16825") == 0) {
 		rc = msm_eeprom_read();
 		if(rc < 0)
