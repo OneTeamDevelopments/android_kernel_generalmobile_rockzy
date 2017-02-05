@@ -701,7 +701,7 @@ static int32_t msm_eeprom_spi_remove(struct spi_device *sdev)
 	return 0;
 }
 
-#ifdef CONFIG_GN_SUNNY_OV16825
+#ifdef CONFIG_MSM_EEPROM
 static struct msm_eeprom_ctrl_t *global_e_ctrl = NULL;
 static struct msm_eeprom_board_info *global_eb_info = NULL;
 
@@ -748,7 +748,7 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	uint32_t temp;
-#ifndef CONFIG_GN_SUNNY_OV16825
+#ifndef CONFIG_MSM_EEPROM
 	int32_t j = 0;
 #endif
 
@@ -852,7 +852,7 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 	if (rc)
 		goto board_free;
 
-#ifdef CONFIG_GN_SUNNY_OV16825
+#ifdef CONFIG_MSM_EEPROM
 	global_e_ctrl = e_ctrl;
 	global_eb_info = eb_info;
 #else
@@ -890,7 +890,7 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 	CDBG("%s X\n", __func__);
 	return rc;
 
-#ifndef CONFIG_GN_SUNNY_OV16825
+#ifndef CONFIG_MSM_EEPROM
 memdata_free:
 	kfree(e_ctrl->memory_data);
 	kfree(eb_info->eeprom_map);
