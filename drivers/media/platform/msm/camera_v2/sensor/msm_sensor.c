@@ -1256,10 +1256,6 @@ int32_t msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 
 	CDBG("%s: read id: %x expected id %x:\n", __func__, chipid,
 		s_ctrl->sensordata->slave_info->sensor_id);
-#ifdef CONFIG_MSM_EEPROM
-	s_ctrl->sensordata->slave_info->sensor_id &= 0xfff;
-	chipid &= 0xfff;
-#endif
 	if (chipid != s_ctrl->sensordata->slave_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
@@ -2019,14 +2015,6 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 		kfree(cci_client);
 		return rc;
 	}
-
-#ifdef CONFIG_MSM_EEPROM
-	if (strcmp(s_ctrl->sensordata->sensor_name, "ov16825") == 0) {
-		rc = msm_eeprom_read();
-		if(rc < 0)
-			pr_err("%s read_eeprom_memory failed\n", __func__);
-	}
-#endif
 
 	CDBG("%s %s probe succeeded\n", __func__,
 		s_ctrl->sensordata->sensor_name);
