@@ -2016,6 +2016,14 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 		return rc;
 	}
 
+#ifdef CONFIG_MSM_EEPROM
+	if (strcmp(s_ctrl->sensordata->sensor_name, "gn_sunny_ov16825") == 0) {
+		rc = msm_eeprom_read();
+		if(rc < 0)
+			pr_err("%s read_eeprom_memory failed\n", __func__);
+	}
+#endif
+
 	CDBG("%s %s probe succeeded\n", __func__,
 		s_ctrl->sensordata->sensor_name);
 	v4l2_subdev_init(&s_ctrl->msm_sd.sd,
