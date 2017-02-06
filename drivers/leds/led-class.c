@@ -25,7 +25,6 @@
 
 static struct class *leds_class;
 
-#define TORCH_BRITGHNESS 40
 static void led_update_brightness(struct led_classdev *led_cdev)
 {
 	if (led_cdev->brightness_get)
