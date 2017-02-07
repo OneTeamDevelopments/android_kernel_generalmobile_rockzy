@@ -1787,7 +1787,21 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = -EFAULT;
 		}
 		break;
-
+    case CFG_SET_INIT_SETTING:
+         if(s_ctrl->gn_otp_func_tbl && s_ctrl->gn_otp_func_tbl->gn_sensor_otp_support) {
+		 	for (i = 0; i < 3; i ++) {
+				rc = s_ctrl->gn_otp_func_tbl->gn_sensor_otp_support(s_ctrl);
+				if (rc != 1) {
+					pr_err("%s: %s: sensor otp support failed [%d]\n", __func__,
+							s_ctrl->sensordata->sensor_name, i);
+				} else {
+					printk("%s: %s: sensor otp support success\n", __func__,
+							s_ctrl->sensordata->sensor_name);
+					break;
+				}
+			}
+		}
+        break;
 	case CFG_SET_STOP_STREAM_SETTING: {
 		struct msm_camera_i2c_reg_setting *stop_setting =
 			&s_ctrl->stop_setting;
