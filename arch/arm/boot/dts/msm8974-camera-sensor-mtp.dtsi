@@ -43,7 +43,7 @@
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
 	};
-	eeprom0: qcom,eeprom@0xa0 {
+	eeprom0: qcom,eeprom@a0 {
 		cell-index = <0>;
 		reg = <0xa0 0x0>;
 		compatible = "qcom,eeprom";
@@ -51,9 +51,9 @@
 		qcom,cci-master = <0>;
 		qcom,eeprom-name = "gn_sunny_ov16825_eeprom";
 		qcom,num-blocks = <1>;
-		qcom,page0 = <0 0 1 0 1 1>;
-		qcom,poll0 = <0 0 1 0 1 1>;
-		qcom,mem0 = <26 0x0 1 0 1 0>;
+		qcom,page0 = <0 0x0 2 0x0 1 20>;
+		qcom,poll0 = <0 0x0 2 0x0 1 20>;
+		qcom,mem0 = <0x900 0x0000 2 0 1 0>;
 	};
 
 qcom,camera@204 {
