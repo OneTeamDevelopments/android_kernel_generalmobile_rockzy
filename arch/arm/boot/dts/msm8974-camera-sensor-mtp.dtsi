@@ -186,14 +186,16 @@ qcom,camera@201 {
 			<&msmgpio 89 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
-                qcom,gpio-vdig = <3>;
+        qcom,gpio-vdig = <3>;
 		qcom,gpio-req-tbl-num = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-					  "CAM_RESET1",
-					  "CAM_STANDBY2",
-					  "WEBCAM_RESET2",
-					  "CAM_STANDBY2";
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					  "CAM_RESET",
+					  "CAM_STANDBY",
+					  "CAM_VDIG";
+		qcom,gpio-set-tbl-num = <1 1>;
+		qcom,gpio-set-tbl-flags = <0 2>;
+		qcom,gpio-set-tbl-delay = <1000 30000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1f>;
 		qcom,sensor-position = <0>;
@@ -310,10 +312,13 @@ qcom,camera@203 {
 		qcom,gpio-vdig = <3>;
 		qcom,gpio-req-tbl-num = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
-					     "WEBCAM_RESET1",
-					     "FLASH_LED_EN",
-					     "WEBCAM_RESET2";
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					     "CAM_RESET1",
+					     "CAM_STANDBY",
+					     "CAM_VDIG";
+		qcom,gpio-set-tbl-num = <2 1 1 >;
+		qcom,gpio-set-tbl-flags = <2 0 2>;
+		qcom,gpio-set-tbl-delay = <10000 1000 4000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x7>;
 		qcom,sensor-position = <1>;
