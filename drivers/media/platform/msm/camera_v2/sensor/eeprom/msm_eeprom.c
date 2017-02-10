@@ -298,10 +298,17 @@ static struct msm_cam_clk_info cam_8960_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_clk", 24000000},
 };
 
+#ifdef CONFIG_GN_CAMERA_24M_MCLOCK_SUPPORT
+static struct msm_cam_clk_info cam_8974_clk_info[] = {
+	[SENSOR_CAM_MCLK] = {"cam_src_clk", 24000000},
+	[SENSOR_CAM_CLK] = {"cam_clk", 0},
+};
+#else
 static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
+#endif
 
 static struct v4l2_subdev_core_ops msm_eeprom_subdev_core_ops = {
 	.ioctl = msm_eeprom_subdev_ioctl,
