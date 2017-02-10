@@ -26,20 +26,20 @@
 
 	actuator0: qcom,actuator@18 {
 		cell-index = <5>;  
-		reg = <0x18>;
+		reg = <0x18 0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
 	};
 
 	actuator1: qcom,actuator@36 {
 		cell-index = <6>;    
-		reg = <0x36>;
+		reg = <0x36 0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <1>;   
 	};
 	actuator2: qcom,actuator@12 {
 		cell-index = <5>;
-		reg = <0x12>;
+		reg = <0x12 0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
 	};
@@ -162,6 +162,7 @@ qcom,camera@201 {
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&actuator0>;
+		qcom,flash-type = <0>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,eeprom-src = <&eeprom0>;
 		qcom,mount-angle = <90>;
@@ -186,14 +187,12 @@ qcom,camera@201 {
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
                 qcom,gpio-vdig = <3>;
-                qcom,gpio-af-pwdm = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET",
 					  "CAM_STANDBY",
-					  "CAM_VDIG",
-					  "CAM_AF_PWDM";
+					  "CAM_VDIG";
 		qcom,gpio-set-tbl-num = <1 1>;
 		qcom,gpio-set-tbl-flags = <0 2>;
 		qcom,gpio-set-tbl-delay = <1000 30000>;
@@ -290,6 +289,7 @@ qcom,camera@203 {
 		qcom,slave-id = <0x6c 0x300A 0x4688>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <0>;
+		qcom,flash-type = <0>;
 		qcom,mount-angle = <270>;
 		qcom,sensor-name = "gn_sunny_ov4688";
 		qcom,vdd-cx-supply = <&pm8841_s2>;
