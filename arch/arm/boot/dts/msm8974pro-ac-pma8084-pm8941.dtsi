@@ -29,9 +29,11 @@
 	clkdiv@5b00 {
 		status = "disabled";
 	};
-        pm8941_clkdiv2:	clkdiv@5c00 {
+
+	clkdiv@5c00 {
 		status = "disabled";
 	};
+
 	clkdiv@5d00 {
 		status = "disabled";
 	};
