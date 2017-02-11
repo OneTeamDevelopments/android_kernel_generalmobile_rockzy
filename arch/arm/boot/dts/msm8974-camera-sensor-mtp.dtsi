@@ -31,18 +31,6 @@
 		qcom,cci-master = <0>;
 	};
 
-	actuator1: qcom,actuator@36 {
-		cell-index = <6>;    
-		reg = <0x36 0x0>;
-		compatible = "qcom,actuator";
-		qcom,cci-master = <1>;   
-	};
-	actuator2: qcom,actuator@12 {
-		cell-index = <5>;
-		reg = <0x12 0x0>;
-		compatible = "qcom,actuator";
-		qcom,cci-master = <0>;
-	};
 	eeprom0: qcom,eeprom@a0 {
 		cell-index = <0>;
 		reg = <0xa0 0x0>;
