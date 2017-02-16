@@ -158,7 +158,7 @@ qcom,camera@201 {
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1F>;
 		qcom,sensor-position = <0>;
-		qcom,sensor-mode = <1>;
+		qcom,sensor-mode = <0>;
 		qcom,cci-master = <0>;
 	};
 
