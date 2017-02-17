@@ -30,18 +30,7 @@
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
 	};
-	actuator1: qcom,actuator@36 {
-		cell-index = <6>;    
-		reg = <0x36 0x0>;
-		compatible = "qcom,actuator";
-		qcom,cci-master = <1>;   
-	};
-	actuator2: qcom,actuator@12 {
-		cell-index = <5>;
-		reg = <0x12 0x0>;
-		compatible = "qcom,actuator";
-		qcom,cci-master = <0>;
-	};
+
 	eeprom0: qcom,eeprom@a0 {
 		cell-index = <0>;
 		reg = <0xa0 0x0>;
@@ -168,6 +157,9 @@ qcom,camera@201 {
 					  "CAM_STANDBY",
 					  "CAM_VDIG",
 					  "CAM_AF_PWDM";
+		qcom,gpio-set-tbl-num = <1 1>;
+		qcom,gpio-set-tbl-flags = <0 2>;
+		qcom,gpio-set-tbl-delay = <1000 30000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1F>;
 		qcom,sensor-position = <0>;
@@ -208,6 +200,9 @@ qcom,camera@203 {
 					     "CAM_RESET1",
 					     "CAM_STANDBY",
 					     "CAM_VDIG";
+		qcom,gpio-set-tbl-num = <2 1 1 >;
+		qcom,gpio-set-tbl-flags = <2 0 2>;
+		qcom,gpio-set-tbl-delay = <10000 1000 4000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x7>;
 		qcom,sensor-position = <1>;
