@@ -91,6 +91,8 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_OIS_LDO_EN,
 	SENSOR_GPIO_OIS_RESET,
 	SENSOR_GPIO_MAX,
+	SENSOR_GPIO_AF_PWDM,
+	SENSOR_GPIO_VAF,
 };
 
 enum msm_camera_vreg_name_t {
