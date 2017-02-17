@@ -42,18 +42,6 @@ static struct msm_sensor_power_setting gn_sunny_ov16825_power_setting[] = {
 		.delay = 5,
 	}, 
 	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VAF,
-		.config_val = 0,
-		.delay = 15,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_AF_PWDM,  
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 15,
-	},
-	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_STANDBY,
 		.config_val = GPIO_OUT_HIGH,
