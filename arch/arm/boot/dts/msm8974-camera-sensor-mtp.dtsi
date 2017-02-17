@@ -25,7 +25,7 @@
 &cci {
 
 	actuator0: qcom,actuator@18 {
-		cell-index = <5>;  
+		cell-index = <1>;  
 		reg = <0x18 0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
