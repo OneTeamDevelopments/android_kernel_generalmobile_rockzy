@@ -117,6 +117,7 @@
 	};
 
 qcom,camera@201 {
+                cell-index = <0>;
                 status = "ok";
 		compatible = "qcom,gn_sunny_ov16825";
 		reg = <0x201 0x0>;
@@ -166,7 +167,8 @@ qcom,camera@201 {
 	};
 
 qcom,camera@203 {
-        status = "ok";
+                cell-index = <1>;
+                status = "ok";
 		compatible = "qcom,gn_sunny_ov4688";
 		reg = <0x203 0x0>;
 		qcom,slave-id = <0x6c 0x300A 0x4688>;
