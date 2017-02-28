@@ -80,9 +80,5 @@
 		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 02 28 00
 					05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
-		
-		/* kernel configure the lcd id gpio, do nothing, 20131225*/
-		qcom,gn_lcd_adc0_gpio = <&msmgpio 81 0>;
-		qcom,gn_lcd_adc1_gpio = <&msmgpio 82 0>;
 	};
 };
