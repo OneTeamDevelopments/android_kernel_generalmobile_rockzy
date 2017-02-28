@@ -195,7 +195,7 @@ static int __devinit lm3630_probe(struct i2c_client *client,
 	}else if(strstr(saved_command_line, "sharp") != NULL)
 	{
 		lcd_vendor = 4;
-	}else if(strstr(saved_command_line, "sharp r63419") != NULL)
+	}else if(strstr(saved_command_line, "sharp Dual") != NULL)
 	{
 		lcd_vendor = 5;
 	}
