@@ -1046,7 +1046,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 		device_panel_name = "truly_r63417";
 	else if(strstr(panel_name, "sharp"))
 		device_panel_name = "sharp_r63417";
-	else if(strstr(panel_name, "sharp r63419"))
+	else if(strstr(panel_name, "sharp Dual"))
 		device_panel_name = "sharp_r63419";
 	else 
 		device_panel_name = "unknown lcd";
