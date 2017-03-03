@@ -24,52 +24,52 @@ static struct msm_sensor_ctrl_t gn_sunny_ov16825_s_ctrl;
 
 static struct msm_sensor_power_setting gn_sunny_ov16825_power_setting[] = {
 	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VANA,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 0,
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VIO,
+		.config_val = 0,
+		.delay = 5,
 	},
 	{
 		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VDIG,
+		.seq_val = CAM_VANA,
 		.config_val = 0,
-		.delay = 1,
+		.delay = 5,
+	}, 
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_VDIG,   //SUB DVDD GPIO POWER
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 5,
+	}, 
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_STANDBY,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 15,
 	},
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VCM,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 3,
+		.seq_val = SENSOR_GPIO_RESET,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 40,
 	},
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VIO,
+		.seq_val = SENSOR_GPIO_STANDBY,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 40,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_RESET,
 		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
+		.delay = 40,
 	},
 	{
 		.seq_type = SENSOR_CLK,
 		.seq_val = SENSOR_CAM_MCLK,
 		.config_val = 0,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_OIS_RESET,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
+		.delay = 5,
 	},
 	{
 		.seq_type = SENSOR_I2C_MUX,
@@ -81,10 +81,10 @@ static struct msm_sensor_power_setting gn_sunny_ov16825_power_setting[] = {
 
 static struct v4l2_subdev_info gn_sunny_ov16825_subdev_info[] = {
 	{
-		.code = V4L2_MBUS_FMT_SBGGR10_1X10,
+		.code   = V4L2_MBUS_FMT_SBGGR10_1X10,
 		.colorspace = V4L2_COLORSPACE_JPEG,
-		.fmt = 1,
-		.order = 0,
+		.fmt    = 1,
+		.order    = 0,
 	},
 };
 
