@@ -116,8 +116,7 @@
 		qcom,cam-power-seq-delay   = <5 1 5 20 20>;
 	};
 
-qcom,camera@201 {
-                cell-index = <0>;
+        qcom,camera@201 {
                 status = "ok";
 		compatible = "qcom,gn_sunny_ov16825";
 		reg = <0x201 0x0>;
@@ -168,8 +167,7 @@ qcom,camera@201 {
 		qcom,cci-master = <0>;
 	};
 
-qcom,camera@203 {
-                cell-index = <1>;
+        qcom,camera@203 {
                 status = "ok";
 		compatible = "qcom,gn_sunny_ov4688";
 		reg = <0x203 0x0>;
