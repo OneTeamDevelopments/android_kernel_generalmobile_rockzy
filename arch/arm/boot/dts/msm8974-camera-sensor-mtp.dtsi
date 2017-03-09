@@ -182,9 +182,9 @@
 		cam_vio-supply = <&pm8941_lvs3>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vana", "cam_vio";
 		qcom,cam-vreg-type = <0 0 1>;
-		qcom,cam-vreg-min-voltage = <1800000 2850000 0>;
-		qcom,cam-vreg-max-voltage = <1800000 2850000 0>;
-		qcom,cam-vreg-op-mode = <1800000 2850000 0>;
+		qcom,cam-vreg-min-voltage = <1225000 2850000 0>;
+		qcom,cam-vreg-max-voltage = <1225000 2850000 0>;
+		qcom,cam-vreg-op-mode = <105000 80000 0>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msmgpio 17 0>,
 			<&msmgpio 18 0>,
