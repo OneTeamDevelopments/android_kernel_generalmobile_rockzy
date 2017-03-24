@@ -34,7 +34,7 @@
 	eeprom0: qcom,eeprom@a0 {
 		cell-index = <0>;
 		reg = <0xa0 0x0>;
-		qcom,eeprom-name = "ov16825";
+		qcom,eeprom-name = "ov16825_eeprom";
 		compatible = "qcom,eeprom";
 		qcom,slave-addr = <0xa0>;
 		qcom,cci-master = <0>;
@@ -148,13 +148,15 @@
 			<&msmgpio 89 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
-        qcom,gpio-vdig = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+                qcom,gpio-vdig = <3>;
+		qcom,gpio-af-pwdm = <4>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_RESET",
 					  "CAM_STANDBY",
-					  "CAM_VDIG";
+					  "CAM_VDIG",
+					  "CAM_AF_PWDM";
 		qcom,gpio-set-tbl-num = <1 1>;
 		qcom,gpio-set-tbl-flags = <0 2>;
 		qcom,gpio-set-tbl-delay = <1000 30000>;
@@ -166,13 +168,12 @@
 	};
 
         qcom,camera@203 {
-        status = "ok";
+                status = "ok";
 		compatible = "qcom,gn_sunny_ov4688";
 		reg = <0x203 0x0>;
 		qcom,slave-id = <0x6c 0x300A 0x4688>;
 		qcom,csiphy-sd-index = <2>;
 		qcom,csid-sd-index = <0>;
-		qcom,flash-type = <0>;
 		qcom,mount-angle = <270>;
 		qcom,sensor-name = "gn_sunny_ov4688";
 		qcom,vdd-cx-supply = <&pm8841_s2>;
@@ -196,9 +197,9 @@
 		qcom,gpio-req-tbl-num = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
-					     "CAM_RESET1",
-					     "CAM_STANDBY",
-					     "CAM_VDIG";
+					   "CAM_RESET1",
+					   "CAM_STANDBY",
+					   "CAM_VDIG";
 		qcom,gpio-set-tbl-num = <2 1 1>;
 		qcom,gpio-set-tbl-flags = <2 0 2>;
 		qcom,gpio-set-tbl-delay = <10000 1000 4000>;
