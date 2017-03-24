@@ -69,22 +69,6 @@
 		qcom,page5 = <0 0 1 0 1 1>;
 		qcom,poll5 = <0 0 1 0 1 1>;
 		qcom,mem5 = <85 0 1 0 1 0>;
-		/*   
-		cam_vdig-supply = <&pm8941_l3>;
-		cam_vio-supply = <&pm8941_lvs3>;
-		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
-		qcom,cam-vreg-type = <0 1>;
-		qcom,cam-vreg-min-voltage = <1225000 0>;
-		qcom,cam-vreg-max-voltage = <1225000 0>;
-		qcom,cam-vreg-op-mode = <105000 0>;
-
-		qcom,cam-power-seq-type = "sensor_vreg",
-		"sensor_vreg";
-		qcom,cam-power-seq-val = "cam_vdig",
-		"cam_vio";
-		qcom,cam-power-seq-cfg-val = <1 1>;
-		qcom,cam-power-seq-delay = <1 1>;
-		*/
 		cam_vio-supply = <&pm8941_lvs3>;
 		cam_vana-supply = <&pm8941_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vana";
@@ -112,7 +96,7 @@
                                           "sensor_gpio","sensor_gpio";
 		qcom,cam-power-seq-val =  "sensor_gpio_vdig", "cam_vana", "cam_vio",
                                           "sensor_gpio_standby","sensor_gpio_reset";
-		qcom,cam-power-seq-cfg-val = <1 1 1 0  1>;
+		qcom,cam-power-seq-cfg-val = <1 1 1 0 1>;
 		qcom,cam-power-seq-delay   = <5 1 5 20 20>;
 	};
 
