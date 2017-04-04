@@ -113,8 +113,6 @@
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "gn_sunny_ov16825";
-		qcom,vdd-cx-supply = <&pm8841_s2>;
-		qcom,vdd-cx-name = "qcom,vdd-cx";
 		cam_vdig-supply = <&pm8941_l3>;
 		cam_vio-supply = <&pm8941_lvs3>;
 		cam_vana-supply = <&pm8941_l17>;
@@ -141,9 +139,6 @@
 					  "CAM_STANDBY",
 					  "CAM_VDIG",
 					  "CAM_AF_PWDM";
-		qcom,gpio-set-tbl-num = <1 1>;
-		qcom,gpio-set-tbl-flags = <0 2>;
-		qcom,gpio-set-tbl-delay = <1000 30000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1F>;
 		qcom,sensor-position = <0>;
@@ -160,8 +155,6 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <270>;
 		qcom,sensor-name = "gn_sunny_ov4688";
-		qcom,vdd-cx-supply = <&pm8841_s2>;
-		qcom,vdd-cx-name = "qcom,vdd-cx";
 		cam_vdig-supply = <&pm8941_l3>;
 		cam_vana-supply = <&pm8941_l17>;
 		cam_vio-supply = <&pm8941_lvs3>;
@@ -184,9 +177,6 @@
 					   "CAM_RESET1",
 					   "CAM_STANDBY",
 					   "CAM_VDIG";
-		qcom,gpio-set-tbl-num = <2 1 1>;
-		qcom,gpio-set-tbl-flags = <2 0 2>;
-		qcom,gpio-set-tbl-delay = <10000 1000 4000>;
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x7>;
 		qcom,sensor-position = <1>;
