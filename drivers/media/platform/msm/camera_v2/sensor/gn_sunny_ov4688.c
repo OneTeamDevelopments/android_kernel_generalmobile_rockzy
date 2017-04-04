@@ -16,10 +16,11 @@
 #define RG_TYPICAL 0xE7	//0x138    
 #define BG_TYPICAL 0x10F //0x127
 DEFINE_MSM_MUTEX(gn_sunny_ov4688_mut);
-#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
+static struct gn_sunny_ov4688_otp_struct *current_otp;
+#ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
 #include <linux/gn_device_check.h>
 #endif
-#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
+#ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
 extern int gn_set_device_info(struct gn_device_info gn_dev_info);
 static struct gn_device_info gn_cameradev_info;
 #endif
@@ -506,10 +507,11 @@ static int __init gn_sunny_ov4688_init_module(void)
 {
 	int32_t rc = 0;
 	pr_info("%s:%d\n", __func__, __LINE__);
+	current_otp = kzalloc(sizeof(struct gn_sunny_ov4688_otp_struct),GFP_KERNEL);
 	rc = platform_driver_probe(&gn_sunny_ov4688_platform_driver,
 		gn_sunny_ov4688_platform_probe);
 	if (!rc){
-	#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
+	#ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
 		gn_cameradev_info.gn_dev_type = GN_DEVICE_TYPE_FRONT_CAM;
 		memcpy(gn_cameradev_info.name, "sunny_ov4688",sizeof("sunny_ov4688"));
 		memcpy(gn_cameradev_info.vendor,"sunny_ov4688",sizeof("sunny_ov4688"));
@@ -529,6 +531,7 @@ static void __exit gn_sunny_ov4688_exit_module(void)
 		platform_driver_unregister(&gn_sunny_ov4688_platform_driver);
 	} else
 		i2c_del_driver(&gn_sunny_ov4688_i2c_driver);
+	kzfree(current_otp);
 	return;
 }
 
