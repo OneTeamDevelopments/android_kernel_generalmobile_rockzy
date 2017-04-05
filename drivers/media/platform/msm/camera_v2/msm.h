@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, 2015 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,10 +14,10 @@
 #define _MSM_H
 
 #include <linux/version.h>
+#include <linux/completion.h>
 #include <linux/i2c.h>
 #include <linux/videodev2.h>
 #include <linux/pm_qos.h>
-#include <linux/wakelock.h>
 #include <linux/msm_ion.h>
 #include <linux/iommu.h>
 #include <media/v4l2-dev.h>
@@ -32,6 +32,10 @@
 
 #define MSM_POST_EVT_TIMEOUT 5000
 #define MSM_POST_EVT_NOTIMEOUT 0xFFFFFFFF
+#define MSM_CAMERA_STREAM_CNT_BITS  32
+
+#define CAMERA_DISABLE_PC_LATENCY 100
+#define CAMERA_ENABLE_PC_LATENCY PM_QOS_DEFAULT_VALUE
 
 struct msm_video_device {
 	struct video_device *vdev;
@@ -70,7 +74,7 @@ struct msm_command {
 struct msm_command_ack {
 	struct list_head list;
 	struct msm_queue_head command_q;
-	wait_queue_head_t wait;
+	struct completion wait_complete;
 	int stream_id;
 };
 
@@ -100,6 +104,8 @@ struct msm_session {
 	struct msm_queue_head stream_q;
 	struct mutex lock;
 };
+
+void msm_pm_qos_update_request(int val);
 
 int msm_post_event(struct v4l2_event *event, int timeout);
 int  msm_create_session(unsigned int session, struct video_device *vdev);
