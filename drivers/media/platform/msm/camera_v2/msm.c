@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/proc_fs.h>
 #include <linux/atomic.h>
+#include <linux/wait.h>
 #include <linux/videodev2.h>
 #include <linux/msm_ion.h>
 #include <linux/iommu.h>
@@ -33,8 +34,6 @@
 
 static struct v4l2_device *msm_v4l2_dev;
 static struct list_head    ordered_sd_list;
-
-static struct pm_qos_request msm_v4l2_pm_qos_request;
 
 static struct msm_queue_head *msm_session_q;
 
@@ -189,24 +188,6 @@ static inline int __msm_queue_find_command_ack_q(void *d1, void *d2)
 	return (ack->stream_id == *(unsigned int *)d2) ? 1 : 0;
 }
 
-static void msm_pm_qos_add_request(void)
-{
-	pr_info("%s: add request", __func__);
-	pm_qos_add_request(&msm_v4l2_pm_qos_request, PM_QOS_CPU_DMA_LATENCY,
-		PM_QOS_DEFAULT_VALUE);
-}
-
-static void msm_pm_qos_remove_request(void)
-{
-	pr_info("%s: remove request", __func__);
-	pm_qos_remove_request(&msm_v4l2_pm_qos_request);
-}
-
-void msm_pm_qos_update_request(int val)
-{
-	pr_info("%s: update request %d", __func__, val);
-	pm_qos_update_request(&msm_v4l2_pm_qos_request, val);
-}
 
 struct msm_session *msm_session_find(unsigned int session_id)
 {
@@ -421,7 +402,7 @@ int msm_create_command_ack_q(unsigned int session_id, unsigned int stream_id)
 
 	msm_init_queue(&cmd_ack->command_q);
 	INIT_LIST_HEAD(&cmd_ack->list);
-	init_completion(&cmd_ack->wait_complete);
+	init_waitqueue_head(&cmd_ack->wait);
 	cmd_ack->stream_id = stream_id;
 
 	msm_enqueue(&session->command_ack_q, &cmd_ack->list);
@@ -473,20 +454,10 @@ static inline int __msm_sd_close_subdevs(struct msm_sd_subdev *msm_sd,
 	return 0;
 }
 
-static inline int __msm_sd_notify_freeze_subdevs(struct msm_sd_subdev *msm_sd)
-{
-	struct v4l2_subdev *sd;
-	sd = &msm_sd->sd;
-
-	v4l2_subdev_call(sd, core, ioctl, MSM_SD_NOTIFY_FREEZE, NULL);
-
-	return 0;
-}
-
 static inline int __msm_destroy_session_streams(void *d1, void *d2)
 {
 	struct msm_stream *stream = d1;
-	pr_err("%s: Error: Destroyed list is not empty\n", __func__);
+	pr_err("%s: Destroyed here due to list is not empty\n", __func__);
 	INIT_LIST_HEAD(&stream->queued_list);
 	return 0;
 }
@@ -536,7 +507,6 @@ int msm_destroy_session(unsigned int session_id)
 {
 	struct msm_session *session;
 	struct v4l2_subdev *buf_mgr_subdev;
-	struct msm_sd_close_ioctl session_info;
 
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
@@ -550,13 +520,10 @@ int msm_destroy_session(unsigned int session_id)
 		list, session);
 	buf_mgr_subdev = msm_buf_mngr_get_subdev();
 	if (buf_mgr_subdev) {
-		session_info.session = session_id;
-		session_info.stream = 0;
 		v4l2_subdev_call(buf_mgr_subdev, core, ioctl,
-			MSM_SD_SHUTDOWN, &session_info);
-	} else {
+			MSM_SD_SHUTDOWN, NULL);
+	} else
 		pr_err("%s: Buff manger device node is NULL\n", __func__);
-	}
 
 	return 0;
 }
@@ -581,13 +548,14 @@ static long msm_private_ioctl(struct file *file, void *fh,
 	bool valid_prio, int cmd, void *arg)
 {
 	int rc = 0;
-	struct msm_v4l2_event_data *event_data = arg;
-	struct v4l2_event event;
+	struct msm_v4l2_event_data *event_data;
 	struct msm_session *session;
 	unsigned int session_id;
 	unsigned int stream_id;
 	unsigned long spin_flags = 0;
-	struct msm_sd_subdev *msm_sd;
+
+	event_data = (struct msm_v4l2_event_data *)
+		((struct v4l2_event *)arg)->u.data;
 
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -604,12 +572,9 @@ static long msm_private_ioctl(struct file *file, void *fh,
 			rc = -EFAULT;
 			break;
 		}
-		event.type = event_data->v4l2_event_type;
-		event.id = event_data->v4l2_event_id;
-		memcpy(&event.u.data, event_data,
-			sizeof(struct msm_v4l2_event_data));
+
 		v4l2_event_queue(session->event_q.vdev,
-			&event);
+			(struct v4l2_event *)arg);
 	}
 		break;
 
@@ -635,24 +600,11 @@ static long msm_private_ioctl(struct file *file, void *fh,
 
 		spin_lock_irqsave(&(session->command_ack_q.lock),
 		   spin_flags);
-		event.type = event_data->v4l2_event_type;
-		event.id = event_data->v4l2_event_id;
-		memcpy(&event.u.data, event_data,
-			sizeof(struct msm_v4l2_event_data));
-		memcpy(&ret_cmd->event, &event, sizeof(struct v4l2_event));
+		ret_cmd->event = *(struct v4l2_event *)arg;
 		msm_enqueue(&cmd_ack->command_q, &ret_cmd->list);
-		complete(&cmd_ack->wait_complete);
+		wake_up(&cmd_ack->wait);
 		spin_unlock_irqrestore(&(session->command_ack_q.lock),
 		   spin_flags);
-	}
-		break;
-
-	case MSM_CAM_V4L2_IOCTL_NOTIFY_FREEZE: {
-		pr_err("Notifying subdevs about potential sof freeze\n");
-		if (!list_empty(&msm_v4l2_dev->subdevs)) {
-			list_for_each_entry(msm_sd, &ordered_sd_list, list)
-				__msm_sd_notify_freeze_subdevs(msm_sd);
-		}
 	}
 		break;
 
@@ -705,18 +657,6 @@ static unsigned int msm_poll(struct file *f,
 	return rc;
 }
 
-static void msm_print_event_error(struct v4l2_event *event)
-{
-	struct msm_v4l2_event_data *event_data =
-		(struct msm_v4l2_event_data *)&event->u.data[0];
-
-	pr_err("Evt_type=%x Evt_id=%d Evt_cmd=%x\n", event->type,
-		event->id, event_data->command);
-	pr_err("Evt_session_id=%d Evt_stream_id=%d Evt_arg=%d\n",
-		event_data->session_id, event_data->stream_id,
-		event_data->arg_value);
-}
-
 /* something seriously wrong if msm_close is triggered
  *   !!! user space imaging server is shutdown !!!
  */
@@ -765,35 +705,33 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 		return -EIO;
 	}
 
-	/*re-init wait_complete */
-	INIT_COMPLETION(cmd_ack->wait_complete);
-
 	v4l2_event_queue(vdev, event);
 
 	if (timeout < 0) {
 		mutex_unlock(&session->lock);
-		pr_debug("%s : timeout cannot be negative Line %d\n",
+		pr_err("%s : timeout cannot be negative Line %d\n",
 				__func__, __LINE__);
 		return rc;
 	}
 
 	/* should wait on session based condition */
-	rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
+	do {
+		rc = wait_event_interruptible_timeout(cmd_ack->wait,
+			!list_empty_careful(&cmd_ack->command_q.list),
 			msecs_to_jiffies(timeout));
-
+		if (rc != -ERESTARTSYS)
+			break;
+	} while (1);
 
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
 			pr_err("%s: Timed out\n", __func__);
-			msm_print_event_error(event);
+			rc = -ETIMEDOUT;
+		}
+		if (rc < 0) {
+			pr_err("%s: rc = %d\n", __func__, rc);
 			mutex_unlock(&session->lock);
-			return -ETIMEDOUT;
-		} else {
-			pr_err("%s: Error: No timeout but list empty!",
-					__func__);
-			msm_print_event_error(event);
-			mutex_unlock(&session->lock);
-			return -EINVAL;
+			return rc;
 		}
 	}
 
@@ -838,9 +776,6 @@ static int msm_close(struct file *filep)
 	if (!list_empty(&msm_v4l2_dev->subdevs))
 		list_for_each_entry(msm_sd, &ordered_sd_list, list)
 			__msm_sd_close_subdevs(msm_sd, &sd_close);
-
-	/* remove msm_v4l2_pm_qos_request */
-	msm_pm_qos_remove_request();
 
 	/* send v4l2_event to HAL next*/
 	msm_queue_traverse_action(msm_session_q, struct msm_session, list,
@@ -897,9 +832,6 @@ static int msm_open(struct file *filep)
 	spin_lock_irqsave(&msm_eventq_lock, flags);
 	msm_eventq = filep->private_data;
 	spin_unlock_irqrestore(&msm_eventq_lock, flags);
-
-	/* register msm_v4l2_pm_qos_request */
-	msm_pm_qos_add_request();
 
 	return rc;
 }
@@ -1112,8 +1044,10 @@ static int __devinit msm_probe(struct platform_device *pdev)
 	video_set_drvdata(pvdev->vdev, pvdev);
 
 	msm_session_q = kzalloc(sizeof(*msm_session_q), GFP_KERNEL);
-	if (WARN_ON(!msm_session_q))
-		goto v4l2_fail;
+	if (WARN_ON(!msm_session_q)) {
+		rc = -ENOMEM;
+		goto session_fail;
+	}
 
 	msm_init_queue(msm_session_q);
 	spin_lock_init(&msm_eventq_lock);
@@ -1121,6 +1055,8 @@ static int __devinit msm_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&ordered_sd_list);
 	goto probe_end;
 
+session_fail:
+	video_unregister_device(pvdev->vdev);
 v4l2_fail:
 	v4l2_device_unregister(pvdev->vdev->v4l2_dev);
 register_fail:
@@ -1143,7 +1079,6 @@ probe_end:
 
 static const struct of_device_id msm_dt_match[] = {
 	{.compatible = "qcom,msm-cam"},
-	{}
 }
 
 MODULE_DEVICE_TABLE(of, msm_dt_match);

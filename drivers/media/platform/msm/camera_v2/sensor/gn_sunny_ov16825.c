@@ -13,10 +13,10 @@
 #include "msm_sensor.h"
 #define GN_SUNNY_OV16825_SENSOR_NAME "gn_sunny_ov16825"
 DEFINE_MSM_MUTEX(gn_sunny_ov16825_mut);
-#ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
+#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
 #include <linux/gn_device_check.h>
 #endif
-#ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
+#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
 extern int gn_set_device_info(struct gn_device_info gn_dev_info);
 static struct gn_device_info gn_cameradev_info;
 #endif
@@ -45,6 +45,12 @@ static struct msm_sensor_power_setting gn_sunny_ov16825_power_setting[] = {
 		.seq_type = SENSOR_VREG,
 		.seq_val = CAM_VAF,
 		.config_val = 0,
+		.delay = 15,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_AF_PWDM,  
+		.config_val = GPIO_OUT_HIGH,
 		.delay = 15,
 	},
 	{
@@ -147,7 +153,7 @@ static int __init gn_sunny_ov16825_init_module(void)
 	rc = platform_driver_probe(&gn_sunny_ov16825_platform_driver,
 		gn_sunny_ov16825_platform_probe);
 	if (!rc){
-	#ifdef CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
+	#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
 		gn_cameradev_info.gn_dev_type = GN_DEVICE_TYPE_BACK_CAM;
 		memcpy(gn_cameradev_info.name, "sunny_ov16825",sizeof("sunny_ov16825"));
 		memcpy(gn_cameradev_info.vendor,"sunny_ov16825",sizeof("sunny_ov16825"));
