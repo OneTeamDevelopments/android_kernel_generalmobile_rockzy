@@ -25,7 +25,7 @@
 &cci {
 
 	actuator0: qcom,actuator@18 {
-		cell-index = <1>;  
+		cell-index = <5>;  
 		reg = <0x18 0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
@@ -115,7 +115,6 @@
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,eeprom-src = <&eeprom0>;
-		qcom,flash-type = <0>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "gn_sunny_ov16825";
