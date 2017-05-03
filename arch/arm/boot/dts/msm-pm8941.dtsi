@@ -1274,6 +1274,7 @@
 		label = "flash";
 		flash-boost-supply = <&pm8941_chg_boost>;
 		torch-boost-supply = <&pm8941_boost>;
+		flash-wa-supply = <&pm8941_chg_chgr>;
 	};
 
 	qcom,leds@d400 {
