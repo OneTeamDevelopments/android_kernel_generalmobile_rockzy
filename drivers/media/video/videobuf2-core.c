@@ -513,6 +513,13 @@ int vb2_reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req)
 		return -EINVAL;
 	}
 
+	/*
+	 * If the same number of buffers and memory access method is requested
+	 * then return immediately.
+	 */
+	if (q->memory == req->memory && req->count == q->num_buffers)
+		return 0;
+
 	if (req->count == 0 || q->num_buffers != 0 || q->memory != req->memory) {
 		/*
 		 * We already have buffers allocated, so first check if they
@@ -536,7 +543,7 @@ int vb2_reqbufs(struct vb2_queue *q, struct v4l2_requestbuffers *req)
 	/*
 	 * Make sure the requested values and current defaults are sane.
 	 */
-	num_buffers = min_t(unsigned int, req->count, VB2_MAX_FRAME);
+	num_buffers = min_t(unsigned int, req->count, VIDEO_MAX_FRAME);
 	memset(q->plane_sizes, 0, sizeof(q->plane_sizes));
 	memset(q->alloc_ctx, 0, sizeof(q->alloc_ctx));
 	q->memory = req->memory;
@@ -644,7 +651,7 @@ int vb2_create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create)
 		return -EINVAL;
 	}
 
-	if (q->num_buffers == VB2_MAX_FRAME) {
+	if (q->num_buffers == VIDEO_MAX_FRAME) {
 		dprintk(1, "%s(): maximum number of buffers already allocated\n",
 			__func__);
 		return -ENOBUFS;
@@ -658,7 +665,7 @@ int vb2_create_bufs(struct vb2_queue *q, struct v4l2_create_buffers *create)
 		q->memory = create->memory;
 	}
 
-	num_buffers = min(create->count, VB2_MAX_FRAME - q->num_buffers);
+	num_buffers = min(create->count, VIDEO_MAX_FRAME - q->num_buffers);
 
 	/*
 	 * Ask the driver, whether the requested number of buffers, planes per
@@ -1097,13 +1104,9 @@ int vb2_qbuf(struct vb2_queue *q, struct v4l2_buffer *b)
 	 * consistent after getting driver's lock back.
 	 */
 	if (q->memory == V4L2_MEMORY_USERPTR) {
-		bool mm_exists = !!current->mm;
-
-		mmap_sem = mm_exists ? &current->mm->mmap_sem : NULL;
+		mmap_sem = &current->active_mm->mmap_sem;
 		call_qop(q, wait_prepare, q);
-		/* kthreads have no userspace, hence no pages to lock */
-		if (mmap_sem)
-			down_read(mmap_sem);
+		down_read(mmap_sem);
 		call_qop(q, wait_finish, q);
 	}
 
@@ -1774,7 +1777,7 @@ struct vb2_fileio_buf {
 struct vb2_fileio_data {
 	struct v4l2_requestbuffers req;
 	struct v4l2_buffer b;
-	struct vb2_fileio_buf bufs[VB2_MAX_FRAME];
+	struct vb2_fileio_buf bufs[VIDEO_MAX_FRAME];
 	unsigned int index;
 	unsigned int q_count;
 	unsigned int dq_count;
