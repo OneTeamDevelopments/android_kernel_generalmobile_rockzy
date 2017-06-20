@@ -105,4 +105,8 @@ config GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT
 	bool "GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT"
 	default y
 
+config ORIGINAL_VERSION
+	bool "ORIGINAL_VERSION"
+	default y
+
 endmenu
