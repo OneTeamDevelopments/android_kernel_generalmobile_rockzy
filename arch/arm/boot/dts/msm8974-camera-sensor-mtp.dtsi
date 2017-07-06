@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  */
 /include/ "msm8974-regulator.dtsi"
+/include/ "msm8974-leds.dtsi"
 
 &pm8941_flash0 {
 	qcom,current = <560>;
