@@ -12,6 +12,18 @@
  */
 /include/ "msm8974-regulator.dtsi"
 
+&pm8941_flash0 {
+	qcom,current = <560>;
+};
+
+&pm8941_flash1 {
+	qcom,current = <560>;
+};
+
+&pm8941_torch {
+	qcom,current = <130>;
+};
+
 &soc {
 	led_flash0: qcom,camera-led-flash {
 		cell-index = <0>;
