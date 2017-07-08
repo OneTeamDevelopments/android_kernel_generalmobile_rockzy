@@ -29,11 +29,9 @@
 	clkdiv@5b00 {
 		status = "disabled";
 	};
-
-	clkdiv@5c00 {
+        pm8941_clkdiv2:	clkdiv@5c00 {
 		status = "disabled";
 	};
-
 	clkdiv@5d00 {
 		status = "disabled";
 	};
@@ -58,7 +56,6 @@
 		qcom,enable-time = <500>;
 		status = "okay";
 	};
-
 	pm8941_mvs1: regulator@8300 {
 		parent-supply = <&pm8941_chg_otg>;
 		qcom,enable-time = <1000>;
@@ -73,54 +70,6 @@
 		qcom,hpm-enable = <1>;
 		qcom,auto-mode-enable = <0>;
 		status = "okay";
-	};
-
-	pwm@b100 {
-		status = "disabled";
-	};
-
-	pwm@b200 {
-		status = "disabled";
-	};
-
-	pwm@b300 {
-		status = "disabled";
-	};
-
-	pwm@b400 {
-		status = "disabled";
-	};
-
-	pwm@b500 {
-		status = "disabled";
-	};
-
-	pwm@b600 {
-		status = "disabled";
-	};
-
-	pwm@b700 {
-		status = "disabled";
-	};
-
-	pwm@b800 {
-		status = "disabled";
-	};
-
-	pwm@e400 {
-		status = "disabled";
-	};
-
-	pwm@e500 {
-		status = "disabled";
-	};
-
-	pwm@e600 {
-		status = "disabled";
-	};
-
-	pwm@e700 {
-		status = "disabled";
 	};
 };
 
