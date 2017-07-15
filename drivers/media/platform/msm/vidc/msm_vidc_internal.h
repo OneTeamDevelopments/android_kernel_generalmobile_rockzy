@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,7 +21,6 @@
 #include <linux/completion.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
-#include <linux/pm_qos.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include <mach/ocmem.h>
@@ -240,9 +239,10 @@ struct msm_vidc_inst {
 	struct msm_vidc_format *fmts[MAX_PORT_NUM];
 	struct buf_queue bufq[MAX_PORT_NUM];
 	struct msm_vidc_list pendingq;
-	struct list_head internalbufs;
-	struct list_head persistbufs;
-	struct list_head outputbufs;
+	struct msm_vidc_list internalbufs;
+	struct msm_vidc_list persistbufs;
+	struct msm_vidc_list outputbufs;
+	struct msm_vidc_list registeredbufs;
 	struct buffer_requirements buff_req;
 	void *mem_client;
 	struct v4l2_ctrl_handler ctrl_handler;
@@ -264,10 +264,9 @@ struct msm_vidc_inst {
 	u32 multi_stream_mode;
 	struct msm_vidc_core_capability capability;
 	enum buffer_mode_type buffer_mode_set[MAX_PORT_NUM];
-	struct list_head registered_bufs;
+
 	bool map_output_buffer;
 	struct v4l2_ctrl **ctrls;
-	struct pm_qos_request pm_qos;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
@@ -316,8 +315,8 @@ struct buffer_info {
 	struct timeval timestamp;
 };
 
-struct buffer_info *device_to_uvaddr(struct msm_vidc_inst *inst,
-			struct list_head *list, u32 device_addr);
+struct buffer_info *device_to_uvaddr(struct msm_vidc_list *buf_list,
+				u32 device_addr);
 int buf_ref_get(struct msm_vidc_inst *inst, struct buffer_info *binfo);
 int buf_ref_put(struct msm_vidc_inst *inst, struct buffer_info *binfo);
 int output_buffer_cache_invalidate(struct msm_vidc_inst *inst,

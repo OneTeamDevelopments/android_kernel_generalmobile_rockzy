@@ -809,11 +809,9 @@ static int q6_hfi_session_etb(void *sess,
 				"Session etb decoder: failed to create pkt");
 			goto err_create_pkt;
 		}
-
 		dprintk(VIDC_DBG, "Q DECODER INPUT BUFFER");
 		dprintk(VIDC_DBG, "addr = 0x%x ts = %lld",
 			input_frame->device_addr, input_frame->timestamp);
-
 		rc = apr_send_pkt(dev->apr, (uint32_t *)&apr);
 		if (rc != apr.hdr.pkt_size) {
 			dprintk(VIDC_ERR, "%s: apr_send_pkt failed rc: %d",
@@ -1223,7 +1221,6 @@ static int q6_hfi_iommu_attach(struct q6_hfi_device *device)
 			rc = IS_ERR(domain) ? PTR_ERR(domain) : -EINVAL;
 			break;
 		}
-
 		dprintk(VIDC_DBG, "Attaching domain(id:%d) %pK to group %pK",
 				iommu_map->domain, domain, group);
 		rc = iommu_attach_group(domain, group);

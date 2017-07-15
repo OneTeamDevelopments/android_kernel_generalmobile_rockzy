@@ -11,6 +11,7 @@
  *
  */
 #include <linux/slab.h>
+#include <linux/qpnp/vibrator.h>
 
 #include "msm_vidc_internal.h"
 #include "msm_vidc_common.h"
@@ -996,11 +997,9 @@ static int msm_venc_queue_setup(struct vb2_queue *q,
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		*num_planes = 1;
 
-		mutex_lock(&inst->lock);
 		*num_buffers = inst->buff_req.buffer[0].buffer_count_actual =
 			max(*num_buffers, inst->buff_req.buffer[0].
 				buffer_count_actual);
-		mutex_unlock(&inst->lock);
 
 		property_id = HAL_PARAM_BUFFER_COUNT_ACTUAL;
 		new_buf_count.buffer_type = HAL_BUFFER_INPUT;
@@ -1130,6 +1129,7 @@ static int msm_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		dprintk(VIDC_ERR, "Invalid input, q = %pK\n", q);
 		return -EINVAL;
 	}
+	qpnp_vib_force_off(true);
 	inst = q->drv_priv;
 	dprintk(VIDC_DBG, "Streamon called on: %d capability\n", q->type);
 	switch (q->type) {
@@ -1157,6 +1157,7 @@ static int msm_venc_stop_streaming(struct vb2_queue *q)
 		dprintk(VIDC_ERR, "Invalid input, q = %pK\n", q);
 		return -EINVAL;
 	}
+	qpnp_vib_force_off(false);
 	inst = q->drv_priv;
 	dprintk(VIDC_DBG, "Streamoff called on: %d capability\n", q->type);
 	switch (q->type) {
@@ -2839,7 +2840,7 @@ int msm_venc_prepare_buf(struct msm_vidc_inst *inst,
 	if (inst->state == MSM_VIDC_CORE_INVALID ||
 			inst->core->state == VIDC_CORE_INVALID) {
 		dprintk(VIDC_ERR,
-			"Core %p in bad state, ignoring prepare buf\n",
+			"Core %pK in bad state, ignoring prepare buf\n",
 				inst->core);
 		goto exit;
 	}
