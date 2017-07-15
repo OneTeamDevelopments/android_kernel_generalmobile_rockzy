@@ -11,8 +11,9 @@
  * GNU General Public License for more details.
  */
 
+//Gionee liujiang 2013-07-31 add for button led start
 &pm8941_lsid0 {
-	qcom,leds@a700 {
+   	qcom,leds@a700 {
 		status = "okay";
 		qcom,led_mpp_8 {
 			label = "mpp";
@@ -28,10 +29,50 @@
 		};
 	};
 };
+//Gionee liujiang 2013-07-31 add for button led end
+
 &pm8941_lsid1 {
 	qcom,leds@d000 {
 		status = "okay";
-qcom,rgb_0 { 
+//Gionee liujiang 2013-08-19 modify for rgb led start
+/*
+		qcom,rgb_0 {
+			label = "rgb";
+			linux,name = "led:rgb_red";
+			qcom,mode = "pwm";
+			qcom,pwm-channel = <6>;
+			qcom,pwm-us = <1000>;
+			qcom,max-current = <12>;
+			qcom,default-state = "off";
+			qcom,id = <3>;
+			linux,default-trigger =
+				"battery-charging";
+		};
+
+		qcom,rgb_1 {
+			label = "rgb";
+			linux,name = "led:rgb_green";
+			qcom,mode = "pwm";
+			qcom,pwm-channel = <5>;
+			qcom,pwm-us = <1000>;
+			qcom,max-current = <12>;
+			qcom,default-state = "off";
+			qcom,id = <4>;
+			linux,default-trigger = "battery-full";
+		};
+
+		qcom,rgb_2 {
+			label = "rgb";
+			linux,name = "led:rgb_blue";
+			qcom,mode = "pwm";
+			qcom,pwm-channel = <4>;
+			qcom,pwm-us = <1000>;
+			qcom,max-current = <12>;
+			qcom,id = <5>;
+			status = "disabled";
+		};
+*/
+			qcom,rgb_0 { 
 				label = "rgb"; 
 				linux,name = "red";//"led:rgb_red"; 
 				qcom,mode = "pwm"; 
@@ -40,7 +81,9 @@ qcom,rgb_0 {
 				qcom,max-current = <12>; 
 				qcom,default-state = "off"; 
 				qcom,id = <3>; 
+//Gionee liujiang 2013-10-15 delete for CR00921505 start
 				//linux,default-trigger = "battery-charging"; 
+//Gionee liujiang 2013-10-15 delete for CR00921505 end
 				qcom,use-blink; 
 				qcom,start-idx = <1>; 
 				qcom,duty-pcts = [95 95 95 95 95
@@ -59,7 +102,9 @@ qcom,rgb_0 {
 				qcom,max-current = <12>; 
 				qcom,default-state = "off"; 
 				qcom,id = <4>; 
+//Gionee liujiang 2013-10-15 delete for CR00921505 start
 				//linux,default-trigger = "battery-full";
+//Gionee liujiang 2013-10-15 delete for CR00921505 end
 				qcom,use-blink; 
 				qcom,start-idx = <1>; 
 				qcom,duty-pcts = [95 95 95 95 95
@@ -87,7 +132,7 @@ qcom,rgb_0 {
 				qcom,ramp-step-ms = <500>; 
 				qcom,lut-flags = <3>; 
 			};
-
+//Gionee liujiang 2013-08-19 modify for rgb led end
 	};
 
 	qcom,leds@d100 {
@@ -113,7 +158,7 @@ qcom,rgb_0 {
 				"flash0_trigger";
 			qcom,id = <1>;
 			linux,name = "led:flash_0";
-			qcom,current = <625>;
+			qcom,current = <450>;   //by Gionee zhaocq 20140606 for CR01273423
 		};
 
 		pm8941_flash1: qcom,flash_1 {
@@ -129,7 +174,7 @@ qcom,rgb_0 {
 			label = "flash";
 			qcom,id = <2>;
 			linux,name = "led:flash_1";
-			qcom,current = <625>;
+			qcom,current = <450>;  //by Gionee zhaocq 20140606 for CR01273423
 		};
 
 		pm8941_torch: qcom,flash_torch {
@@ -142,7 +187,7 @@ qcom,rgb_0 {
 			label = "flash";
 			qcom,id = <2>;
 			linux,name = "led:flash_torch";
-			qcom,current = <200>;
+			qcom,current = <150>;   //by Gionee zhaocq 20140606 for CR01273423
 			qcom,torch-enable;
 		};
 	};
