@@ -34,10 +34,6 @@
 
 #define fh_to_private(__fh) \
 	container_of(__fh, struct camera_v4l2_private, fh)
-#ifdef ORIGINAL_VERSION
-#else
-#define MAX_STREAM_ID 0x0000FFFF
-#endif
 
 struct camera_v4l2_private {
 	struct v4l2_fh fh;
@@ -349,20 +345,17 @@ static int camera_v4l2_s_fmt_vid_cap_mplane(struct file *filep, void *fh,
 
 		rc = msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
 		if (rc < 0)
-			goto set_fmt_fail;
+			return rc;
 
 		rc = camera_check_event_status(&event);
 		if (rc < 0)
-			goto set_fmt_fail;
+			return rc;
+
 		sp->is_vb2_valid = 1;
 	}
 
 	return rc;
 
-set_fmt_fail:
-	kzfree(sp->vb2_q.drv_priv);
-	sp->vb2_q.drv_priv = NULL;
-	return rc;
 }
 
 static int camera_v4l2_try_fmt_vid_cap_mplane(struct file *filep, void *fh,
@@ -599,15 +592,6 @@ static int camera_v4l2_open(struct file *filep)
 
 	atomic_add(1, &pvdev->opened);
 	atomic_add(1, &pvdev->stream_cnt);
-#ifdef ORIGINAL_VERSION
-#else
-	/*when pack session and stream id in userspace, max stream id is 0x0000FFFF*/ 
-	if(atomic_read(&pvdev->stream_cnt) > MAX_STREAM_ID) { 
-	printk("%s: stream id exceeds %d, rotated to 1\n", 
-	__func__, MAX_STREAM_ID); 
-	atomic_set(&pvdev->stream_cnt, 1); 
-	} 
-#endif
 	return rc;
 
 post_fail:

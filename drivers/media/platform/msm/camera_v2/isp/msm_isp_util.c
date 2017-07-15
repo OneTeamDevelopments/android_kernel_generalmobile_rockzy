@@ -13,6 +13,7 @@
 #include <linux/io.h>
 #include <media/v4l2-subdev.h>
 #include <linux/ratelimit.h>
+#include <asm/div64.h>
 
 #include "msm.h"
 #include "msm_isp_util.h"
@@ -24,11 +25,10 @@
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
-#define MSM_ISP_MIN_AB 300000000
-#define MSM_ISP_MIN_IB 450000000
+#define MSM_ISP_MIN_AB 450000000
+#define MSM_ISP_MIN_IB 900000000
 
 #define VFE40_8974V2_VERSION 0x1001001A
-
 static struct msm_bus_vectors msm_isp_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_VFE,
@@ -217,7 +217,8 @@ static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 {
 	uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
 	uint32_t avtimer_msw_2nd = 0;
-	uint8_t iter = 0;
+	uint64_t av_timer_tick = 0;
+
 	if (!vfe_dev->p_avtimer_msw || !vfe_dev->p_avtimer_lsw) {
 		pr_err("%s: ioremap failed\n", __func__);
 		return;
@@ -226,15 +227,10 @@ static inline void msm_isp_get_vt_tstamp(struct vfe_device *vfe_dev,
 		avtimer_msw_1st = msm_camera_io_r(vfe_dev->p_avtimer_msw);
 		avtimer_lsw = msm_camera_io_r(vfe_dev->p_avtimer_lsw);
 		avtimer_msw_2nd = msm_camera_io_r(vfe_dev->p_avtimer_msw);
-	} while ((avtimer_msw_1st != avtimer_msw_2nd)
-		&& (iter++ < AVTIMER_ITERATION_CTR));
-	/*Just return if the MSW TimeStamps don't converge after
-	a few iterations Application needs to handle the zero TS values*/
-	if (iter >= AVTIMER_ITERATION_CTR) {
-		pr_err("%s: AVTimer MSW TS did not converge !!!\n", __func__);
-		return;
-	}
-	time_stamp->vt_time.tv_sec = avtimer_msw_1st;
+	} while (avtimer_msw_1st != avtimer_msw_2nd);
+	av_timer_tick = ((uint64_t)avtimer_msw_1st << 32) | avtimer_lsw;
+	avtimer_lsw = do_div(av_timer_tick, USEC_PER_SEC);
+	time_stamp->vt_time.tv_sec = (uint32_t)(av_timer_tick);
 	time_stamp->vt_time.tv_usec = avtimer_lsw;
 }
 
@@ -482,7 +478,7 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 		break;
 
 	default:
-		pr_err("%s: Invalid ISP command\n", __func__);
+		pr_err_ratelimited("%s: Invalid ISP command\n", __func__);
 		rc = -EINVAL;
 	}
 	return rc;
@@ -995,8 +991,7 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	error_mask1 &= irq_status1;
 	irq_status0 &= ~error_mask0;
 	irq_status1 &= ~error_mask1;
-	if (!vfe_dev->ignore_error &&
-		((error_mask0 != 0) || (error_mask1 != 0)))
+	if ((error_mask0 != 0) || (error_mask1 != 0))
 		msm_isp_update_error_info(vfe_dev, error_mask0, error_mask1);
 
 	if ((irq_status0 == 0) && (irq_status1 == 0) &&
@@ -1009,8 +1004,10 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	spin_lock_irqsave(&vfe_dev->tasklet_lock, flags);
 	queue_cmd = &vfe_dev->tasklet_queue_cmd[vfe_dev->taskletq_idx];
 	if (queue_cmd->cmd_used) {
-		pr_err_ratelimited("%s: Tasklet queue overflow: %d\n",
-			__func__, vfe_dev->pdev->id);
+		//pr_err_ratelimited("%s: Tasklet queue overflow: %d\n",
+			//__func__, vfe_dev->pdev->id);
+		pr_err("__debug__: %s: Tasklet queue overflow: %d, error_mask0 = 0x%x, error_mask1 = 0x%x,\n", 
+                     __func__, vfe_dev->pdev->id, error_mask0, error_mask1); //modify by Gionee zhaocuiqin for CR01370128 20140830
 		list_del(&queue_cmd->list);
 	} else {
 		atomic_add(1, &vfe_dev->irq_cnt);

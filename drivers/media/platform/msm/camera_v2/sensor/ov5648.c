@@ -12,18 +12,20 @@
  */
 #include "msm_sensor.h"
 
-#define OV5648_SENSOR_NAME "ov5648"
+#define OV5648_SENSOR_NAME "sunny_ov5648_p5v23c"
 DEFINE_MSM_MUTEX(ov5648_mut);
-
+//gionee lizhi 20140919 add for device info start
+#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
+#include <linux/gn_device_check.h>
+#endif
+#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
+extern int gn_set_device_info(struct gn_device_info gn_dev_info);
+static struct gn_device_info gn_cameradev_info;
+#endif
+//gionee lizhi 20140919 add for device info end
 static struct msm_sensor_ctrl_t ov5648_s_ctrl;
 
 static struct msm_sensor_power_setting ov5648_power_setting[] = {
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VIO,
-		.config_val = 0,
-		.delay = 0,
-	},
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_VDIG,
@@ -32,8 +34,20 @@ static struct msm_sensor_power_setting ov5648_power_setting[] = {
 	},
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VDIG,
-		.config_val = GPIO_OUT_HIGH,
+		.seq_val = SENSOR_GPIO_STANDBY,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_RESET,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VIO,
+		.config_val = 0,
 		.delay = 5,
 	},
 	{
@@ -43,28 +57,28 @@ static struct msm_sensor_power_setting ov5648_power_setting[] = {
 		.delay = 5,
 	},
 	{
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VDIG,
+		.config_val = 0,
+		.delay = 0,
+	},
+	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,
-		.config_val = GPIO_OUT_LOW,
+		.seq_val = SENSOR_GPIO_VDIG,
+		.config_val = GPIO_OUT_HIGH,
 		.delay = 5,
 	},
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_STANDBY,
 		.config_val = GPIO_OUT_HIGH,
-		.delay = 10,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_LOW,
 		.delay = 5,
 	},
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_RESET,
 		.config_val = GPIO_OUT_HIGH,
-		.delay = 10,
+		.delay = 5,
 	},
 	{
 		.seq_type = SENSOR_CLK,
@@ -155,11 +169,20 @@ static int32_t ov5648_platform_probe(struct platform_device *pdev)
 static int __init ov5648_init_module(void)
 {
 	int32_t rc = 0;
-
+	pr_info("%s:%d\n", __func__, __LINE__);
 	rc = platform_driver_probe(&ov5648_platform_driver,
 		ov5648_platform_probe);
-	if (!rc)
+	if (!rc){
+	//Gionee lizhi 20140919 add for device info start
+	#if defined(CONFIG_GN_Q_BSP_DEVICE_TYPE_CHECK_SUPPORT)
+		gn_cameradev_info.gn_dev_type = GN_DEVICE_TYPE_FRONT_CAM;
+		memcpy(gn_cameradev_info.name, "sunny_ov5648",sizeof("sunny_ov5648"));
+		memcpy(gn_cameradev_info.vendor,"sunny_ov5648",sizeof("sunny_ov5648"));
+		gn_set_device_info(gn_cameradev_info);
+	#endif
+	//Gionee lizhi 20140919 add for device info end
 		return rc;
+}
 	return i2c_add_driver(&ov5648_i2c_driver);
 }
 
