@@ -42,6 +42,46 @@
 		cam_vana-supply = <&pma8084_l17>;
 		cam_vio-supply = <&pma8084_lvs4>;
 	};
+
+
+	qcom,camera@0 {
+		qcom,vdd-cx-supply = <&pma8084_s2>;
+		cam_vdig-supply = <&pma8084_l3>;
+		cam_vana-supply = <&pma8084_l17>;
+		cam_vio-supply = <&pma8084_lvs4>;
+		cam_vaf-supply = <&pma8084_l23>;
+	};
+
+	qcom,camera@1 {
+		qcom,vdd-cx-supply = <&pma8084_s2>;
+		cam_vdig-supply = <&pma8084_l3>;
+		cam_vana-supply = <&pma8084_l17>;
+		cam_vio-supply = <&pma8084_lvs4>;
+		cam_vaf-supply = <&pma8084_l23>;
+	};
+
+	qcom,camera@2 {
+		qcom,vdd-cx-supply = <&pma8084_s2>;
+		cam_vdig-supply = <&pma8084_l3>;
+		cam_vana-supply = <&pma8084_l17>;
+		cam_vio-supply = <&pma8084_lvs4>;
+		cam_vaf-supply = <&pma8084_l23>; //add by chenqiang 
+	};
+
+	qcom,camera@3 {
+		qcom,vdd-cx-supply = <&pma8084_s2>;
+		cam_vdig-supply = <&pma8084_l3>;
+		cam_vana-supply = <&pma8084_l17>;
+		cam_vio-supply = <&pma8084_lvs4>;
+		cam_vaf-supply = <&pma8084_l23>;  //add by chenqiang 
+	};
+//add by chenqiang for camera  begin
+    	qcom,camera@6f {
+		cam_vdig-supply = <&pma8084_l3>;
+		cam_vana-supply = <&pma8084_l17>;
+		cam_vio-supply = <&pma8084_lvs4>;
+		cam_vaf-supply = <&pma8084_l23>;
+	};
    eeprom0: qcom,eeprom@0xa0 {
 		qcom,vdd-cx-supply = <&pma8084_s2>;
 		cam_vdig-supply = <&pma8084_l3>;
@@ -49,29 +89,7 @@
 		cam_vio-supply = <&pma8084_lvs4>;
 		cam_vaf-supply = <&pma8084_l23>;
 	};
-	
-    qcom,camera@66 {
-		qcom,vdd-cx-supply = <&pma8084_s2>;
-		cam_vdig-supply = <&pma8084_l3>;
-		cam_vana-supply = <&pma8084_l17>;
-		cam_vio-supply = <&pma8084_lvs4>;
-		cam_vaf-supply = <&pma8084_l23>;
-	};
-    qcom,camera@205 {
-		qcom,vdd-cx-supply = <&pma8084_s2>;
-		cam_vdig-supply = <&pma8084_l3>;
-		cam_vana-supply = <&pma8084_l17>;
-		cam_vio-supply = <&pma8084_lvs4>;
-		cam_vaf-supply = <&pma8084_l23>;
-	};
-    qcom,camera@204 {
-		qcom,vdd-cx-supply = <&pma8084_s2>;
-		cam_vdig-supply = <&pma8084_l3>;
-		cam_vana-supply = <&pma8084_l17>;
-		cam_vio-supply = <&pma8084_lvs4>;
-		cam_vaf-supply = <&pma8084_l23>;
-	};
-	
+//add by chenqiang for camera  end
 };
 
 &soc {
