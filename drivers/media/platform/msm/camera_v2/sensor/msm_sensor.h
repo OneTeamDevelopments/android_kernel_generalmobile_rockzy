@@ -60,6 +60,9 @@ struct gn_sunny_ov4688_otp_struct
 	int16_t user_data[5];
 };
 
+struct gn_otp_sensor_fn_t {
+    int (*gn_sensor_otp_support)(struct msm_sensor_ctrl_t *s_ctrl);
+};
 struct msm_sensor_fn_t {
 	int (*sensor_config) (struct msm_sensor_ctrl_t *, void __user *);
 	int (*sensor_power_down) (struct msm_sensor_ctrl_t *);
