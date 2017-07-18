@@ -488,6 +488,7 @@ struct qpnp_led_data {
 	int			turn_off_delay_ms;
 };
 
+static DEFINE_MUTEX(flash_lock);
 static int num_kpbl_leds_on;
 
 static int
@@ -1414,7 +1415,10 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 {
 	int rc;
 
-	mutex_lock(&led->lock);
+	if (led->id == QPNP_ID_FLASH1_LED0 || led->id == QPNP_ID_FLASH1_LED1)
+		mutex_lock(&flash_lock);
+	else
+		mutex_lock(&led->lock);
 
 	switch (led->id) {
 	case QPNP_ID_WLED:
@@ -1454,7 +1458,10 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 		dev_err(&led->spmi_dev->dev, "Invalid LED(%d)\n", led->id);
 		break;
 	}
-	mutex_unlock(&led->lock);
+	if (led->id == QPNP_ID_FLASH1_LED0 || led->id == QPNP_ID_FLASH1_LED1)
+		mutex_unlock(&flash_lock);
+	else
+		mutex_unlock(&led->lock);
 
 }
 
@@ -2707,13 +2714,13 @@ static int __devinit qpnp_get_config_flash(struct qpnp_led_data *led,
 	if (of_find_property(of_get_parent(node), "flash-wa-supply",
 					NULL) && (!*reg_set)) {
 		led->flash_cfg->flash_wa_reg =
-			devm_regulator_get(&led->spmi_dev->dev,	"flash-wa");
+			devm_regulator_get(&led->spmi_dev->dev, "flash-wa");
 		if (IS_ERR_OR_NULL(led->flash_cfg->flash_wa_reg)) {
 			rc = PTR_ERR(led->flash_cfg->flash_wa_reg);
 			if (rc != EPROBE_DEFER) {
 				dev_err(&led->spmi_dev->dev,
-						"Flash wa regulator get failed(%d)\n",
-						rc);
+					"Flash wa regulator get failed(%d)\n",
+					rc);
 			}
 		} else
 			led->flash_cfg->flash_wa_reg_get = true;
@@ -3325,6 +3332,8 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 			goto fail_id_check;
 		}
 
+		if (led->id != QPNP_ID_FLASH1_LED0 &&
+					led->id != QPNP_ID_FLASH1_LED1)
 		mutex_init(&led->lock);
 		INIT_WORK(&led->work, qpnp_led_work);
 
@@ -3434,8 +3443,18 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, led_array);
 	return 0;
 
+fail_led_create_file:
+	for (i = 0; i < parsed_leds; i++) {
+		if (led->id == QPNP_ID_FLASH1_LED0 ||
+			led->id == QPNP_ID_FLASH1_LED1) {
+			sysfs_remove_group(&led_array[i].cdev.dev->kobj,
+							&led_attr_group);
+		}
+	}
 fail_id_check:
 	for (i = 0; i < parsed_leds; i++) {
+		if (led_array[i].id != QPNP_ID_FLASH1_LED0 &&
+				led_array[i].id != QPNP_ID_FLASH1_LED1)
 		mutex_destroy(&led_array[i].lock);
 		led_classdev_unregister(&led_array[i].cdev);
 	}
@@ -3449,7 +3468,10 @@ static int __devexit qpnp_leds_remove(struct spmi_device *spmi)
 	int i, parsed_leds = led_array->num_leds;
 
 	for (i = 0; i < parsed_leds; i++) {
+		qpnp_led_remove_file(&led_array[i]);
 		cancel_work_sync(&led_array[i].work);
+		if (led_array[i].id != QPNP_ID_FLASH1_LED0 &&
+				led_array[i].id != QPNP_ID_FLASH1_LED1)
 		mutex_destroy(&led_array[i].lock);
 		led_classdev_unregister(&led_array[i].cdev);
 		switch (led_array[i].id) {
