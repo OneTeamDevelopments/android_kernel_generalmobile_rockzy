@@ -3361,10 +3361,6 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 
 		}
 
-		rc = qpnp_led_create_file(led);
-		if (rc < 0)
-			goto fail_led_create_file;
-
 		if (led->id == QPNP_ID_LED_MPP) {
 			if (!led->mpp_cfg->pwm_cfg)
 				break;
@@ -3447,14 +3443,6 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, led_array);
 	return 0;
 
-fail_led_create_file:
-	for (i = 0; i < parsed_leds; i++) {
-		if (led->id == QPNP_ID_FLASH1_LED0 ||
-			led->id == QPNP_ID_FLASH1_LED1) {
-			sysfs_remove_group(&led_array[i].cdev.dev->kobj,
-							&led_attr_group);
-		}
-	}
 fail_id_check:
 	for (i = 0; i < parsed_leds; i++) {
 		if (led_array[i].id != QPNP_ID_FLASH1_LED0 &&
