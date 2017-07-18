@@ -3361,6 +3361,10 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 
 		}
 
+		rc = qpnp_led_create_file(led);
+		if (rc < 0)
+			goto fail_led_create_file;
+
 		if (led->id == QPNP_ID_LED_MPP) {
 			if (!led->mpp_cfg->pwm_cfg)
 				break;
@@ -3468,7 +3472,6 @@ static int __devexit qpnp_leds_remove(struct spmi_device *spmi)
 	int i, parsed_leds = led_array->num_leds;
 
 	for (i = 0; i < parsed_leds; i++) {
-		qpnp_led_remove_file(&led_array[i]);
 		cancel_work_sync(&led_array[i].work);
 		if (led_array[i].id != QPNP_ID_FLASH1_LED0 &&
 				led_array[i].id != QPNP_ID_FLASH1_LED1)
