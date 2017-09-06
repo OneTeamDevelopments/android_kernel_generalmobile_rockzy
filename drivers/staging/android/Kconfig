@@ -12,6 +12,25 @@ config ANDROID_BINDER_IPC
 	bool "Android Binder IPC Driver"
 	default n
 
+config ANDROID_BINDER_IPC_32BIT
+	bool "Use old 32-bit binder api"
+	depends on !64BIT
+	---help---
+	  Enable to support an old 32-bit Android user-space. Breaks the new
+	  Android user-space.
+
+config ANDROID_BINDER_DEVICES
+	string "Android Binder devices"
+	depends on ANDROID_BINDER_IPC
+	default "binder"
+	---help---
+	  Default value for the binder.devices parameter.
+
+	  The binder.devices parameter is a comma-separated list of strings
+	  that specifies the names of the binder device nodes that will be
+	  created. Each binder device has its own context manager, and is
+	  therefore logically separated from the other devices.
+
 config ASHMEM
 	bool "Enable the Anonymous Shared Memory Subsystem"
 	default n
@@ -21,17 +40,8 @@ config ASHMEM
 	  POSIX SHM but with different behavior and sporting a simpler
 	  file-based API.
 
-config ANDROID_LOGGER
-	tristate "Android log driver"
-	default n
-
-config LOGCAT_SIZE
-	int "Adjust android log buffer sizes"
-	default 256
-	depends on ANDROID_LOGGER
-	help
-	  Set logger buffer size. Enter a number greater than zero.
-	  Any value less than 256 is recommended. Reduce value to save kernel static memory size.
+	  It is, in theory, a good memory allocator for low-memory devices,
+	  because it can discard shared memory units when under memory pressure.
 
 config ANDROID_PERSISTENT_RAM
 	bool
