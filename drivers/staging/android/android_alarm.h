@@ -1,4 +1,3 @@
-,
 /* include/linux/android_alarm.h
  *
  * Copyright (C) 2006-2007 Google, Inc.
