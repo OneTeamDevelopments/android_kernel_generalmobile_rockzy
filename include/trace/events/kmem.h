@@ -214,7 +214,7 @@ TRACE_EVENT(mm_page_alloc,
 
 	TP_printk("page=%p pfn=%lu order=%d migratetype=%d gfp_flags=%s",
 		__entry->page,
-		page_to_pfn(__entry->page),
+		__entry->page ? page_to_pfn(__entry->page) : 0,
 		__entry->order,
 		__entry->migratetype,
 		show_gfp_flags(__entry->gfp_flags))
@@ -240,7 +240,7 @@ DECLARE_EVENT_CLASS(mm_page,
 
 	TP_printk("page=%p pfn=%lu order=%u migratetype=%d percpu_refill=%d",
 		__entry->page,
-		page_to_pfn(__entry->page),
+		__entry->page ? page_to_pfn(__entry->page) : 0,
 		__entry->order,
 		__entry->migratetype,
 		__entry->order == 0)
@@ -267,8 +267,8 @@ DEFINE_EVENT_PRINT(mm_page, mm_page_pcpu_drain,
 TRACE_EVENT(mm_page_alloc_extfrag,
 
 	TP_PROTO(struct page *page,
-			int alloc_order, int fallback_order,
-			int alloc_migratetype, int fallback_migratetype),
+		int alloc_order, int fallback_order,
+		int alloc_migratetype, int fallback_migratetype),
 
 	TP_ARGS(page,
 		alloc_order, fallback_order,
@@ -280,6 +280,7 @@ TRACE_EVENT(mm_page_alloc_extfrag,
 		__field(	int,		fallback_order		)
 		__field(	int,		alloc_migratetype	)
 		__field(	int,		fallback_migratetype	)
+		__field(	int,		change_ownership	)
 	),
 
 	TP_fast_assign(
@@ -288,6 +289,8 @@ TRACE_EVENT(mm_page_alloc_extfrag,
 		__entry->fallback_order		= fallback_order;
 		__entry->alloc_migratetype	= alloc_migratetype;
 		__entry->fallback_migratetype	= fallback_migratetype;
+		__entry->change_ownership	= (alloc_migratetype ==
+					get_pageblock_migratetype(page));
 	),
 
 	TP_printk("page=%p pfn=%lu alloc_order=%d fallback_order=%d pageblock_order=%d alloc_migratetype=%d fallback_migratetype=%d fragmenting=%d change_ownership=%d",
@@ -299,7 +302,7 @@ TRACE_EVENT(mm_page_alloc_extfrag,
 		__entry->alloc_migratetype,
 		__entry->fallback_migratetype,
 		__entry->fallback_order < pageblock_order,
-		__entry->alloc_migratetype == __entry->fallback_migratetype)
+		__entry->change_ownership)
 );
 
 
@@ -598,6 +601,104 @@ DEFINE_EVENT(smmu_map, iommu_map_range,
 
 	TP_ARGS(va, pa, chunk_size, len)
 	);
+
+DECLARE_EVENT_CLASS(ion_secure_cma_add_to_pool,
+
+	TP_PROTO(unsigned long len,
+		 int pool_total,
+		 bool is_prefetch),
+
+	TP_ARGS(len, pool_total, is_prefetch),
+
+	TP_STRUCT__entry(
+		__field(unsigned long, len)
+		__field(int, pool_total)
+		__field(bool, is_prefetch)
+		),
+
+	TP_fast_assign(
+		__entry->len = len;
+		__entry->pool_total = pool_total;
+		__entry->is_prefetch = is_prefetch;
+		),
+
+	TP_printk("len %lx, pool total %x is_prefetch %d",
+		__entry->len,
+		__entry->pool_total,
+		__entry->is_prefetch)
+	);
+
+DEFINE_EVENT(ion_secure_cma_add_to_pool, ion_secure_cma_add_to_pool_start,
+	TP_PROTO(unsigned long len,
+		int pool_total,
+		bool is_prefetch),
+
+	TP_ARGS(len, pool_total, is_prefetch)
+	);
+
+DEFINE_EVENT(ion_secure_cma_add_to_pool, ion_secure_cma_add_to_pool_end,
+	TP_PROTO(unsigned long len,
+		int pool_total,
+		bool is_prefetch),
+
+	TP_ARGS(len, pool_total, is_prefetch)
+	);
+
+DECLARE_EVENT_CLASS(ion_secure_cma_shrink_pool,
+
+	TP_PROTO(unsigned long drained_size,
+		 unsigned long skipped_size),
+
+	TP_ARGS(drained_size, skipped_size),
+
+	TP_STRUCT__entry(
+		__field(unsigned long, drained_size)
+		__field(unsigned long, skipped_size)
+		),
+
+	TP_fast_assign(
+		__entry->drained_size = drained_size;
+		__entry->skipped_size = skipped_size;
+		),
+
+	TP_printk("drained size %lx, skipped size %lx",
+		__entry->drained_size,
+		__entry->skipped_size)
+	);
+
+DEFINE_EVENT(ion_secure_cma_shrink_pool, ion_secure_cma_shrink_pool_start,
+	TP_PROTO(unsigned long drained_size,
+		 unsigned long skipped_size),
+
+	TP_ARGS(drained_size, skipped_size)
+	);
+
+DEFINE_EVENT(ion_secure_cma_shrink_pool, ion_secure_cma_shrink_pool_end,
+	TP_PROTO(unsigned long drained_size,
+		 unsigned long skipped_size),
+
+	TP_ARGS(drained_size, skipped_size)
+	);
+
+TRACE_EVENT(ion_prefetching,
+
+	TP_PROTO(unsigned long len),
+
+	TP_ARGS(len),
+
+	TP_STRUCT__entry(
+		__field(unsigned long, len)
+		),
+
+	TP_fast_assign(
+		__entry->len = len;
+		),
+
+	TP_printk("prefetch size %lx",
+		__entry->len)
+	);
+
+
 
 #endif /* _TRACE_KMEM_H */
 

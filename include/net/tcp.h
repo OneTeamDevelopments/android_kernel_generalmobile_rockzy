@@ -131,6 +131,8 @@ extern void tcp_time_wait(struct sock *sk, int state, int timeo);
 						 * most likely due to retrans in 3WHS.
 						 */
 
+#define TCP_DELACK_SEG          1       /*Number of full MSS to receive before Acking RFC2581*/
+
 #define TCP_RESOURCE_PROBE_INTERVAL ((unsigned)(HZ/2U)) /* Maximal interval between probes
 					                 * for local resources.
 					                 */
@@ -252,6 +254,12 @@ extern int sysctl_tcp_max_ssthresh;
 extern int sysctl_tcp_cookie_size;
 extern int sysctl_tcp_thin_linear_timeouts;
 extern int sysctl_tcp_thin_dupack;
+extern int sysctl_tcp_challenge_ack_limit;
+extern int sysctl_tcp_default_init_rwnd;
+
+/* sysctl variables for controlling various tcp parameters */
+extern int sysctl_tcp_delack_seg;
+extern int sysctl_tcp_use_userconfig;
 
 extern atomic_long_t tcp_memory_allocated;
 extern struct percpu_counter tcp_sockets_allocated;
@@ -346,6 +354,10 @@ extern ssize_t tcp_splice_read(struct socket *sk, loff_t *ppos,
 			       struct pipe_inode_info *pipe, size_t len,
 			       unsigned int flags);
 
+extern int tcp_use_userconfig_sysctl_handler(struct ctl_table *, int,
+                                         void __user *, size_t *, loff_t *);
+extern int tcp_proc_delayed_ack_control(struct ctl_table *, int,
+                void __user *, size_t *, loff_t *);
 static inline void tcp_dec_quickack_mode(struct sock *sk,
 					 const unsigned int pkts)
 {
@@ -947,6 +959,7 @@ static inline int tcp_prequeue(struct sock *sk, struct sk_buff *skb)
 	if (sysctl_tcp_low_latency || !tp->ucopy.task)
 		return 0;
 
+	skb_dst_force(skb);
 	__skb_queue_tail(&tp->ucopy.prequeue, skb);
 	tp->ucopy.memory += skb->truesize;
 	if (tp->ucopy.memory > sk->sk_rcvbuf) {
@@ -985,6 +998,8 @@ static const char *statename[]={
 extern void tcp_set_state(struct sock *sk, int state);
 
 extern void tcp_done(struct sock *sk);
+
+int tcp_abort(struct sock *sk, int err);
 
 static inline void tcp_sack_reset(struct tcp_options_received *rx_opt)
 {
@@ -1295,6 +1310,8 @@ static inline void tcp_check_send_head(struct sock *sk, struct sk_buff *skb_unli
 {
 	if (sk->sk_send_head == skb_unlinked)
 		sk->sk_send_head = NULL;
+	if (tcp_sk(sk)->highest_sack == skb_unlinked)
+		tcp_sk(sk)->highest_sack = NULL;
 }
 
 static inline void tcp_init_send_head(struct sock *sk)

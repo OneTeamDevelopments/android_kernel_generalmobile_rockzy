@@ -51,7 +51,7 @@ struct dst_entry {
 	int			(*input)(struct sk_buff *);
 	int			(*output)(struct sk_buff *);
 
-	unsigned short			flags;
+	unsigned short		flags;
 #define DST_HOST		0x0001
 #define DST_NOXFRM		0x0002
 #define DST_NOPOLICY		0x0004
@@ -60,6 +60,7 @@ struct dst_entry {
 #define DST_NOCOUNT		0x0020
 #define DST_NOPEER		0x0040
 #define DST_FAKE_RTABLE		0x0080
+#define DST_XFRM_TUNNEL		0x0100
 
 	unsigned short		pending_confirm;
 
@@ -408,7 +409,7 @@ static inline int dst_neigh_output(struct dst_entry *dst, struct neighbour *n,
 	if (unlikely(dst->pending_confirm)) {
 		n->confirmed = jiffies;
 		dst->pending_confirm = 0;
-  	}
+	}
 
 	hh = &n->hh;
 	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len)
@@ -475,10 +476,22 @@ static inline struct dst_entry *xfrm_lookup(struct net *net,
 {
 	return dst_orig;
 } 
+
+static inline struct xfrm_state *dst_xfrm(const struct dst_entry *dst)
+{
+	return NULL;
+}
+
 #else
 extern struct dst_entry *xfrm_lookup(struct net *net, struct dst_entry *dst_orig,
 				     const struct flowi *fl, struct sock *sk,
 				     int flags);
+
+/* skb attached with this dst needs transformation if dst->xfrm is valid */
+static inline struct xfrm_state *dst_xfrm(const struct dst_entry *dst)
+{
+	return dst->xfrm;
+}
 #endif
 
 #endif /* _NET_DST_H */
