@@ -370,7 +370,7 @@ if ($hz eq '--can') {
 	}
 
 	$cv = $canned_values{$hz};
-	@val = defined($cv) ? @$cv : compute_values($hz);	
-        output($hz, @val);
+	@val = defined($cv) ? @$cv : compute_values($hz);
+	output($hz, @val);
 }
 exit 0;

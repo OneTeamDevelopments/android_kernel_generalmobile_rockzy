@@ -65,12 +65,6 @@ void __weak panic_smp_self_stop(void)
 		cpu_relax();
 }
 
-#ifdef CONFIG_OPPO_DEBUG_ASSERT
-/* OPPO 2012-10-11 chendx Add begin for debug tools */
-extern bool is_otrace_on(void);
-/* OPPO 2012-10-11 chendx Add end */
-#endif //CONFIG_VENDOR_EDIT
-
 /**
  *	panic - halt the system
  *	@fmt: The text string to print
@@ -96,21 +90,13 @@ void panic(const char *fmt, ...)
 	 */
 	local_irq_disable();
 
-#ifdef CONFIG_OPPO_DEBUG_ASSERT
-/* OPPO 2012-10-11 chendx Add begin for debug tools */
-    pr_info("kernel panic because of %s\n", fmt);
-
-	if(!is_otrace_on()) {
-		if (strcmp(fmt, "modem") == 0)
-        	kernel_restart("modem");
-    	else if (strcmp(fmt, "android") == 0)
-        	kernel_restart("android");
-    	else
-        	kernel_restart("kernel");
-	}
-/* OPPO 2012-10-11 chendx Add end */
-#endif  //CONFIG_VENDOR_EDIT
-
+	/*
+	 * Disable local interrupts. This will prevent panic_smp_self_stop
+	 * from deadlocking the first cpu that invokes the panic, since
+	 * there is nothing to prevent an interrupt handler (that runs
+	 * after the panic_lock is acquired) from invoking panic again.
+	 */
+	local_irq_disable();
 
 	/*
 	 * It's possible to come here directly from a panic-assertion and
@@ -146,14 +132,14 @@ void panic(const char *fmt, ...)
 	 */
 	crash_kexec(NULL);
 
-	kmsg_dump(KMSG_DUMP_PANIC);
-
 	/*
 	 * Note smp_send_stop is the usual smp shutdown function, which
 	 * unfortunately means it may not be hardened to work in a panic
 	 * situation.
 	 */
 	smp_send_stop();
+
+	kmsg_dump(KMSG_DUMP_PANIC);
 
 	atomic_notifier_call_chain(&panic_notifier_list, 0, buf);
 

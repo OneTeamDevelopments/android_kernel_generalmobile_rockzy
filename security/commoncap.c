@@ -363,7 +363,7 @@ static inline int bprm_caps_from_vfs_caps(struct cpu_vfs_cap_data *caps,
 		__u32 inheritable = caps->inheritable.cap[i];
 
 		/*
-		 * pP' = (X & fP) | (pI & fI
+		 * pP' = (X & fP) | (pI & fI)
 		 * The addition of pA' is handled later.
 		 */
 		new->cap_permitted.cap[i] =
@@ -537,7 +537,9 @@ skip:
 
 
 	/* Don't let someone trace a set[ug]id/setpcap binary with the revised
-	 * credentials unless they have the appropriate permit
+	 * credentials unless they have the appropriate permit.
+	 *
+	 * In addition, if NO_NEW_PRIVS, then ensure we get no new privs.
 	 */
 	is_setid = new->euid != old->uid || new->egid != old->gid;
 
@@ -545,7 +547,8 @@ skip:
 	     !cap_issubset(new->cap_permitted, old->cap_permitted)) &&
 	    bprm->unsafe & ~LSM_UNSAFE_PTRACE_CAP) {
 		/* downgrade; they get no more than they had, and maybe less */
-		if (!capable(CAP_SETUID)) {
+		if (!capable(CAP_SETUID) ||
+		    (bprm->unsafe & LSM_UNSAFE_NO_NEW_PRIVS)) {
 			new->euid = new->uid;
 			new->egid = new->gid;
 		}
@@ -866,7 +869,7 @@ static int cap_prctl_drop(unsigned long cap)
 	new = prepare_creds();
 	if (!new)
 		return -ENOMEM;
-  	cap_lower(new->cap_bset, cap);
+	cap_lower(new->cap_bset, cap);
 	return commit_creds(new);
 }
 
@@ -887,10 +890,10 @@ int cap_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 {
 	const struct cred *old = current_cred();
 	struct cred *new;
-	
+
 	switch (option) {
-  	case PR_CAPBSET_READ:
- 		if (!cap_valid(arg2))
+	case PR_CAPBSET_READ:
+		if (!cap_valid(arg2))
 			return -EINVAL;
 		return !!cap_raised(old->cap_bset, arg2);
 
@@ -938,7 +941,7 @@ int cap_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 		new = prepare_creds();
 		if (!new)
 			return -ENOMEM;
-  		new->securebits = arg2;
+		new->securebits = arg2;
 		return commit_creds(new);
 
 	case PR_GET_SECUREBITS:
@@ -948,7 +951,7 @@ int cap_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 		return !!issecure(SECURE_KEEP_CAPS);
 
 	case PR_SET_KEEPCAPS:
-  		if (arg2 > 1) /* Note, we rely on arg2 being unsigned here */
+		if (arg2 > 1) /* Note, we rely on arg2 being unsigned here */
 			return -EINVAL;
 		if (issecure(SECURE_KEEP_CAPS_LOCKED))
 			return -EPERM;
