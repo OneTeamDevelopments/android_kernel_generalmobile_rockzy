@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,6 +34,7 @@ struct cpu_sync {
 	int cpu;
 	spinlock_t lock;
 	bool pending;
+	atomic_t being_woken;
 	int src_cpu;
 	unsigned int boost_min;
 	unsigned int input_boost_min;
@@ -140,7 +141,8 @@ static int boost_mig_sync_thread(void *data)
 	unsigned long flags;
 
 	while(1) {
-		wait_event(s->sync_wq, s->pending || kthread_should_stop());
+		wait_event_interruptible(s->sync_wq, s->pending ||
+					kthread_should_stop());
 
 		if (kthread_should_stop())
 			break;
@@ -158,14 +160,11 @@ static int boost_mig_sync_thread(void *data)
 		if (ret)
 			continue;
 
-		if (dest_policy.cur >= src_policy.cur ) {
-			pr_debug("No sync. CPU%d@%dKHz >= CPU%d@%dKHz\n",
-				 dest_cpu, dest_policy.cur, src_cpu, src_policy.cur);
+		if (src_policy.cur == src_policy.cpuinfo.min_freq) {
+			pr_debug("No sync. Source CPU%d@%dKHz at min freq\n",
+				 src_cpu, src_policy.cur);
 			continue;
 		}
-
-		if (sync_threshold && (dest_policy.cur >= sync_threshold))
-			continue;
 
 		cancel_delayed_work_sync(&s->boost_rem);
 		if (sync_threshold) {
@@ -178,6 +177,17 @@ static int boost_mig_sync_thread(void *data)
 		}
 		/* Force policy re-evaluation to trigger adjust notifier. */
 		get_online_cpus();
+		if (cpu_online(src_cpu))
+			/*
+			 * Send an unchanged policy update to the source
+			 * CPU. Even though the policy isn't changed from
+			 * its existing boosted or non-boosted state
+			 * notifying the source CPU will let the governor
+			 * know a boost happened on another CPU and that it
+			 * should re-evaluate the frequency at the next timer
+			 * event without interference from a min sample time.
+			 */
+			cpufreq_update_policy(src_cpu);
 		if (cpu_online(dest_cpu)) {
 			cpufreq_update_policy(dest_cpu);
 			queue_delayed_work_on(dest_cpu, cpu_boost_wq,
@@ -200,12 +210,25 @@ static int boost_migration_notify(struct notifier_block *nb,
 	if (!boost_ms)
 		return NOTIFY_OK;
 
+	/* Avoid deadlock in try_to_wake_up() */
+	if (s->thread == current)
+		return NOTIFY_OK;
+
 	pr_debug("Migration: CPU%d --> CPU%d\n", (int) arg, (int) dest_cpu);
 	spin_lock_irqsave(&s->lock, flags);
 	s->pending = true;
 	s->src_cpu = (int) arg;
 	spin_unlock_irqrestore(&s->lock, flags);
-	wake_up(&s->sync_wq);
+	/*
+	* Avoid issuing recursive wakeup call, as sync thread itself could be
+	* seen as migrating triggering this notification. Note that sync thread
+	* of a cpu could be running for a short while with its affinity broken
+	* because of CPU hotplug.
+	*/
+	if (!atomic_cmpxchg(&s->being_woken, 0, 1)) {
+		wake_up(&s->sync_wq);
+		atomic_set(&s->being_woken, 0);
+	}
 
 	return NOTIFY_OK;
 }
@@ -345,6 +368,7 @@ static int cpu_boost_init(void)
 		s = &per_cpu(sync_info, cpu);
 		s->cpu = cpu;
 		init_waitqueue_head(&s->sync_wq);
+		atomic_set(&s->being_woken, 0);
 		spin_lock_init(&s->lock);
 		INIT_DELAYED_WORK(&s->boost_rem, do_boost_rem);
 		INIT_DELAYED_WORK(&s->input_boost_rem, do_input_boost_rem);
