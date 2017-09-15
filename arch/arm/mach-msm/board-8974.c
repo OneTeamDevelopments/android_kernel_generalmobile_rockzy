@@ -52,8 +52,6 @@
 
 #include <linux/persistent_ram.h>
 
-static struct platform_device *ram_console_dev;
-
 static struct persistent_ram_descriptor msm_prd[] __initdata = {
 	{
 		.name = "ram_console",
