@@ -104,9 +104,6 @@ void show_mem(unsigned int filter)
 	printk("Mem-info:\n");
 	show_free_areas(filter);
 
-	if (filter & SHOW_MEM_FILTER_PAGE_COUNT)
-		return;
-
 	for_each_bank (i, mi) {
 		struct membank *bank = &mi->bank[i];
 		unsigned int pfn1, pfn2;
@@ -377,6 +374,84 @@ static int __init meminfo_cmp(const void *_a, const void *_b)
 	long cmp = bank_pfn_start(a) - bank_pfn_start(b);
 	return cmp < 0 ? -1 : cmp > 0 ? 1 : 0;
 }
+
+phys_addr_t memory_hole_offset;
+EXPORT_SYMBOL(memory_hole_offset);
+phys_addr_t memory_hole_start;
+EXPORT_SYMBOL(memory_hole_start);
+phys_addr_t memory_hole_end;
+EXPORT_SYMBOL(memory_hole_end);
+unsigned long memory_hole_align;
+EXPORT_SYMBOL(memory_hole_align);
+unsigned long virtual_hole_start;
+unsigned long virtual_hole_end;
+
+#ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
+void find_memory_hole(void)
+{
+	int i;
+	phys_addr_t hole_start;
+	phys_addr_t hole_size;
+	unsigned long hole_end_virt;
+
+	/*
+	 * Find the start and end of the hole, using meminfo.
+	 */
+	for (i = 0; i < (meminfo.nr_banks - 1); i++) {
+		if ((meminfo.bank[i].start + meminfo.bank[i].size) !=
+						meminfo.bank[i+1].start) {
+			if (meminfo.bank[i].start + meminfo.bank[i].size
+							<= MAX_HOLE_ADDRESS) {
+
+				hole_start = meminfo.bank[i].start +
+							meminfo.bank[i].size;
+				hole_size = meminfo.bank[i+1].start -
+								hole_start;
+
+				if (memory_hole_start == 0 &&
+							memory_hole_end == 0) {
+					memory_hole_start = hole_start;
+					memory_hole_end = hole_start +
+								hole_size;
+				} else if ((memory_hole_end -
+					memory_hole_start) <= hole_size) {
+					memory_hole_start = hole_start;
+					memory_hole_end = hole_start +
+								hole_size;
+				}
+			}
+		}
+	}
+
+	memory_hole_offset = memory_hole_start - PHYS_OFFSET;
+	if (!IS_ALIGNED(memory_hole_start, SECTION_SIZE)) {
+		pr_err("memory_hole_start %pa is not aligned to %lx\n",
+			&memory_hole_start, SECTION_SIZE);
+		BUG();
+	}
+	if (!IS_ALIGNED(memory_hole_end, SECTION_SIZE)) {
+		pr_err("memory_hole_end %pa is not aligned to %lx\n",
+			&memory_hole_end, SECTION_SIZE);
+		BUG();
+	}
+
+	hole_end_virt = __phys_to_virt(memory_hole_end);
+
+	if ((!IS_ALIGNED(hole_end_virt, PMD_SIZE) &&
+	     IS_ALIGNED(memory_hole_end, PMD_SIZE)) ||
+	     (IS_ALIGNED(hole_end_virt, PMD_SIZE) &&
+	      !IS_ALIGNED(memory_hole_end, PMD_SIZE))) {
+		memory_hole_align = !IS_ALIGNED(hole_end_virt, PMD_SIZE) ?
+					hole_end_virt & ~PMD_MASK :
+					memory_hole_end & ~PMD_MASK;
+		virtual_hole_start = hole_end_virt;
+		virtual_hole_end = hole_end_virt + memory_hole_align;
+		pr_info("Physical memory hole is not aligned. There will be a virtual memory hole from %lx to %lx\n",
+			virtual_hole_start, virtual_hole_end);
+	}
+}
+
+#endif
 
 void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 {
@@ -659,56 +734,6 @@ static void __init free_highpages(void)
 #endif
 }
 
-#define MLK(b, t) b, t, ((t) - (b)) >> 10
-#define MLM(b, t) b, t, ((t) - (b)) >> 20
-#define MLK_ROUNDUP(b, t) b, t, DIV_ROUND_UP(((t) - (b)), SZ_1K)
-
-#ifdef CONFIG_ENABLE_VMALLOC_SAVING
-static void print_vmalloc_lowmem_info(void)
-{
-	int i;
-	void *va_start, *va_end;
-
-	printk(KERN_NOTICE
-		"	   vmalloc : 0x%08lx - 0x%08lx   (%4ld MB)\n",
-		MLM(VMALLOC_START, VMALLOC_END));
-
-	for (i = meminfo.nr_banks - 1; i >= 0; i--) {
-		if (!meminfo.bank[i].highmem) {
-			va_start = __va(meminfo.bank[i].start);
-			va_end = __va(meminfo.bank[i].start +
-						meminfo.bank[i].size);
-			printk(KERN_NOTICE
-			 "	    lowmem : 0x%08lx - 0x%08lx   (%4ld MB)\n",
-			MLM((unsigned long)va_start, (unsigned long)va_end));
-		}
-		if (i && ((meminfo.bank[i-1].start + meminfo.bank[i-1].size) !=
-			   meminfo.bank[i].start)) {
-			phys_addr_t end_phys;
-
-			if((meminfo.bank[i-1].start + meminfo.bank[i-1].size) > arm_lowmem_limit)
-				continue;
-
-			if(meminfo.bank[i].start > arm_lowmem_limit)
-				end_phys = arm_lowmem_limit;
-			else
-				end_phys = meminfo.bank[i].start;
-
-			if (meminfo.bank[i-1].start + meminfo.bank[i-1].size
-				   <= MAX_HOLE_ADDRESS) {
-				va_start = __va(meminfo.bank[i-1].start
-						+ meminfo.bank[i-1].size);
-				va_end = __va(end_phys);
-				printk(KERN_NOTICE
-				"	   vmalloc : 0x%08lx - 0x%08lx   (%4ld MB)\n",
-					   MLM((unsigned long)va_start,
-						   (unsigned long)va_end));
-			}
-		}
-	}
-}
-#endif
-
 /*
  * mem_init() marks the free areas in the mem_map and tells us how much
  * memory is free.  This is done after various parts of the system have
@@ -789,6 +814,10 @@ void __init mem_init(void)
 		reserved_pages << (PAGE_SHIFT-10),
 		totalhigh_pages << (PAGE_SHIFT-10));
 
+#define MLK(b, t) b, t, ((t) - (b)) >> 10
+#define MLM(b, t) b, t, ((t) - (b)) >> 20
+#define MLK_ROUNDUP(b, t) b, t, DIV_ROUND_UP(((t) - (b)), SZ_1K)
+
 	printk(KERN_NOTICE "Virtual kernel memory layout:\n"
 			"    vector  : 0x%08lx - 0x%08lx   (%4ld kB)\n"
 #ifdef CONFIG_ARM_USE_USER_ACCESSIBLE_TIMERS
@@ -798,7 +827,20 @@ void __init mem_init(void)
 			"    DTCM    : 0x%08lx - 0x%08lx   (%4ld kB)\n"
 			"    ITCM    : 0x%08lx - 0x%08lx   (%4ld kB)\n"
 #endif
-			"    fixmap  : 0x%08lx - 0x%08lx   (%4ld kB)\n",
+			"    fixmap  : 0x%08lx - 0x%08lx   (%4ld kB)\n"
+			"    vmalloc : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+			"    lowmem  : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+#ifdef CONFIG_HIGHMEM
+			"    pkmap   : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+#endif
+#ifdef CONFIG_MODULES
+			"    modules : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+#endif
+			"      .text : 0x%p" " - 0x%p" "   (%4d kB)\n"
+			"      .init : 0x%p" " - 0x%p" "   (%4d kB)\n"
+			"      .data : 0x%p" " - 0x%p" "   (%4d kB)\n"
+			"       .bss : 0x%p" " - 0x%p" "   (%4d kB)\n",
+
 			MLK(UL(CONFIG_VECTORS_BASE), UL(CONFIG_VECTORS_BASE) +
 				(PAGE_SIZE)),
 #ifdef CONFIG_ARM_USE_USER_ACCESSIBLE_TIMERS
@@ -810,40 +852,25 @@ void __init mem_init(void)
 			MLK(DTCM_OFFSET, (unsigned long) dtcm_end),
 			MLK(ITCM_OFFSET, (unsigned long) itcm_end),
 #endif
-			MLK(FIXADDR_START, FIXADDR_TOP));
-#ifdef CONFIG_ENABLE_VMALLOC_SAVING
-	print_vmalloc_lowmem_info();
-#else
-	printk(KERN_NOTICE
-		   "    vmalloc : 0x%08lx - 0x%08lx   (%4ld MB)\n"
-		   "    lowmem  : 0x%08lx - 0x%08lx   (%4ld MB)\n",
-		   MLM(VMALLOC_START, VMALLOC_END),
-		   MLM(PAGE_OFFSET, (unsigned long)high_memory));
-#endif
-
-	printk(KERN_NOTICE
+			MLK(FIXADDR_START, FIXADDR_TOP),
+			MLM(VMALLOC_START, VMALLOC_END),
+			MLM(PAGE_OFFSET, (unsigned long)high_memory),
 #ifdef CONFIG_HIGHMEM
-		   "    pkmap   : 0x%08lx - 0x%08lx   (%4ld MB)\n"
-#endif
-#ifdef CONFIG_MODULES
-		   "    modules : 0x%08lx - 0x%08lx   (%4ld MB)\n"
-#endif
-		   "      .text : 0x%p" " - 0x%p" "   (%4d kB)\n"
-		   "      .init : 0x%p" " - 0x%p" "   (%4d kB)\n"
-		   "      .data : 0x%p" " - 0x%p" "   (%4d kB)\n"
-		   "       .bss : 0x%p" " - 0x%p" "   (%4d kB)\n",
-#ifdef CONFIG_HIGHMEM
-		   MLM(PKMAP_BASE, (PKMAP_BASE) + (LAST_PKMAP) *
+			MLM(PKMAP_BASE, (PKMAP_BASE) + (LAST_PKMAP) *
 				(PAGE_SIZE)),
 #endif
 #ifdef CONFIG_MODULES
-		   MLM(MODULES_VADDR, MODULES_END),
+			MLM(MODULES_VADDR, MODULES_END),
 #endif
 
-		   MLK_ROUNDUP(_text, _etext),
-		   MLK_ROUNDUP(__init_begin, __init_end),
-		   MLK_ROUNDUP(_sdata, _edata),
-		   MLK_ROUNDUP(__bss_start, __bss_stop));
+			MLK_ROUNDUP(_text, _etext),
+			MLK_ROUNDUP(__init_begin, __init_end),
+			MLK_ROUNDUP(_sdata, _edata),
+			MLK_ROUNDUP(__bss_start, __bss_stop));
+
+#undef MLK
+#undef MLM
+#undef MLK_ROUNDUP
 
 	/*
 	 * Check boundaries twice: Some fundamental inconsistencies can
@@ -851,7 +878,7 @@ void __init mem_init(void)
 	 */
 #ifdef CONFIG_MMU
 	BUILD_BUG_ON(TASK_SIZE				> MODULES_VADDR);
-	BUG_ON(TASK_SIZE				> MODULES_VADDR);
+	BUG_ON(TASK_SIZE 				> MODULES_VADDR);
 #endif
 
 #ifdef CONFIG_HIGHMEM
@@ -870,9 +897,6 @@ void __init mem_init(void)
 	}
 }
 
-#undef MLK
-#undef MLM
-#undef MLK_ROUNDUP
 void free_initmem(void)
 {
 	unsigned long reclaimed_initmem;
