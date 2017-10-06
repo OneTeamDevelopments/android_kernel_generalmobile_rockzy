@@ -25,7 +25,6 @@ enum logk_event_type {
 	LOGK_HOTPLUG = 4,
 	LOGK_CTXID = 5,
 	LOGK_TIMESTAMP = 6,
-	LOGK_IRQ = 9,
 };
 
 #define LOGTYPE_NOPC 0x80
