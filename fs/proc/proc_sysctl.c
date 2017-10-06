@@ -10,7 +10,6 @@
 #include <linux/namei.h>
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/kmemleak.h>
 #include "internal.h"
 
 static const struct dentry_operations proc_sys_dentry_operations;
@@ -143,7 +142,6 @@ static int insert_entry(struct ctl_table_header *head, struct ctl_table *entry)
 	}
 
 	rb_link_node(node, parent, p);
-	rb_insert_color(node, &head->parent->root);
 	return 0;
 }
 
@@ -170,8 +168,10 @@ static void init_header(struct ctl_table_header *head,
 	head->node = node;
 	if (node) {
 		struct ctl_table *entry;
-		for (entry = table; entry->procname; entry++, node++)
+		for (entry = table; entry->procname; entry++, node++) {
+			rb_init_node(&node->node);
 			node->header = head;
+		}
 	}
 }
 
@@ -462,6 +462,9 @@ static struct dentry *proc_sys_lookup(struct inode *dir, struct dentry *dentry,
 
 	err = ERR_PTR(-ENOMEM);
 	inode = proc_sys_make_inode(dir->i_sb, h ? h : head, p);
+	if (h)
+		sysctl_head_finish(h);
+
 	if (!inode)
 		goto out;
 
@@ -470,8 +473,6 @@ static struct dentry *proc_sys_lookup(struct inode *dir, struct dentry *dentry,
 	d_add(dentry, inode);
 
 out:
-	if (h)
-		sysctl_head_finish(h);
 	sysctl_head_finish(head);
 	return err;
 }
@@ -1213,8 +1214,6 @@ struct ctl_table_header *__register_sysctl_table(
 			 sizeof(struct ctl_node)*nr_entries, GFP_KERNEL);
 	if (!header)
 		return NULL;
-
-	kmemleak_not_leak(header);
 
 	node = (struct ctl_node *)(header + 1);
 	init_header(header, root, set, node, table);

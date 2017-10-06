@@ -713,8 +713,7 @@ static ssize_t mem_rw(struct file *file, char __user *buf,
 	ssize_t copied;
 	char *page;
 
-	/* Ensure the process spawned far enough to have an environment. */
-	if (!mm || !mm->env_end)
+	if (!mm)
 		return 0;
 
 	page = (char *)__get_free_page(GFP_TEMPORARY);
@@ -1804,7 +1803,7 @@ static int tid_fd_revalidate(struct dentry *dentry, struct nameidata *nd)
 			rcu_read_lock();
 			file = fcheck_files(files, fd);
 			if (file) {
-				unsigned f_mode = file->f_mode;
+				unsigned i_mode, f_mode = file->f_mode;
 
 				rcu_read_unlock();
 				put_files_struct(files);
@@ -1820,14 +1819,12 @@ static int tid_fd_revalidate(struct dentry *dentry, struct nameidata *nd)
 					inode->i_gid = 0;
 				}
 
-				if (S_ISLNK(inode->i_mode)) {
-					unsigned i_mode = S_IFLNK;
-					if (f_mode & FMODE_READ)
-						i_mode |= S_IRUSR | S_IXUSR;
-					if (f_mode & FMODE_WRITE)
-						i_mode |= S_IWUSR | S_IXUSR;
-					inode->i_mode = i_mode;
-				}
+				i_mode = S_IFLNK;
+				if (f_mode & FMODE_READ)
+					i_mode |= S_IRUSR | S_IXUSR;
+				if (f_mode & FMODE_WRITE)
+					i_mode |= S_IWUSR | S_IXUSR;
+				inode->i_mode = i_mode;
 
 				security_task_to_inode(task, inode);
 				put_task_struct(task);
@@ -1862,7 +1859,6 @@ static struct dentry *proc_fd_instantiate(struct inode *dir,
 	ei = PROC_I(inode);
 	ei->fd = fd;
 
-	inode->i_mode = S_IFLNK;
 	inode->i_op = &proc_pid_link_inode_operations;
 	inode->i_size = 64;
 	ei->op.proc_get_link = proc_fd_link;
@@ -2093,7 +2089,6 @@ static int proc_map_files_get_link(struct dentry *dentry, struct path *path)
 	if (rc)
 		goto out_mmput;
 
-	rc = -ENOENT;
 	down_read(&mm->mmap_sem);
 	vma = find_exact_vma(mm, vm_start, vm_end);
 	if (vma && vma->vm_file) {
@@ -2340,19 +2335,11 @@ static const struct file_operations proc_map_files_operations = {
  */
 static int proc_fd_permission(struct inode *inode, int mask)
 {
-	struct task_struct *p;
-	int rv;
-
-	rv = generic_permission(inode, mask);
+	int rv = generic_permission(inode, mask);
 	if (rv == 0)
-		return rv;
-
-	rcu_read_lock();
-	p = pid_task(proc_pid(inode), PIDTYPE_PID);
-	if (p && same_thread_group(p, current))
+		return 0;
+	if (task_pid(current) == proc_pid(inode))
 		rv = 0;
-	rcu_read_unlock();
-
 	return rv;
 }
 

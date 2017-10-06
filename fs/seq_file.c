@@ -248,7 +248,6 @@ ssize_t seq_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 		m->buf = seq_buf_alloc(m->size <<= 1);
 		if (!m->buf)
 			goto Enomem;
-		m->count = 0;
 		m->version = 0;
 		pos = m->index;
 		p = m->op->start(m, &pos);
@@ -341,6 +340,8 @@ loff_t seq_lseek(struct file *file, loff_t offset, int origin)
 					m->read_pos = offset;
 					retval = file->f_pos = offset;
 				}
+			} else {
+				file->f_pos = offset;
 			}
 	}
 	file->f_version = m->version;
@@ -602,6 +603,24 @@ int single_open(struct file *file, int (*show)(struct seq_file *, void *),
 }
 EXPORT_SYMBOL(single_open);
 
+int single_open_size(struct file *file, int (*show)(struct seq_file *, void *),
+		void *data, size_t size)
+{
+	char *buf = seq_buf_alloc(size);
+	int ret;
+	if (!buf)
+		return -ENOMEM;
+	ret = single_open(file, show, data);
+	if (ret) {
+		kvfree(buf);
+		return ret;
+	}
+	((struct seq_file *)file->private_data)->buf = buf;
+	((struct seq_file *)file->private_data)->size = size;
+	return 0;
+}
+EXPORT_SYMBOL(single_open_size);
+
 int single_release(struct inode *inode, struct file *file)
 {
 	const struct seq_operations *op = ((struct seq_file *)file->private_data)->op;
@@ -748,21 +767,6 @@ int seq_write(struct seq_file *seq, const void *data, size_t len)
 	return -1;
 }
 EXPORT_SYMBOL(seq_write);
-
-/**
- * seq_pad - write padding spaces to buffer
- * @m: seq_file identifying the buffer to which data should be written
- * @c: the byte to append after padding if non-zero
- */
-void seq_pad(struct seq_file *m, char c)
-{
-	int size = m->pad_until - m->count;
-	if (size > 0)
-		seq_printf(m, "%*s", size, "");
-	if (c)
-		seq_putc(m, c);
-}
-EXPORT_SYMBOL(seq_pad);
 
 struct list_head *seq_list_start(struct list_head *head, loff_t pos)
 {
