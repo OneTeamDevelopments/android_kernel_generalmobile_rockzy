@@ -109,9 +109,6 @@ enum pageflags {
 	PG_compound_lock,
 #endif
 	PG_readahead,		/* page in a readahead window */
-#ifdef CONFIG_ZCACHE
-	PG_was_active,
-#endif
 	__NR_PAGEFLAGS,
 
 	/* Filesystems */
@@ -213,11 +210,6 @@ PAGEFLAG(Reserved, reserved) __CLEARPAGEFLAG(Reserved, reserved)
 PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
 
 __PAGEFLAG(SlobFree, slob_free)
-#ifdef CONFIG_ZCACHE
-PAGEFLAG(WasActive, was_active)
-#else
-PAGEFLAG_FALSE(WasActive)
-#endif
 
 /*
  * Private page markings that may be used by the filesystem that owns the page
@@ -370,7 +362,7 @@ static inline void ClearPageCompound(struct page *page)
  * pages on the LRU and/or pagecache.
  */
 TESTPAGEFLAG(Compound, compound)
-__SETPAGEFLAG(Head, compound)  __CLEARPAGEFLAG(Head, compound)
+__PAGEFLAG(Head, compound)
 
 /*
  * PG_reclaim is used in combination with PG_compound to mark the
@@ -382,13 +374,7 @@ __SETPAGEFLAG(Head, compound)  __CLEARPAGEFLAG(Head, compound)
  * PG_compound & PG_reclaim	=> Tail page
  * PG_compound & ~PG_reclaim	=> Head page
  */
-#define PG_head_mask ((1L << PG_compound))
 #define PG_head_tail_mask ((1L << PG_compound) | (1L << PG_reclaim))
-
-static inline int PageHead(struct page *page)
-{
-	return ((page->flags & PG_head_tail_mask) == PG_head_mask);
-}
 
 static inline int PageTail(struct page *page)
 {

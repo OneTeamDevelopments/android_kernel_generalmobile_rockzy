@@ -19,7 +19,6 @@ struct seq_file {
 	size_t size;
 	size_t from;
 	size_t count;
-	size_t pad_until;
 	loff_t index;
 	loff_t read_pos;
 	u64 version;
@@ -76,20 +75,6 @@ static inline void seq_commit(struct seq_file *m, int num)
 	}
 }
 
-/**
- * seq_setwidth - set padding width
- * @m: the seq_file handle
- * @size: the max number of bytes to pad.
- *
- * Call seq_setwidth() for setting max width, then call seq_printf() etc. and
- * finally call seq_pad() to pad the remaining bytes.
- */
-static inline void seq_setwidth(struct seq_file *m, size_t size)
-{
-	m->pad_until = m->count + size;
-}
-void seq_pad(struct seq_file *m, char c);
-
 char *mangle_path(char *s, const char *p, const char *esc);
 int seq_open(struct file *, const struct seq_operations *);
 ssize_t seq_read(struct file *, char __user *, size_t, loff_t *);
@@ -141,41 +126,6 @@ int seq_put_decimal_ull(struct seq_file *m, char delimiter,
 			unsigned long long num);
 int seq_put_decimal_ll(struct seq_file *m, char delimiter,
 			long long num);
-
-/**
- * seq_show_options - display mount options with appropriate escapes.
- * @m: the seq_file handle
- * @name: the mount option name
- * @value: the mount option name's value, can be NULL
- */
-static inline void seq_show_option(struct seq_file *m, const char *name,
-				   const char *value)
-{
-	seq_putc(m, ',');
-	seq_escape(m, name, ",= \t\n\\");
-	if (value) {
-		seq_putc(m, '=');
-		seq_escape(m, value, ", \t\n\\");
-	}
-}
-
-/**
- * seq_show_option_n - display mount options with appropriate escapes
- *		       where @value must be a specific length.
- * @m: the seq_file handle
- * @name: the mount option name
- * @value: the mount option name's value, cannot be NULL
- * @length: the length of @value to display
- *
- * This is a macro since this uses "length" to define the size of the
- * stack buffer.
- */
-#define seq_show_option_n(m, name, value, length) {	\
-	char val_buf[length + 1];			\
-	strncpy(val_buf, value, length);		\
-	val_buf[length] = '\0';				\
-	seq_show_option(m, name, val_buf);		\
-}
 
 #define SEQ_START_TOKEN ((void *)1)
 /*
