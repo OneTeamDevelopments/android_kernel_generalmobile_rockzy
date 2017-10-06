@@ -1472,12 +1472,6 @@ void __init msm_8974_init_gpiomux(void)
 		return;
 	}
 
-#ifdef CONFIG_GN_CAMERA_24M_MCLOCK_SUPPORT
-       pr_err("%s:%d socinfo_get_version %x\n", __func__, __LINE__,
-               socinfo_get_version());
-       if (socinfo_get_version() >= 0x20000)
-                msm_tlmm_misc_reg_write(TLMM_SPARE_REG, 0x5);
-#endif
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (!(of_board_is_dragonboard() && machine_is_apq8074()))
 		msm_gpiomux_install(msm_eth_configs, \
