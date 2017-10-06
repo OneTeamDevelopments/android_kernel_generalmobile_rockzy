@@ -107,12 +107,6 @@ EXPORT_SYMBOL(elf_hwcap);
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
 
-unsigned int cold_boot;
-EXPORT_SYMBOL(cold_boot);
-
-char* (*arch_read_hardware_id)(void);
-EXPORT_SYMBOL(arch_read_hardware_id);
-
 #ifdef MULTI_CPU
 struct processor processor __read_mostly;
 #endif
@@ -369,23 +363,6 @@ void __init early_print(const char *str, ...)
 	printk("%s", buf);
 }
 
-static void __init cpuid_init_hwcaps(void)
-{
-	unsigned int divide_instrs;
-
-	if (cpu_architecture() < CPU_ARCH_ARMv7)
-		return;
-
-	divide_instrs = (read_cpuid_ext(CPUID_EXT_ISAR0) & 0x0f000000) >> 24;
-
-	switch (divide_instrs) {
-	case 2:
-		elf_hwcap |= HWCAP_IDIVA;
-	case 1:
-		elf_hwcap |= HWCAP_IDIVT;
-	}
-}
-
 static void __init feat_v6_fixup(void)
 {
 	int id = read_cpuid_id();
@@ -415,12 +392,6 @@ void cpu_init(void)
 		printk(KERN_CRIT "CPU%u: bad primary CPU number\n", cpu);
 		BUG();
 	}
-
-	/*
-	 * This only works on resume and secondary cores. For booting on the
-	 * boot cpu, smp_prepare_boot_cpu is called after percpu area setup.
-	 */
-	set_my_cpu_offset(per_cpu_offset(cpu));
 
 	cpu_proc_init();
 
@@ -515,9 +486,6 @@ static void __init setup_processor(void)
 	snprintf(elf_platform, ELF_PLATFORM_SIZE, "%s%c",
 		 list->elf_name, ENDIANNESS);
 	elf_hwcap = list->elf_hwcap;
-
-	cpuid_init_hwcaps();
-
 #ifndef CONFIG_ARM_THUMB
 	elf_hwcap &= ~HWCAP_THUMB;
 #endif
@@ -990,6 +958,9 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
+	if (mdesc->init_very_early)
+		mdesc->init_very_early();
+
 	sort(&meminfo.bank, meminfo.nr_banks, sizeof(meminfo.bank[0]), meminfo_cmp, NULL);
 	sanity_check_meminfo();
 	arm_memblock_init(&meminfo, mdesc);
@@ -1076,9 +1047,6 @@ static const char *hwcap_str[] = {
 	"vfpv4",
 	"idiva",
 	"idivt",
-	"vfpd32",
-	"lpae",
-	"evtstrm",
 	NULL
 };
 
@@ -1137,10 +1105,7 @@ static int c_show(struct seq_file *m, void *v)
 
 	seq_puts(m, "\n");
 
-	if (!arch_read_hardware_id)
-		seq_printf(m, "Hardware\t: %s\n", machine_name);
-	else
-		seq_printf(m, "Hardware\t: %s\n", arch_read_hardware_id());
+	seq_printf(m, "Hardware\t: %s\n", machine_name);
 	seq_printf(m, "Revision\t: %04x\n", system_rev);
 	seq_printf(m, "Serial\t\t: %08x%08x\n",
 		   system_serial_high, system_serial_low);

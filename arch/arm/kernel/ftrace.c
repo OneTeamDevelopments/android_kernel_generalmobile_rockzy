@@ -18,6 +18,7 @@
 #include <asm/cacheflush.h>
 #include <asm/opcodes.h>
 #include <asm/ftrace.h>
+#include <asm/mmu_writeable.h>
 
 #include "insn.h"
 
@@ -72,6 +73,10 @@ static int ftrace_modify_code(unsigned long pc, unsigned long old,
 			      unsigned long new, bool validate)
 {
 	unsigned long replaced;
+	unsigned long flags;
+
+        mem_text_writeable_spinlock(&flags);
+        mem_text_address_writeable(pc);
 
 	if (IS_ENABLED(CONFIG_THUMB2_KERNEL)) {
 		old = __opcode_to_mem_thumb32(old);
@@ -93,6 +98,9 @@ static int ftrace_modify_code(unsigned long pc, unsigned long old,
 		return -EPERM;
 
 	flush_icache_range(pc, pc + MCOUNT_INSN_SIZE);
+
+	mem_text_address_restore();
+	mem_text_writeable_spinunlock(&flags);
 
 	return 0;
 }
@@ -179,20 +187,19 @@ void prepare_ftrace_return(unsigned long *parent, unsigned long self_addr,
 	old = *parent;
 	*parent = return_hooker;
 
-	trace.func = self_addr;
-	trace.depth = current->curr_ret_stack + 1;
-
-	/* Only trace if the calling function expects to */
-	if (!ftrace_graph_entry(&trace)) {
-		*parent = old;
-		return;
-	}
-
 	err = ftrace_push_return_trace(old, self_addr, &trace.depth,
 				       frame_pointer);
 	if (err == -EBUSY) {
 		*parent = old;
 		return;
+	}
+
+	trace.func = self_addr;
+
+	/* Only trace if the calling function expects to */
+	if (!ftrace_graph_entry(&trace)) {
+		current->curr_ret_stack--;
+		*parent = old;
 	}
 }
 

@@ -143,6 +143,7 @@ static bool migrate_one_irq(struct irq_desc *desc)
 {
 	struct irq_data *d = irq_desc_get_irq_data(desc);
 	const struct cpumask *affinity = d->affinity;
+	struct irq_chip *c;
 	bool ret = false;
 
 	/*
@@ -157,7 +158,11 @@ static bool migrate_one_irq(struct irq_desc *desc)
 		ret = true;
 	}
 
-	__irq_set_affinity_locked(d, affinity);
+	c = irq_data_get_irq_chip(d);
+	if (!c->irq_set_affinity)
+		pr_debug("IRQ%u: unable to set affinity\n", d->irq);
+	else if (c->irq_set_affinity(d, affinity, true) == IRQ_SET_MASK_OK && ret)
+		cpumask_copy(d->affinity, affinity);
 
 	return ret;
 }
@@ -186,7 +191,7 @@ void migrate_irqs(void)
 		raw_spin_unlock(&desc->lock);
 
 		if (affinity_broken && printk_ratelimit())
-			pr_debug("IRQ%u no longer affine to CPU%u\n", i,
+			pr_warning("IRQ%u no longer affine to CPU%u\n", i,
 				smp_processor_id());
 	}
 
