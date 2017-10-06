@@ -40,36 +40,48 @@
 #include <mach/rpm-smd.h>
 #include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
-#include <mach/msm_smem.h>
-#include "board-dt.h"
-#include "clock.h"
-#include "devices.h"
-#include "spm.h"
-#include "pm.h"
-#include "modem_notifier.h"
-#include "platsmp.h"
+#include <mach/msm_bus_board.h>
+#include "../board-dt.h"
+#include "../clock.h"
+#include "../devices.h"
+#include "../spm.h"
+#include "../modem_notifier.h"
 #include "../lpm_resources.h"
+#include "../platsmp.h"
 
-#include <linux/persistent_ram.h>
 
-static struct persistent_ram_descriptor msm_prd[] __initdata = {
-	{
-		.name = "ram_console",
-		.size = SZ_1M,
+static struct memtype_reserve msm8974_reserve_table[] __initdata = {
+	[MEMTYPE_SMI] = {
+	},
+	[MEMTYPE_EBI0] = {
+		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
+	},
+	[MEMTYPE_EBI1] = {
+		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
 	},
 };
 
-static struct persistent_ram msm_pr __initdata = {
-	.descs = msm_prd,
-	.num_descs = ARRAY_SIZE(msm_prd),
-	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
-	.size = SZ_1M,
+static int msm8974_paddr_to_memtype(phys_addr_t paddr)
+{
+	return MEMTYPE_EBI1;
+}
+
+static struct reserve_info msm8974_reserve_info __initdata = {
+	.memtype_reserve_table = msm8974_reserve_table,
+	.paddr_to_memtype = msm8974_paddr_to_memtype,
 };
 
 void __init msm_8974_reserve(void)
 {
-	persistent_ram_early_init(&msm_pr);
-	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+	reserve_info = &msm8974_reserve_info;
+	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8974_reserve_table);
+	msm_reserve();
+}
+
+static void __init msm8974_early_memory(void)
+{
+	reserve_info = &msm8974_reserve_info;
+	of_scan_flat_dt(dt_scan_for_memory_hole, msm8974_reserve_table);
 }
 
 /*
@@ -87,18 +99,10 @@ void __init msm8974_add_drivers(void)
 	rpm_regulator_smd_driver_init();
 	msm_spm_device_init();
 	krait_power_init();
-	if (of_board_is_rumi())
-		msm_clock_init(&msm8974_rumi_clock_init_data);
-	else
-		msm_clock_init(&msm8974_clock_init_data);
+	msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
 }
-
-static struct of_dev_auxdata msm_hsic_host_adata[] = {
-	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, "msm_hsic_host", NULL),
-	{}
-};
 
 static struct of_dev_auxdata msm8974_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,hsusb-otg", 0xF9A55000, \
@@ -140,8 +144,6 @@ static struct of_dev_auxdata msm8974_auxdata_lookup[] __initdata = {
 			"qcrypto.0", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, \
 			"msm_hsic_host", NULL),
-	OF_DEV_AUXDATA("qcom,hsic-smsc-hub", 0, "msm_smsc_hub",
-			msm_hsic_host_adata),
 	{}
 };
 
@@ -154,27 +156,22 @@ void __init msm8974_init(void)
 {
 	struct of_dev_auxdata *adata = msm8974_auxdata_lookup;
 
-	/*
-	 * populate devices from DT first so smem probe will get called as part
-	 * of msm_smem_init.  socinfo_init needs smem support so call
-	 * msm_smem_init before it.  msm_8974_init_gpiomux needs socinfo so
-	 * call socinfo_init before it.
-	 */
-	board_dt_populate(adata);
-
-	msm_smem_init();
-
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
+	board_dt_populate(adata);
 	msm8974_add_drivers();
+}
+
+void __init msm8974_init_very_early(void)
+{
+	msm8974_early_memory();
 }
 
 static const char *msm8974_dt_match[] __initconst = {
 	"qcom,msm8974",
-	"qcom,apq8074",
 	NULL
 };
 
@@ -186,6 +183,7 @@ DT_MACHINE_START(MSM8974_DT, "Qualcomm MSM 8974 (Flattened Device Tree)")
 	.timer = &msm_dt_timer,
 	.dt_compat = msm8974_dt_match,
 	.reserve = msm_8974_reserve,
+	.init_very_early = msm8974_init_very_early,
 	.restart = msm_restart,
 	.smp = &msm8974_smp_ops,
 MACHINE_END
