@@ -14,7 +14,6 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
-#include <linux/ion.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
 #include <linux/of.h>
@@ -33,7 +32,7 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #ifdef CONFIG_ION_MSM
-#include <linux/msm_ion.h>
+#include <mach/ion.h>
 #endif
 #include <mach/msm_memtypes.h>
 #include <mach/msm_smd.h>
@@ -49,6 +48,7 @@
 #include "pm.h"
 #include "modem_notifier.h"
 #include "platsmp.h"
+#include "../lpm_resources.h"
 
 #include <linux/persistent_ram.h>
 
@@ -83,7 +83,7 @@ void __init msm8974_add_drivers(void)
 	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
-	msm_pm_sleep_status_init();
+	msm_lpmrs_module_init();
 	rpm_regulator_smd_driver_init();
 	msm_spm_device_init();
 	krait_power_init();
