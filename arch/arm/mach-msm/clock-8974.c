@@ -543,6 +543,7 @@ static void __iomem *virt_bases[N_BASES];
 #define gpll0_lpass_source_val 5
 #define edp_mainlink_mm_source_val 4
 #define edp_pixel_mm_source_val 5
+#define edppll_270_mm_source_val 4
 #define edppll_350_mm_source_val 4
 #define dsipll_750_mm_source_val 1
 #define dsipll0_byte_mm_source_val 1
