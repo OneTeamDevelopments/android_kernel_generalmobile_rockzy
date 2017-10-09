@@ -1212,7 +1212,6 @@ CONFIG_CMA_AREAS=7
 # CONFIG_CONNECTOR is not set
 # CONFIG_MTD is not set
 CONFIG_DTC=y
-CONFIG_OF=y
 
 #
 # Device Tree and Open Firmware support
