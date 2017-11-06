@@ -1317,7 +1317,7 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_exp_fn *exp_fhandler;
 	struct synaptics_rmi4_device_info *rmi;
 #ifdef DOUBLE_CLICK_WAKE
-       unsigned char double_wake_flag = 1;
+       unsigned char double_wake_flag = 0;
 #endif
 
 #ifdef INIT_TP_WHEN_RESUME
