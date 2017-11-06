@@ -392,12 +392,10 @@ struct mpp_config_data {
  *  @safety_timer - enable safety timer or watchdog timer
  *  @torch_enable - enable flash LED torch mode
  *  @flash_reg_get - flash regulator attached or not
- *  @flash_wa_reg_get - workaround regulator attached or not
  *  @flash_on - flash status, on or off
  *  @torch_on - torch status, on or off
  *  @flash_boost_reg - boost regulator for flash
  *  @torch_boost_reg - boost regulator for torch
- *  @flash_wa_reg - flash regulator for wa
  */
 struct flash_config_data {
 	u8	current_prgm;
@@ -414,12 +412,10 @@ struct flash_config_data {
 	bool	safety_timer;
 	bool	torch_enable;
 	bool	flash_reg_get;
-	bool    flash_wa_reg_get;
 	bool	flash_on;
 	bool	torch_on;
 	struct regulator *flash_boost_reg;
 	struct regulator *torch_boost_reg;
-	struct regulator *flash_wa_reg;
 };
 
 /**
@@ -488,7 +484,6 @@ struct qpnp_led_data {
 	int			turn_off_delay_ms;
 };
 
-static DEFINE_MUTEX(flash_lock);
 static int num_kpbl_leds_on;
 
 static int
@@ -826,35 +821,13 @@ static int qpnp_flash_regulator_operate(struct qpnp_led_data *led, bool on)
 	if (!regulator_on && !led->flash_cfg->flash_on) {
 		for (i = 0; i < led->num_leds; i++) {
 			if (led_array[i].flash_cfg->flash_reg_get) {
-				if (led_array[i].flash_cfg->flash_wa_reg_get) {
-					rc = regulator_enable(
-						led_array[i].flash_cfg->
-							flash_wa_reg);
-					if (rc) {
-						dev_err(&led->spmi_dev->dev,
-							"Flash wa regulator"
-							"enable failed(%d)\n",
-							rc);
-						return rc;
-					}
-				}
-
 				rc = regulator_enable(
 					led_array[i].flash_cfg->\
 					flash_boost_reg);
 				if (rc) {
-					if (led_array[i].flash_cfg->
-							flash_wa_reg_get)
-						/* Disable flash wa regulator
-						 * when flash boost regulator
-						 * enable fails
-						 */
-						regulator_disable(
-							led_array[i].flash_cfg->
-								flash_wa_reg);
 					dev_err(&led->spmi_dev->dev,
-						"Flash boost regulator enable"
-						"failed(%d)\n", rc);
+						"Regulator enable failed(%d)\n",
+									rc);
 					return rc;
 				}
 				led->flash_cfg->flash_on = true;
@@ -883,21 +856,9 @@ regulator_turn_off:
 							flash_boost_reg);
 				if (rc) {
 					dev_err(&led->spmi_dev->dev,
-						"Flash boost regulator disable"
-						"failed(%d)\n", rc);
+						"Regulator disable failed(%d)\n",
+									rc);
 					return rc;
-				}
-				if (led_array[i].flash_cfg->flash_wa_reg_get) {
-					rc = regulator_disable(
-						led_array[i].flash_cfg->
-							flash_wa_reg);
-					if (rc) {
-						dev_err(&led->spmi_dev->dev,
-							"Flash_wa regulator"
-							"disable failed(%d)\n",
-							rc);
-						return rc;
-					}
 				}
 				led->flash_cfg->flash_on = false;
 			}
@@ -1415,10 +1376,7 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 {
 	int rc;
 
-	if (led->id == QPNP_ID_FLASH1_LED0 || led->id == QPNP_ID_FLASH1_LED1)
-		mutex_lock(&flash_lock);
-	else
-		mutex_lock(&led->lock);
+	mutex_lock(&led->lock);
 
 	switch (led->id) {
 	case QPNP_ID_WLED:
@@ -1458,10 +1416,7 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 		dev_err(&led->spmi_dev->dev, "Invalid LED(%d)\n", led->id);
 		break;
 	}
-	if (led->id == QPNP_ID_FLASH1_LED0 || led->id == QPNP_ID_FLASH1_LED1)
-		mutex_unlock(&flash_lock);
-	else
-		mutex_unlock(&led->lock);
+	mutex_unlock(&led->lock);
 
 }
 
@@ -2711,21 +2666,6 @@ static int __devinit qpnp_get_config_flash(struct qpnp_led_data *led,
 	led->flash_cfg->torch_enable =
 		of_property_read_bool(node, "qcom,torch-enable");
 
-	if (of_find_property(of_get_parent(node), "flash-wa-supply",
-					NULL) && (!*reg_set)) {
-		led->flash_cfg->flash_wa_reg =
-			devm_regulator_get(&led->spmi_dev->dev, "flash-wa");
-		if (IS_ERR_OR_NULL(led->flash_cfg->flash_wa_reg)) {
-			rc = PTR_ERR(led->flash_cfg->flash_wa_reg);
-			if (rc != EPROBE_DEFER) {
-				dev_err(&led->spmi_dev->dev,
-					"Flash wa regulator get failed(%d)\n",
-					rc);
-			}
-		} else
-			led->flash_cfg->flash_wa_reg_get = true;
-	}
-
 	if (led->id == QPNP_ID_FLASH1_LED0) {
 		led->flash_cfg->enable_module = FLASH_ENABLE_LED_0;
 		led->flash_cfg->current_addr = FLASH_LED_0_CURR(led->base);
@@ -3332,8 +3272,6 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 			goto fail_id_check;
 		}
 
-		if (led->id != QPNP_ID_FLASH1_LED0 &&
-					led->id != QPNP_ID_FLASH1_LED1)
 		mutex_init(&led->lock);
 		INIT_WORK(&led->work, qpnp_led_work);
 
@@ -3445,8 +3383,6 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 
 fail_id_check:
 	for (i = 0; i < parsed_leds; i++) {
-		if (led_array[i].id != QPNP_ID_FLASH1_LED0 &&
-				led_array[i].id != QPNP_ID_FLASH1_LED1)
 		mutex_destroy(&led_array[i].lock);
 		led_classdev_unregister(&led_array[i].cdev);
 	}
@@ -3461,8 +3397,6 @@ static int __devexit qpnp_leds_remove(struct spmi_device *spmi)
 
 	for (i = 0; i < parsed_leds; i++) {
 		cancel_work_sync(&led_array[i].work);
-		if (led_array[i].id != QPNP_ID_FLASH1_LED0 &&
-				led_array[i].id != QPNP_ID_FLASH1_LED1)
 		mutex_destroy(&led_array[i].lock);
 		led_classdev_unregister(&led_array[i].cdev);
 		switch (led_array[i].id) {
