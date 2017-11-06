@@ -1255,9 +1255,9 @@ static void synaptics_rmi4_report_touch(struct synaptics_rmi4_data *rmi4_data,
 #ifdef DOUBLE_CLICK_WAKE
 static void WakeUp_LCD(struct synaptics_rmi4_data *rmi4_data)
 {
-      input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
+      input_report_key(rmi4_data->input_dev, KEY_F17, 1);
       input_sync(rmi4_data->input_dev);
-      input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
+      input_report_key(rmi4_data->input_dev, KEY_F17, 0);
       input_sync(rmi4_data->input_dev);
 }
 
@@ -2541,8 +2541,6 @@ static void gn_resume_init(struct synaptics_rmi4_data *rmi4_data)
 	         input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_F16);
                 set_bit(KEY_F17, rmi4_data->input_dev->keybit);
 	         input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_F17);
-			    set_bit(KEY_WAKEUP, rmi4_data->input_dev->keybit);
-	         input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_WAKEUP);
 #endif
 
 	     }
@@ -2898,8 +2896,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	       input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_F16);
               set_bit(KEY_F17, rmi4_data->input_dev->keybit);
 	       input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_F17);
-		      set_bit(KEY_WAKEUP, rmi4_data->input_dev->keybit);
-	       input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_WAKEUP);
 #endif
 
 	}
