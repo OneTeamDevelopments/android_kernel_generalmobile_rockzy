@@ -267,7 +267,7 @@ enum {
     GESTURE_U_RIGHT = 8,
 };
 
-static int wake_switch = 1;
+static int wake_switch = 0;
 static int gesture_switch = 0;
 static int wake_suspend_compelete = 0;
 struct synaptics_rmi4_data * test_rmi4_data;
