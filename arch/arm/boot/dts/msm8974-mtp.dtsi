@@ -170,6 +170,7 @@
 	};
 
 	i2c@f9967000 {
+	isa1200@48 {
 			status = "okay";
 			reg = <0x48>;
 			vcc_i2c-supply = <&pm8941_s3>;
