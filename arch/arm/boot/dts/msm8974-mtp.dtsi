@@ -170,16 +170,17 @@
 	};
 
 	i2c@f9967000 {
-	isa1200@48 {
-			status = "okay";
-			reg = <0x48>;
-			vcc_i2c-supply = <&pm8941_s3>;
-			compatible = "imagis,isa1200";
-			label = "vibrator";
-			imagis,chip-en;
+ 		isa1200@48 {
+ 			status = "okay";
+ 			reg = <0x48>;
+ 			vcc_i2c-supply = <&pm8941_s3>;
+  			compatible = "imagis,isa1200";
+  			label = "vibrator";
+  			imagis,chip-en;
 			imagis,need-pwm-clk;
-			imagis,isa1200-mclk-gpios = <&pm8941_gpios 18 0>;
 			imagis,ext-clk-en;
+			imagis,isa1200-mclk-gpios = <&pm8941_gpios 18 0>;
+			isa1200-mclk-clk = <&pm8941_clkdiv3>;
 			imagis,hap-en-gpio = <&msmgpio 86 0x00>;
 			imagis,max-timeout = <15000>;
 			imagis,pwm-div = <256>;
