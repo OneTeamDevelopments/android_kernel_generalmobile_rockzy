@@ -179,8 +179,6 @@
   			imagis,chip-en;
 			imagis,need-pwm-clk;
 			imagis,ext-clk-en;
-			imagis,isa1200-mclk-gpios = <&pm8941_gpios 18 0>;
-			isa1200-mclk-clk = <&pm8941_clkdiv3>;
 			imagis,hap-en-gpio = <&msmgpio 86 0x00>;
 			imagis,max-timeout = <15000>;
 			imagis,pwm-div = <256>;
