@@ -690,7 +690,7 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	{
 		.gpio      = 53,		/* BLSP2 QUP4 SPI_DATA_MOSI */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_spi_cs1_config, 
+			[GPIOMUX_ACTIVE] = &gpio_spi_config, 
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
 		},
 	},
