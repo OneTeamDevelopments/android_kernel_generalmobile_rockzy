@@ -142,22 +142,6 @@
 			};
 		};
 	};
-
-	i2c@f9928000 {
-     	bcm2079x-i2c@77 {
-            compatible = "broadcom,bcm2079x";
-            reg = <0x77>;
-            #interrupt-parent = <&msmgpio>;
-            #interrupts = <61 0x8>;
-            vdd_ana-supply = <&pm8941_l18>;
-            vcc_i2c-supply = <&pm8941_lvs1>;
-            broadcom,vdd-ldo;
-            broadcom,i2c_pull_up;
-            broadcom,wake_gpio = <&msmgpio 55 0x00>;
-            broadcom,irq_gpio = <&msmgpio 59 0x00>;
-            broadcom,en_gpio = <&msmgpio 46 0x00>;
-        };
-	};
 	
 	gen-vkeys {
 		compatible = "qcom,gen-vkeys";
