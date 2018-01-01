@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2009 Samsung Electronics
  *  Kyungmin Park <kyungmin.park@samsung.com>
- *  Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,15 +25,23 @@
 #include "../staging/android/timed_output.h"
 #include <linux/of_gpio.h>
 
+#ifdef CONFIG_GN_Q_BSP_ISA1200_QPNPCLK_SUPPORT
+#include <linux/qpnp/clkdiv.h>
+#endif
+
 #define ISA1200_HCTRL0		0x30
 #define ISA1200_HCTRL1		0x31
 #define ISA1200_HCTRL5		0x35
+#define ISA1200_HCTRL6      0x36
 
 #define ISA1200_HCTRL0_RESET	0x01
 #define ISA1200_HCTRL1_RESET	0x4B
 
-#define ISA1200_HCTRL5_VIB_STRT	0xD5
-#define ISA1200_HCTRL5_VIB_STOP	0x6B
+//#define ISA1200_HCTRL5_VIB_STRT	0xD5
+//#define ISA1200_HCTRL5_VIB_STOP	0x6B
+#define ISA1200_HCTRL5_VIB_STRT	0x82 //0xB5
+#define ISA1200_HCTRL5_VIB_STOP	0x5B
+
 #define ISA1200_POWER_DOWN_MASK 0x7F
 
 struct isa1200_chip {
@@ -51,7 +59,18 @@ struct isa1200_chip {
 	struct regulator **regs;
 	bool clk_on;
 	u8 hctrl0_val;
+#ifndef CONFIG_GN_Q_BSP_ISA1200_QPNPCLK_SUPPORT
 	struct clk *pwm_clk;
+#else
+	struct q_clkdiv *pwm_clk;
+#endif
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+#define VIB_ARROY_MAX     100
+#define VIB_LEVEL         0
+#define VIB_TIME          1
+	int  vib_feature[VIB_ARROY_MAX][2];
+	int  vibing_index;
+#endif
 };
 
 static int isa1200_read_reg(struct i2c_client *client, int reg)
@@ -67,9 +86,19 @@ static int isa1200_read_reg(struct i2c_client *client, int reg)
 
 static int isa1200_write_reg(struct i2c_client *client, int reg, u8 value)
 {
-	int ret;
+	int ret,i;
 
-	ret = i2c_smbus_write_byte_data(client, reg, value);
+	for (i=0; i<3; i++)
+	{
+		ret = i2c_smbus_write_byte_data(client, reg, value);
+		if (ret < 0)
+		{
+			dev_err(&client->dev, "%s: err %d,and try again\n", __func__, ret);
+			mdelay(50);
+		}
+		else
+			break;
+	}
 	if (ret < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
@@ -96,10 +125,19 @@ static void isa1200_vib_set(struct isa1200_chip *haptic, int enable)
 
 		if (haptic->pdata->mode_ctrl == PWM_INPUT_MODE) {
 			int period_us = haptic->period_ns / 1000;
-
+			
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+			if(enable >= 100){
+				pr_err("%s: pwm_config fail\n", __func__);
+				goto chip_dwn;
+			}
+			rc = pwm_config(haptic->pwm,
+				(period_us * enable) / 100, period_us);
+#else
 			rc = pwm_config(haptic->pwm,
 				(period_us * haptic->pdata->duty) / 100,
 				period_us);
+#endif
 			if (rc < 0) {
 				pr_err("%s: pwm_config fail\n", __func__);
 				goto chip_dwn;
@@ -124,7 +162,11 @@ static void isa1200_vib_set(struct isa1200_chip *haptic, int enable)
 			mutex_lock(&haptic->lock_clk);
 			/* vote for clock */
 			if (haptic->pdata->need_pwm_clk && !haptic->clk_on) {
+#ifndef CONFIG_GN_Q_BSP_ISA1200_QPNPCLK_SUPPORT
 				rc = clk_prepare_enable(haptic->pwm_clk);
+#else
+				rc = qpnp_clkdiv_enable(haptic->pwm_clk);
+#endif
 				if (rc < 0) {
 					pr_err("%s: clk enable failed\n",
 								__func__);
@@ -134,10 +176,15 @@ static void isa1200_vib_set(struct isa1200_chip *haptic, int enable)
 				haptic->clk_on = true;
 			}
 			mutex_unlock(&haptic->lock_clk);
-
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+			rc = isa1200_write_reg(haptic->client,
+						ISA1200_HCTRL5,
+						enable);
+#else
 			rc = isa1200_write_reg(haptic->client,
 						ISA1200_HCTRL5,
 						ISA1200_HCTRL5_VIB_STRT);
+#endif
 			if (rc < 0) {
 				pr_err("%s: start vibartion fail\n", __func__);
 				goto dis_clk;
@@ -169,7 +216,11 @@ static void isa1200_vib_set(struct isa1200_chip *haptic, int enable)
 			mutex_lock(&haptic->lock_clk);
 			/* de-vote clock */
 			if (haptic->pdata->need_pwm_clk && haptic->clk_on) {
+#ifndef CONFIG_GN_Q_BSP_ISA1200_QPNPCLK_SUPPORT
 				clk_disable_unprepare(haptic->pwm_clk);
+#else
+				qpnp_clkdiv_disable(haptic->pwm_clk);
+#endif
 				haptic->clk_on = false;
 			}
 			mutex_unlock(&haptic->lock_clk);
@@ -188,7 +239,11 @@ static void isa1200_vib_set(struct isa1200_chip *haptic, int enable)
 dis_clk:
 	mutex_lock(&haptic->lock_clk);
 	if (haptic->pdata->need_pwm_clk && haptic->clk_on) {
+#ifndef CONFIG_GN_Q_BSP_ISA1200_QPNPCLK_SUPPORT
 		clk_disable_unprepare(haptic->pwm_clk);
+#else
+		qpnp_clkdiv_disable(haptic->pwm_clk);
+#endif
 		haptic->clk_on = false;
 	}
 	mutex_unlock(&haptic->lock_clk);
@@ -218,7 +273,16 @@ static void isa1200_chip_work(struct work_struct *work)
 	struct isa1200_chip *haptic;
 
 	haptic = container_of(work, struct isa1200_chip, work);
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+	mutex_lock(&haptic->lock);
+	haptic->enable = haptic->vib_feature[haptic->vibing_index][VIB_LEVEL];
+	printk("isa1200_vib_set(%d),level_index = %d\n",haptic->enable,haptic->vibing_index);
+	haptic->vibing_index++;
 	isa1200_vib_set(haptic, haptic->enable);
+	mutex_unlock(&haptic->lock);
+#else
+	isa1200_vib_set(haptic, haptic->enable);
+#endif
 }
 
 static void isa1200_chip_enable(struct timed_output_dev *dev, int value)
@@ -228,6 +292,20 @@ static void isa1200_chip_enable(struct timed_output_dev *dev, int value)
 
 	mutex_lock(&haptic->lock);
 	hrtimer_cancel(&haptic->timer);
+	printk("%s: time = %d\n",__func__,value);
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+	value = (value > haptic->pdata->max_timeout) ?
+				haptic->pdata->max_timeout : value;
+	if (haptic->pdata->mode_ctrl == PWM_INPUT_MODE)
+		haptic->vib_feature[0][VIB_LEVEL] = haptic->pdata->duty*((value>0)?1:0);
+	else if (haptic->pdata->mode_ctrl == PWM_GEN_MODE)
+		haptic->vib_feature[0][VIB_LEVEL] = ISA1200_HCTRL5_VIB_STRT*((value>0)?1:0);
+	haptic->vib_feature[0][VIB_TIME] = value;
+	haptic->vib_feature[1][VIB_LEVEL] = 0;
+	haptic->vib_feature[1][VIB_TIME] = 0;
+	haptic->vibing_index = 0;
+#endif
+
 	if (value == 0)
 		haptic->enable = 0;
 	else {
@@ -259,7 +337,22 @@ static enum hrtimer_restart isa1200_vib_timer_func(struct hrtimer *timer)
 {
 	struct isa1200_chip *haptic = container_of(timer, struct isa1200_chip,
 					timer);
+
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+	if (haptic->vib_feature[haptic->vibing_index][VIB_TIME] > 0)
+	{
+		int value = haptic->vib_feature[haptic->vibing_index][VIB_TIME];
+
+		value = (value > haptic->pdata->max_timeout) ?
+				haptic->pdata->max_timeout : value;
+		
+		hrtimer_start(&haptic->timer,
+			ktime_set(value / 1000, (value % 1000) * 1000000),
+			HRTIMER_MODE_REL);
+	}
+#else
 	haptic->enable = 0;
+#endif
 	schedule_work(&haptic->work);
 
 	return HRTIMER_NORESTART;
@@ -283,11 +376,13 @@ static int isa1200_setup(struct i2c_client *client)
 	if (haptic->is_len_gpio_valid == true)
 		gpio_set_value_cansleep(haptic->pdata->hap_len_gpio, 0);
 
-	udelay(250);
+	udelay(500);
 
 	gpio_set_value_cansleep(haptic->pdata->hap_en_gpio, 1);
 	if (haptic->is_len_gpio_valid == true)
 		gpio_set_value_cansleep(haptic->pdata->hap_len_gpio, 1);
+
+	udelay(500);
 
 	value =	(haptic->pdata->smart_en << 3) |
 		(haptic->pdata->is_erm << 5) |
@@ -299,6 +394,14 @@ static int isa1200_setup(struct i2c_client *client)
 		goto reset_gpios;
 	}
 
+	if (haptic->pdata->mode_ctrl == PWM_GEN_MODE) {
+		rc = isa1200_write_reg(client, ISA1200_HCTRL6, 0xB6);
+		if (rc < 0) {
+			pr_err("%s: i2c write failure\n", __func__);
+			goto reset_hctrl1;
+		}
+	}
+	
 	if (haptic->pdata->mode_ctrl == PWM_GEN_MODE) {
 		temp = haptic->pdata->pwm_fd.pwm_div;
 		if (temp < 128 || temp > 1024 || temp % 128) {
@@ -318,19 +421,26 @@ static int isa1200_setup(struct i2c_client *client)
 
 	value |= (haptic->pdata->mode_ctrl << 3) |
 		(haptic->pdata->overdrive_high << 5) |
-		(haptic->pdata->overdrive_en << 6) |
+		(haptic->pdata->overdrive_en << 5) |
 		(haptic->pdata->chip_en << 7);
 
-	rc = isa1200_write_reg(client, ISA1200_HCTRL0, value);
-	if (rc < 0) {
-		pr_err("%s: i2c write failure\n", __func__);
-		goto reset_hctrl1;
-	}
+	//rc = isa1200_write_reg(client, ISA1200_HCTRL0, value);
+	//if (rc < 0) {
+	//	pr_err("%s: i2c write failure\n", __func__);
+	//	goto reset_hctrl1;
+	//}
 
 	/* if hen and len are seperate then pull down hen
 	 * otherwise set power down bit */
 	if (haptic->is_len_gpio_valid == true)
+	{
 		gpio_set_value_cansleep(haptic->pdata->hap_en_gpio, 0);
+		rc = isa1200_write_reg(client, ISA1200_HCTRL0, value);
+		if (rc < 0) {
+			pr_err("%s: i2c write failure\n", __func__);
+			goto reset_hctrl1;
+		}
+	}
 	else {
 		rc = isa1200_write_reg(client, ISA1200_HCTRL0,
 					value & ISA1200_POWER_DOWN_MASK);
@@ -578,6 +688,67 @@ static int isa1200_parse_dt(struct device *dev,
 }
 #endif
 
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+static ssize_t isa1200_store_pattern(struct device *dev,struct device_attribute *attr, const char *buf, size_t size)
+{
+    //add for new feature
+    unsigned long   i;
+	const char *pBuf ; 
+	char cLevel ;
+	unsigned char bTime ;
+	unsigned char ChipLevel ;
+	struct timed_output_dev *tdev = dev_get_drvdata(dev);
+	struct isa1200_chip *haptic = container_of(tdev, struct isa1200_chip,dev);
+
+	mutex_lock(&haptic->lock);
+	hrtimer_cancel(&haptic->timer);
+	
+    pBuf = buf ;
+	if ( *pBuf++ != 0 ) 
+	{
+		printk("%s: Pattern Head format error!!.\n",__func__);
+		return 0 ; 
+	}	
+
+    for(i = 0; i < size/2 && i < VIB_ARROY_MAX ; i++)
+	{
+		cLevel = *pBuf++ ;
+		bTime  = ((unsigned char)*pBuf) ; pBuf++ ;
+		if ( bTime == 0 ) 
+			break;
+		ChipLevel = (unsigned char)((int)(( (int)cLevel * ISA1200_HCTRL5_VIB_STOP ) / 128) + ISA1200_HCTRL5_VIB_STOP) ;
+		printk("%s: Level=%d , ChipLevel=%d , Time=%d.\n",__func__,cLevel,ChipLevel,bTime);
+		haptic->vib_feature[i][VIB_LEVEL] = ChipLevel ;
+		haptic->vib_feature[i][VIB_TIME]  = bTime ;
+    }
+	if (VIB_ARROY_MAX == i)
+		i--;
+    haptic->vib_feature[i][VIB_TIME] = 0;
+	haptic->vib_feature[i][VIB_LEVEL] = 0;
+    //isa1200_setup(haptic->client);
+    haptic->vibing_index = 0 ;
+	
+	if (haptic->vib_feature[0][VIB_TIME] > 0){
+		int value;
+
+		value = haptic->vib_feature[0][VIB_TIME];
+		value = (value > haptic->pdata->max_timeout) ?
+				   haptic->pdata->max_timeout : value;
+		
+		hrtimer_start(&haptic->timer,
+			ktime_set(value / 1000, (value % 1000) * 1000000),
+			HRTIMER_MODE_REL);
+	}
+    mutex_unlock(&haptic->lock);
+	
+    printk("%s: [vibrator] store_pattern end!!!\n\n\n",__func__);
+	schedule_work(&haptic->work);
+    return size;
+}
+
+
+static DEVICE_ATTR(pattern, 0664, NULL, isa1200_store_pattern);
+#endif
 
 static int __devinit isa1200_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -674,6 +845,10 @@ static int __devinit isa1200_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, haptic);
 
+#ifdef CONFIG_GN_Q_BSP_ISA1200_LEVEL_SUPPORT
+	device_create_file(haptic->dev.dev,&dev_attr_pattern);
+#endif
+
 	ret = gpio_is_valid(pdata->hap_en_gpio);
 	if (ret) {
 		ret = gpio_request(pdata->hap_en_gpio, "haptic_en_gpio");
@@ -705,6 +880,9 @@ static int __devinit isa1200_probe(struct i2c_client *client,
 		haptic->is_len_gpio_valid = false;
 	}
 
+	gpio_direction_output(haptic->pdata->hap_en_gpio, 0);
+	mdelay(5);
+
 	ret = isa1200_setup(client);
 	if (ret) {
 		dev_err(&client->dev, "%s: setup fail %d\n", __func__, ret);
@@ -720,7 +898,11 @@ static int __devinit isa1200_probe(struct i2c_client *client,
 			goto reset_hctrl0;
 		}
 	} else if (haptic->pdata->need_pwm_clk) {
+#ifndef CONFIG_GN_Q_BSP_ISA1200_QPNPCLK_SUPPORT
 		haptic->pwm_clk = clk_get(&client->dev, "pwm_clk");
+#else
+		haptic->pwm_clk = qpnp_clkdiv_get(&client->dev, "isa1200-mclk");
+#endif
 		if (IS_ERR(haptic->pwm_clk)) {
 			dev_err(&client->dev, "pwm_clk get failed\n");
 			ret = PTR_ERR(haptic->pwm_clk);
