@@ -3362,7 +3362,7 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 
 		parsed_leds++;
 	}
-	#if 1
+	#if 0
     	rc = qpnp_get_config_wled(led, temp);
     	if (rc < 0) {
     	dev_err(&led->spmi_dev->dev,
