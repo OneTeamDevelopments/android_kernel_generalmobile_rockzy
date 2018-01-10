@@ -769,6 +769,7 @@
 				      30>;
 
 			qcom,cdc-reset-gpio = <&msmgpio 63 0>;
+			qcom,cdc-pa-gpio = <&pm8941_gpios 6 0>;
 
 			cdc-vdd-buck-supply = <&pm8941_s2>;
 			qcom,cdc-vdd-buck-voltage = <2150000 2150000>;
@@ -818,9 +819,6 @@
 			qcom,cdc-slim-ifd = "taiko-slim-ifd";
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
 			qcom,cdc-dmic-sample-rate = <4800000>;
-			qcom,cdc-micbias1-ext-cap;
-			qcom,cdc-micbias3-ext-cap;
-			qcom,cdc-micbias4-ext-cap;
 		};
 	};
 
