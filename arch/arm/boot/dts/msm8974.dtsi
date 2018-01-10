@@ -817,7 +817,10 @@
 			qcom,cdc-mclk-clk-rate = <9600000>;
 			qcom,cdc-slim-ifd = "taiko-slim-ifd";
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
-			qcom,cdc-dmic-sample-rate = <2400000>; 
+			qcom,cdc-dmic-sample-rate = <4800000>;
+			qcom,cdc-micbias1-ext-cap;
+			qcom,cdc-micbias3-ext-cap;
+			qcom,cdc-micbias4-ext-cap;
 		};
 	};
 
@@ -871,6 +874,7 @@
 		qcom,sec-auxpcm-gpio-sync = <&msmgpio 80 0>;
 		qcom,sec-auxpcm-gpio-din  = <&msmgpio 81 0>;
 		qcom,sec-auxpcm-gpio-dout = <&msmgpio 82 0>;
+		qcom,ext-ult-lo-amp-gpio = <&pm8941_gpios 6 0>;
 		qcom,cdc-micbias2-headset-only;
 	};
 
