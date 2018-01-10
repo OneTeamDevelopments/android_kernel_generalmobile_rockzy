@@ -871,7 +871,6 @@
 		qcom,sec-auxpcm-gpio-sync = <&msmgpio 80 0>;
 		qcom,sec-auxpcm-gpio-din  = <&msmgpio 81 0>;
 		qcom,sec-auxpcm-gpio-dout = <&msmgpio 82 0>;
-		qcom,ext-ult-lo-amp-gpio = <&pm8941_gpios 6 0>;
 		qcom,cdc-micbias2-headset-only;
 	};
 
