@@ -96,7 +96,7 @@ struct usb_interface_descriptor uac1_ac_interface_desc = {
 	)
 
  /* B.3.2  Class-Specific AC Interface Descriptor */
-struct uac1_ac_header_descriptor_2 uac1_ac_interface_desc = {
+struct uac1_ac_header_descriptor_2 uac1_ac_header_desc = {
 	.bLength		= UAC_DT_AC_HEADER_SIZE(2),
 	.bDescriptorType	= USB_DT_CS_INTERFACE,
 	.bDescriptorSubtype	= UAC_HEADER,
@@ -1071,7 +1071,7 @@ f_audio_bind(struct usb_configuration *c, struct usb_function *f)
 		pr_err("%s: failed to allocate desc interface", __func__);
 		goto fail;
 	}
-	uac1_ac_header_desc.bInterfaceNumber = status;
+	uac1_ac_interface_desc.bInterfaceNumber = status;
 
 	status = -ENOMEM;
 
