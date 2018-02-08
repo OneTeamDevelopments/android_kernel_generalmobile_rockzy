@@ -102,6 +102,11 @@ static struct persistent_ram msm_pr __initdata = {
 	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
 	.size = SZ_1M,
 };
+
+static struct platform_device ram_console_device = {
+	.name = "ram_console",
+	.id = -1,
+};
 #endif
 
 /*
@@ -126,6 +131,7 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+	platform_device_register(&ram_console_device);
 }
 
 static struct of_dev_auxdata msm_hsic_host_adata[] = {
