@@ -87,6 +87,28 @@ static void __init msm8974_early_memory(void)
 	of_scan_flat_dt(dt_scan_for_memory_hole, msm8974_reserve_table);
 }
 
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
+static struct persistent_ram_descriptor msm_prd[] __initdata = {
+	{
+		.name = "ram_console",
+		.size = SZ_1M,
+	},
+};
+
+static struct persistent_ram msm_pr __initdata = {
+	.descs = msm_prd,
+	.num_descs = ARRAY_SIZE(msm_prd),
+	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
+	.size = SZ_1M,
+};
+
+static struct platform_device ram_console_device = {
+	.name = "ram_console",
+	.id = -1,
+};
+#endif
+
 /*
  * Used to satisfy dependencies for devices that need to be
  * run early or in a particular order. Most likely your device doesn't fall
@@ -109,6 +131,7 @@ void __init msm8974_add_drivers(void)
 		msm_clock_init(&msm8974_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+	platform_device_register(&ram_console_device);
 }
 
 static struct of_dev_auxdata msm_hsic_host_adata[] = {
@@ -152,8 +175,6 @@ static struct of_dev_auxdata msm8974_auxdata_lookup[] __initdata = {
 			"msm-tsens", NULL),
 	OF_DEV_AUXDATA("qcom,qcedev", 0xFD440000, \
 			"qcedev.0", NULL),
-	OF_DEV_AUXDATA("qcom,qcrypto", 0xFD440000, \
-			"qcrypto.0", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-host", 0xF9A00000, \
 			"msm_hsic_host", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-smsc-hub", 0, "msm_smsc_hub",
@@ -178,23 +199,6 @@ void __init msm8974_init(void)
 	board_dt_populate(adata);
 	msm8974_add_drivers();
 }
-
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-//Zhilong.Zhang@OnlineRd.Driver, 2013/12/03, Add for ram_console device
-static struct persistent_ram_descriptor msm_prd[] __initdata = {
-	{
-		.name = "ram_console",
-		.size = SZ_1M,
-	},
-};
-
-static struct persistent_ram msm_pr __initdata = {
-	.descs = msm_prd,
-	.num_descs = ARRAY_SIZE(msm_prd),
-	.start = PLAT_PHYS_OFFSET + SZ_1G + SZ_256M,
-	.size = SZ_1M,
-};
-#endif
 
 void __init msm8974_init_very_early(void)
 {
