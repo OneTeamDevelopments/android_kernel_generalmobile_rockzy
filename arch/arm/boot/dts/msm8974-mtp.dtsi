@@ -25,10 +25,6 @@
 		status = "ok";
 	};
 
-	qcom,mdss_dsi@fd922800 {
-		qcom,dsi-pref-prim-pan = <&dsi_sharp_r63417_1080_cmd>;
-	};
-
 	qcom,mdss_mdp@fd900000 {
 		qcom,mdss-pref-prim-intf = "dsi";
 		batfet-supply = <&pm8941_chg_batif>;
