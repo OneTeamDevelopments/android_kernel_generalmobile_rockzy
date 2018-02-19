@@ -122,6 +122,7 @@ static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data);
 #endif
+#endif
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
