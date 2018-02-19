@@ -3299,7 +3299,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 				default:
 					/* Default to screen off to match previous
 					   behaviour */
-					print_ts(TS_INFO, KERN_INFO "[syna] Unhandled event %i\n", ev);
+					printk("[syna] Unhandled event %i\n", ev);
 					/* Fall through */
 				case FB_BLANK_POWERDOWN:
 					new_status = 1;
@@ -3310,11 +3310,11 @@ static int fb_notifier_callback(struct notifier_block *self,
 				break;
 
 			if (new_status) {
-				print_ts(TS_DEBUG, KERN_ERR "[syna]:suspend tp\n");
+				printk("[syna]:suspend tp\n");
 				synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
 			}
 			else {
-				print_ts(TS_DEBUG, KERN_ERR "[syna]:resume tp\n");
+				printk("[syna]:resume tp\n");
 				synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 			}
 			rmi4_data->old_status = new_status;
