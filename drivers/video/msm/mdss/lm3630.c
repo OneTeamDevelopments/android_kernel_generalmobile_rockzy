@@ -21,7 +21,7 @@
 #include "mdss_dsi.h"
 
 int lcd_vendor;
-static bool sleep = 1;
+bool sleep = 1;
 static struct i2c_client *i2c_client = NULL;
 #include <linux/leds.h>
 #define LCD_CABC_MAX_NUM 1
@@ -48,6 +48,7 @@ static struct led_classdev backlight_cabc = {
 	.brightness = LCD_CABC_MAX_NUM,
 	.brightness_set = lcd_cabc_mode_set,
 };
+
 
 static int lm3630_i2c_txdata(char *txdata, int length)
 {
@@ -145,8 +146,8 @@ void set_backlight_lm3630(unsigned int level)
 			}else {
 				if(0 == cabc_change)
 				{
-					cabc_change = 1;
 					lm3630_write_reg(0x01,0x09);// 0x09 for cabc
+					cabc_change = 1;
 				}
 			}
 
@@ -171,9 +172,7 @@ static int __devinit lm3630_probe(struct i2c_client *client,
 	printk("backlight ic name = %s\n",backlight_ic_name);
 
     	mdelay(10);  
-
   	err =  lm3630_write_reg(0x00,0x15);
-
     	if (err<0)
     	{
         	printk( " fail to write tpd cfg %d\n", err );
@@ -226,8 +225,6 @@ static struct i2c_driver lm3630_driver = {
 	},
 	.probe		= lm3630_probe,
 	.remove		= __devexit_p(lm3630_remove),
-//	.suspend	= lm3630_suspend,
-//	.resume	= lm3630_resume,
 	.id_table	= lm3630_id,
 };
 
