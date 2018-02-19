@@ -88,12 +88,10 @@ enum device_status {
 #define RMI4_VTG_MIN_UV		2700000
 #define RMI4_VTG_MAX_UV		3300000
 #define RMI4_ACTIVE_LOAD_UA	15000
-#define RMI4_LPM_LOAD_UA	10
 
 #define RMI4_I2C_VTG_MIN_UV	1800000
 #define RMI4_I2C_VTG_MAX_UV	1800000
 #define RMI4_I2C_LOAD_UA	10000
-#define RMI4_I2C_LPM_LOAD_UA	10
 
 #define RMI4_GPIO_SLEEP_LOW_US 10000
 
@@ -3324,75 +3322,6 @@ static int fb_notifier_callback(struct notifier_block *self,
 }
 #endif
 
-static int synaptics_rmi4_regulator_lpm(struct synaptics_rmi4_data *rmi4_data,
-						bool on)
-{
-	int retval;
-
-	if (on == false)
-		goto regulator_hpm;
-
-	retval = reg_set_optimum_mode_check(rmi4_data->vdd, RMI4_LPM_LOAD_UA);
-	if (retval < 0) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"Regulator vcc_ana set_opt failed rc=%d\n",
-			retval);
-		goto fail_regulator_lpm;
-	}
-
-	if (rmi4_data->board->i2c_pull_up) {
-		retval = reg_set_optimum_mode_check(rmi4_data->vcc_i2c,
-			RMI4_I2C_LPM_LOAD_UA);
-		if (retval < 0) {
-			dev_err(&rmi4_data->i2c_client->dev,
-				"Regulator vcc_i2c set_opt failed rc=%d\n",
-				retval);
-			goto fail_regulator_lpm;
-		}
-	}
-
-	return 0;
-
-regulator_hpm:
-
-	retval = reg_set_optimum_mode_check(rmi4_data->vdd,
-				RMI4_ACTIVE_LOAD_UA);
-	if (retval < 0) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"Regulator vcc_ana set_opt failed rc=%d\n",
-			retval);
-		goto fail_regulator_hpm;
-	}
-
-	if (rmi4_data->board->i2c_pull_up) {
-		retval = reg_set_optimum_mode_check(rmi4_data->vcc_i2c,
-			RMI4_I2C_LOAD_UA);
-		if (retval < 0) {
-			dev_err(&rmi4_data->i2c_client->dev,
-				"Regulator vcc_i2c set_opt failed rc=%d\n",
-				retval);
-			goto fail_regulator_hpm;
-		}
-	}
-
-	return 0;
-
-fail_regulator_lpm:
-	reg_set_optimum_mode_check(rmi4_data->vdd, RMI4_ACTIVE_LOAD_UA);
-	if (rmi4_data->board->i2c_pull_up)
-		reg_set_optimum_mode_check(rmi4_data->vcc_i2c,
-						RMI4_I2C_LOAD_UA);
-
-	return retval;
-
-fail_regulator_hpm:
-	reg_set_optimum_mode_check(rmi4_data->vdd, RMI4_LPM_LOAD_UA);
-	if (rmi4_data->board->i2c_pull_up)
-		reg_set_optimum_mode_check(rmi4_data->vcc_i2c,
-						RMI4_I2C_LPM_LOAD_UA);
-	return retval;
-}
-
  /**
  * synaptics_rmi4_suspend()
  *
@@ -3406,8 +3335,8 @@ fail_regulator_hpm:
 static int synaptics_rmi4_suspend(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	int retval, count = 0;
-    
+    int count = 0;
+
 #ifdef INIT_TP_WHEN_RESUME
        if (init_not_complete) {
             printk("wanglei: TP init not complete, suspend return 0\n");
@@ -3446,15 +3375,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		synaptics_rmi4_irq_enable(rmi4_data, false);
 		synaptics_rmi4_sensor_sleep(rmi4_data);
 	}
-
-	retval = synaptics_rmi4_regulator_lpm(rmi4_data, true);
-	if (retval < 0) {
-		dev_err(dev, "tpd: failed to enter low power mode\n");
-		return retval;
-	}
-
-       gpio_set_value(rmi4_data->board->en_gpio, 0);
-       gpio_set_value(rmi4_data->board->reset_gpio, 0);
        
        printk("tpd: synaptics_rmi4_suspend... Success!\n");
 
@@ -3474,7 +3394,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 static int synaptics_rmi4_resume(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	int retval, count = 0, finger = 0;
+	int count = 0, finger = 0;
 
 #ifdef INIT_TP_WHEN_RESUME
        gn_resume_init(rmi4_data);
@@ -3515,15 +3435,6 @@ static int synaptics_rmi4_resume(struct device *dev)
            //enable_irq(rmi4_data->irq);
        }
 #endif
-
-	retval = synaptics_rmi4_regulator_lpm(rmi4_data, false);
-	if (retval < 0) {
-		dev_err(dev, "tpd: failed to enter active power mode\n");
-		return retval;
-	}
-
-       gpio_set_value(rmi4_data->board->en_gpio, 1);
-       gpio_set_value(rmi4_data->board->reset_gpio, 1);
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
 	rmi4_data->touch_stopped = false;
