@@ -3070,7 +3070,7 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 }
 
 #ifdef CONFIG_PM
- /**
+/**
  * synaptics_rmi4_sensor_sleep()
  *
  * Called by synaptics_rmi4_early_suspend() and synaptics_rmi4_suspend().
@@ -3501,13 +3501,10 @@ static int synaptics_rmi4_resume(struct device *dev)
 	return 0;
 }
 
-#ifdef CONFIG_FB
+#ifndef CONFIG_FB
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
-};
-#else
-static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 };
 #endif
 #endif
@@ -3531,17 +3528,19 @@ static struct i2c_driver synaptics_rmi4_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
-		.of_match_table = rmi4_match_table,
 #ifdef CONFIG_PM
+#ifndef CONFIG_FB
 		.pm = &synaptics_rmi4_dev_pm_ops,
 #endif
+#endif
+		.of_match_table = rmi4_match_table,
 	},
 	.probe = synaptics_rmi4_probe,
 	.remove = __devexit_p(synaptics_rmi4_remove),
 	.id_table = synaptics_rmi4_id_table,
 };
 
- /**
+/**
  * synaptics_rmi4_init()
  *
  * Called by the kernel during do_initcalls (if built-in)
@@ -3555,7 +3554,7 @@ static int __init synaptics_rmi4_init(void)
 	return i2c_add_driver(&synaptics_rmi4_driver);
 }
 
- /**
+/**
  * synaptics_rmi4_exit()
  *
  * Called by the kernel when the driver is unloaded.
@@ -3566,6 +3565,8 @@ static int __init synaptics_rmi4_init(void)
 static void __exit synaptics_rmi4_exit(void)
 {
 	i2c_del_driver(&synaptics_rmi4_driver);
+
+	return;
 }
 
 module_init(synaptics_rmi4_init);
