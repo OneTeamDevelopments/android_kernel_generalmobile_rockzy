@@ -3358,7 +3358,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
            }
        #endif
            //If TP IC is not running, disable set glove mode
-           suspend_flag = 1;
            enable_irq_wake(rmi4_data->irq);
            synaptics_rmi4_double_wakeup_enter(rmi4_data);
            return 0;
@@ -3366,7 +3365,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
 #endif
 
        //If TP IC is not running, disable set glove mode
-       suspend_flag = 1;
        glove_status = 0x0f;
 
 	if (!rmi4_data->sensor_sleep) {
