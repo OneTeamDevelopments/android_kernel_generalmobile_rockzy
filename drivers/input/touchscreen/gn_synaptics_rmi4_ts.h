@@ -31,8 +31,6 @@
 #ifdef CONFIG_FB
 #include <linux/notifier.h>
 #include <linux/fb.h>
-#elif defined CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
 #endif
 
 #define PDT_PROPS (0x00EF)
@@ -216,9 +214,6 @@ struct synaptics_rmi4_data {
        struct delayed_work gn_glove_work;
        struct workqueue_struct * gn_glove_queue;
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-#endif
 	const char *fw_image_name;
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
@@ -251,10 +246,6 @@ struct synaptics_rmi4_data {
        int (*reset_fw)(struct synaptics_rmi4_data *rmi4_data);
 #ifdef CONFIG_FB
 	struct notifier_block fb_notif;
-#else
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-#endif
 #endif
 };
 
