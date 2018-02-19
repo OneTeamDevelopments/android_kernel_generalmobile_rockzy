@@ -227,6 +227,7 @@ struct synaptics_rmi4_data {
 	unsigned short f01_cmd_base_addr;
 	unsigned short f01_ctrl_base_addr;
 	unsigned short f01_data_base_addr;
+	unsigned int old_status;
 	int irq;
 	int sensor_max_x;
 	int sensor_max_y;

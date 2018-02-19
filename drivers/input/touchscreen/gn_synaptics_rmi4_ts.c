@@ -3267,19 +3267,59 @@ static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
 	struct fb_event *evdata = data;
-	int *blank;
+	int new_status;
+	int ev;
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(self, struct synaptics_rmi4_data, fb_notif);
 
-	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
-		rmi4_data && rmi4_data->i2c_client) {
-		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK)
-			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-		else if (*blank == FB_BLANK_POWERDOWN)
-			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
-	}
+	switch (event) {
+		case FB_EVENT_BLANK :
+			ev = (*(int *)evdata->data);
 
+			/*
+			 * Normal Screen Wakeup
+			 *
+			 * <6>[   43.486172] [syna] Event: 4 -> 0
+			 * <6>[   50.488192] [syna] Event: 0 -> 4
+			 *
+			 * Doze Wakeup
+			 *
+			 * <6>[   81.869758] [syna] Event: 4 -> 1
+			 * <6>[   86.458247] [syna] Event: 1 -> 4
+			 *
+			 */
+			switch (ev) {
+				/* Screen On */
+				case FB_BLANK_UNBLANK:
+				case FB_BLANK_NORMAL:
+				case FB_BLANK_VSYNC_SUSPEND:
+				case FB_BLANK_HSYNC_SUSPEND:
+					new_status = 0;
+					break;
+				default:
+					/* Default to screen off to match previous
+					   behaviour */
+					print_ts(TS_INFO, KERN_INFO "[syna] Unhandled event %i\n", ev);
+					/* Fall through */
+				case FB_BLANK_POWERDOWN:
+					new_status = 1;
+					break;
+			}
+
+			if (new_status == rmi4_data->old_status)
+				break;
+
+			if (new_status) {
+				print_ts(TS_DEBUG, KERN_ERR "[syna]:suspend tp\n");
+				synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+			}
+			else {
+				print_ts(TS_DEBUG, KERN_ERR "[syna]:resume tp\n");
+				synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
+			}
+			rmi4_data->old_status = new_status;
+			break;
+	}
 	return 0;
 }
 #endif
