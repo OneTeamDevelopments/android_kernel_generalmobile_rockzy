@@ -93,8 +93,6 @@ enum device_status {
 #define RMI4_I2C_VTG_MAX_UV	1800000
 #define RMI4_I2C_LOAD_UA	10000
 
-#define RMI4_GPIO_SLEEP_LOW_US 10000
-
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
