@@ -3346,8 +3346,6 @@ static int synaptics_rmi4_suspend(struct device *dev)
        if (wake_switch || gesture_switch) {
            printk("tpd wanglei: synaptics_rmi4_suspend --> rmi4_data->irq = %d\n", rmi4_data->irq);
            wake_suspend_compelete = 1;
-           //TP reset first
-           gn_tp_reset(rmi4_data);
        #ifdef TP_GLOVE_SUPPORT
            if (glove_enable) {
                do {
