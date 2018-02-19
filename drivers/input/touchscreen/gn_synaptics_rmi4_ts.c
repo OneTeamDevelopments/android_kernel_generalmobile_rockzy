@@ -235,7 +235,7 @@ struct synaptics_rmi4_exp_fn {
 static int tp_max_finger = 0;
 static int suspend_flag = 1;
 
-static int pr_debug = 0;
+static int pr_debug = 1;
 #define ts_debug(args...) \
 	do { \
 		if (1 == pr_debug) { \
