@@ -401,7 +401,7 @@ SYSCALL_DEFINE1(fchdir, unsigned int, fd)
 	struct file *file;
 	struct inode *inode;
 	struct vfsmount *mnt;
-	int error, fput_needed;
+	int error;
 
 	error = -EBADF;
 	file = fget(fd);
