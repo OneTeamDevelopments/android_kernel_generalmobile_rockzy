@@ -762,7 +762,6 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 		if (err)
 			goto out_free;
 	}
->>>>>>> 7fd3eded2ce... mnt: Add filesystem private data to mount points
 
 	if (mnt) {
 		 if (flag & (CL_SLAVE | CL_PRIVATE | CL_SHARED_TO_SLAVE))
