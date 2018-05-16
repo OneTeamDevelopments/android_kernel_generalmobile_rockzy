@@ -1,4 +1,4 @@
-/*
+﻿/*
  * f_phonet.c -- USB CDC Phonet function
  *
  * Copyright (C) 2007-2008 Nokia Corporation. All rights reserved.

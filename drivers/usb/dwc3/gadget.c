@@ -431,9 +431,13 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
 			 * will respond with an error(bit13 in Command complete
 			 * event. Hence return error in this case.
 			 */
-			if (DWC3_DEPCMD_STATUS(reg))
-				return -EINVAL;
-			return 0;
+			if (reg & 0x2000)
+				ret = -EAGAIN;
+			else if (DWC3_DEPCMD_STATUS(reg))
+				ret = -EINVAL;
+			else
+				ret = 0;
+			break;
 		}
 
 		/*
@@ -732,7 +736,6 @@ static int __dwc3_gadget_ep_disable(struct dwc3_ep *dep)
 
 	/* make sure HW endpoint isn't stalled */
 	if (dep->flags & DWC3_EP_STALL)
-
 		__dwc3_gadget_ep_set_halt(dep, 0, false);
 
 	reg = dwc3_readl(dwc->regs, DWC3_DALEPENA);
@@ -1441,32 +1444,27 @@ int __dwc3_gadget_ep_set_halt(struct dwc3_ep *dep, int value, int protocol)
 			return -EAGAIN;
 		}
 
-		if (dep->number == 0 || dep->number == 1) {
-			/*
-			 * Whenever EP0 is stalled, we will restart
-			 * the state machine, thus moving back to
-			 * Setup Phase
-			 */
-			dwc->ep0state = EP0_SETUP_PHASE;
-		}
-
 		ret = dwc3_send_gadget_ep_cmd(dwc, dep->number,
 			DWC3_DEPCMD_SETSTALL, &params);
-		if (ret)
-			dev_err(dwc->dev, "failed to %s STALL on %s\n",
+		if (ret) {
+			dbg_event(dep->number, "SETSTAL", ret);
+			dev_dbg(dwc->dev, "failed to %s STALL on %s\n",
 					value ? "set" : "clear",
 					dep->name);
-		else
+		} else {
 			dep->flags |= DWC3_EP_STALL;
+		}
 	} else {
 		ret = dwc3_send_gadget_ep_cmd(dwc, dep->number,
 			DWC3_DEPCMD_CLEARSTALL, &params);
-		if (ret)
-			dev_err(dwc->dev, "failed to %s STALL on %s\n",
+		if (ret) {
+			dbg_event(dep->number, "CLRSTAL", ret);
+			dev_dbg(dwc->dev, "failed to %s STALL on %s\n",
 					value ? "set" : "clear",
 					dep->name);
-		else
+		} else {
 			dep->flags &= ~(DWC3_EP_STALL | DWC3_EP_WEDGE);
+		}
 	}
 
 	return ret;
@@ -1967,6 +1965,7 @@ err1:
 	__dwc3_gadget_ep_disable(dwc->eps[0]);
 
 err0:
+	dwc->gadget_driver = NULL;
 	spin_unlock_irqrestore(&dwc->lock, flags);
 	pm_runtime_put(dwc->dev);
 
@@ -2032,6 +2031,7 @@ static int __devinit dwc3_gadget_init_hw_endpoints(struct dwc3 *dwc,
 
 		if (epnum == 0 || epnum == 1) {
 			dep->endpoint.maxpacket = 512;
+			dep->endpoint.maxburst = 1;
 			dep->endpoint.ops = &dwc3_gadget_ep0_ops;
 			if (!epnum)
 				dwc->gadget.ep0 = &dep->endpoint;
@@ -2185,12 +2185,14 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 		req->request.actual += req->request.length - count;
 		dwc3_gadget_giveback(dep, req, status);
 
+		/* TRD-3573: Qualcomm patch */
 		/* EP possibly disabled during giveback? */
 		if (!(dep->flags & DWC3_EP_ENABLED)) {
-			 dev_dbg(dwc->dev, "%s disabled while handling ep event\n",
+			dev_dbg(dwc->dev, "%s disabled while handling ep event\n",
 					dep->name);
 			return 0;
 		}
+		/* TRD-3573: Qualcomm patch */
 
 		if (s_pkt)
 			break;
@@ -2203,21 +2205,27 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 			break;
 	} while (1);
 
-	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
-			list_empty(&dep->req_queued)) {
-		if (list_empty(&dep->request_list))
-			/*
-			 * If there is no entry in request list then do
-			 * not issue END TRANSFER now. Just set PENDING
-			 * flag, so that END TRANSFER is issued when an
-			 * entry is added into request list.
-			 */
-			dep->flags |= DWC3_EP_PENDING_REQUEST;
-		else
-			dwc3_stop_active_transfer(dwc, dep->number);
-		dep->flags &= ~DWC3_EP_MISSED_ISOC;
-		return 1;
-	}
+	dwc->gadget.xfer_isr_count++;
+
+    /* TRD-3573: Avoid NULL pointer: dep->endpoint.desc */
+    if(dep->endpoint.desc){
+	    if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+			    list_empty(&dep->req_queued)) {
+		    if (list_empty(&dep->request_list))
+			    /*
+			     * If there is no entry in request list then do
+			     * not issue END TRANSFER now. Just set PENDING
+			     * flag, so that END TRANSFER is issued when an
+			     * entry is added into request list.
+			     */
+			    dep->flags |= DWC3_EP_PENDING_REQUEST;
+		    else
+			    dwc3_stop_active_transfer(dwc, dep->number);
+		    dep->flags &= ~DWC3_EP_MISSED_ISOC;
+		    return 1;
+	    }
+    }
+    /* TRD-3573: Avoid NULL pointer: dep->endpoint.desc */
 
 	if ((event->status & DEPEVT_STATUS_IOC) &&
 			(trb->ctrl & DWC3_TRB_CTRL_IOC))
@@ -2294,6 +2302,7 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
 			return;
 		}
 
+		dbg_event(dep->number, "XFRCOMP", 0);
 		dwc3_endpoint_transfer_complete(dwc, dep, event, 1);
 		break;
 	case DWC3_DEPEVT_XFERINPROGRESS:
@@ -2303,9 +2312,11 @@ static void dwc3_endpoint_interrupt(struct dwc3 *dwc,
 			return;
 		}
 
+		dbg_event(dep->number, "XFRPROG", 0);
 		dwc3_endpoint_transfer_complete(dwc, dep, event, 0);
 		break;
 	case DWC3_DEPEVT_XFERNOTREADY:
+		dbg_event(dep->number, "XFRNRDY", 0);
 		if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
 			dwc3_gadget_start_isoc(dwc, dep, event);
 		} else {
@@ -2363,6 +2374,7 @@ static void dwc3_disconnect_gadget(struct dwc3 *dwc)
 		dwc->gadget_driver->disconnect(&dwc->gadget);
 		spin_lock(&dwc->lock);
 	}
+	dwc->gadget.xfer_isr_count = 0;
 }
 
 static void dwc3_stop_active_transfer(struct dwc3 *dwc, u32 epnum)
@@ -2505,6 +2517,7 @@ static void dwc3_gadget_usb2_phy_suspend(struct dwc3 *dwc, int suspend)
 static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 {
 	u32			reg;
+
 	struct dwc3_otg		*dotg = dwc->dotg;
 
 	dev_vdbg(dwc->dev, "%s\n", __func__);
@@ -2810,8 +2823,6 @@ static void dwc3_dump_reg_info(struct dwc3 *dwc)
 	dbg_print_reg("OCTL", dwc3_readl(dwc->regs, DWC3_OCTL));
 	dbg_print_reg("OEVT", dwc3_readl(dwc->regs, DWC3_OEVT));
 	dbg_print_reg("OSTS", dwc3_readl(dwc->regs, DWC3_OSTS));
-
-	dwc3_notify_event(dwc, DWC3_CONTROLLER_ERROR_EVENT);
 }
 
 static void dwc3_gadget_interrupt(struct dwc3 *dwc,
@@ -2840,9 +2851,11 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 		dev_vdbg(dwc->dev, "Start of Periodic Frame\n");
 		break;
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
-		dbg_event(0xFF, "ERROR", 0);
-		dev_vdbg(dwc->dev, "Erratic Error\n");
-		dwc3_dump_reg_info(dwc);
+		if (!dwc->err_evt_seen) {
+			dbg_event(0xFF, "ERROR", 0);
+			dev_vdbg(dwc->dev, "Erratic Error\n");
+			dwc3_dump_reg_info(dwc);
+		}
 		break;
 	case DWC3_DEVICE_EVENT_CMD_CMPL:
 		dev_vdbg(dwc->dev, "Command Complete\n");
@@ -2882,6 +2895,8 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 	default:
 		dev_dbg(dwc->dev, "UNKNOWN IRQ %d\n", event->type);
 	}
+
+	dwc->err_evt_seen = (event->type == DWC3_DEVICE_EVENT_ERRATIC_ERROR);
 }
 
 static void dwc3_process_event_entry(struct dwc3 *dwc,
@@ -2923,6 +2938,22 @@ static irqreturn_t dwc3_process_event_buf(struct dwc3 *dwc, u32 buf)
 		event.raw = *(u32 *) (evt->buf + evt->lpos);
 
 		dwc3_process_event_entry(dwc, &event);
+
+		if (dwc->err_evt_seen) {
+			/*
+			 * if erratic error, skip remaining events
+			 * while controller undergoes reset
+			 */
+			evt->lpos = (evt->lpos + left) %
+					DWC3_EVENT_BUFFERS_SIZE;
+			dwc3_writel(dwc->regs, DWC3_GEVNTCOUNT(buf),
+					left);
+			if (dwc3_notify_event(dwc,
+					DWC3_CONTROLLER_ERROR_EVENT))
+				dwc->err_evt_seen = 0;
+			break;
+		}
+
 		/*
 		 * XXX we wrap around correctly to the next entry as almost all
 		 * entries are 4 bytes in size. There is one entry which has 12
@@ -2947,12 +2978,23 @@ static irqreturn_t dwc3_interrupt(int irq, void *_dwc)
 
 	spin_lock(&dwc->lock);
 
+	dwc->irq_cnt++;
+
+	if (dwc->err_evt_seen) {
+		/* controller reset is still pending */
+		spin_unlock(&dwc->lock);
+		return IRQ_HANDLED;
+	}
+
 	for (i = 0; i < dwc->num_event_buffers; i++) {
 		irqreturn_t status;
 
 		status = dwc3_process_event_buf(dwc, i);
 		if (status == IRQ_HANDLED)
 			ret = status;
+
+		if (dwc->err_evt_seen)
+			break;
 	}
 
 	spin_unlock(&dwc->lock);
