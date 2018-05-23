@@ -257,12 +257,12 @@ int propagate_mnt(struct mount *dest_mnt, struct dentry *dest_dentry,
 		prev_src_mnt  = child;
 	}
 out:
-	br_write_lock(&vfsmount_lock);
+	br_write_lock(vfsmount_lock);
 	while (!list_empty(&tmp_list)) {
 		child = list_first_entry(&tmp_list, struct mount, mnt_hash);
 		umount_tree(child, 0, &umount_list);
 	}
-	br_write_unlock(&vfsmount_lock);
+	br_write_unlock(vfsmount_lock);
 	release_mounts(&umount_list);
 	return ret;
 }
@@ -354,18 +354,4 @@ int propagate_umount(struct list_head *list)
 	list_for_each_entry(mnt, list, mnt_hash)
 		__propagate_umount(mnt);
 	return 0;
-}
-
-int propagate_remount(struct mount *mnt) {
-	struct mount *m;
-	struct super_block *sb = mnt->mnt.mnt_sb;
-	int ret = 0;
-
-	if (sb->s_op->copy_mnt_data) {
-		for (m = first_slave(mnt); m->mnt_slave.next != &mnt->mnt_slave_list; m = next_slave(m)) {
-			sb->s_op->copy_mnt_data(m->mnt.data, mnt->mnt.data);
-		}
-	}
-
-	return ret;
 }
