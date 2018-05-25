@@ -2586,4 +2586,3 @@
 &gdsc_usb_hsic {
 	status = "ok";
 };
-
