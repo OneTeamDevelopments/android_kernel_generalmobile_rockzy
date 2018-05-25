@@ -294,7 +294,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
 	return rc;
-#if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
+}
+#ifdef CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT
 void mdss_dsi_panel_lm3630(unsigned int bl_level)
 {
 	set_backlight_lm3630(bl_level);
