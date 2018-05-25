@@ -265,14 +265,14 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 
 #if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
 #else
-		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
-			gpio_set_value((ctrl_pdata->rst_gpio),
-				pdata->panel_info.rst_seq[i]);
-			if (pdata->panel_info.rst_seq[++i])
+			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+				gpio_set_value((ctrl_pdata->rst_gpio),
+					pdata->panel_info.rst_seq[i]);
+				if (pdata->panel_info.rst_seq[++i])
 					usleep(pinfo->rst_seq[i] * 1000);
-		}
+			}
 #endif
-    }
+		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
@@ -304,7 +304,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 	}
 }
-
+	return rc;
 #if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
 void mdss_dsi_panel_lm3630(unsigned int bl_level)
 {
