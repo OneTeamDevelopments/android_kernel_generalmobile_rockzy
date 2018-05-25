@@ -214,10 +214,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-#else
 	int i, rc = 0;
-#endif
+
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -241,10 +239,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pinfo = &(ctrl_pdata->panel_data.panel_info);
 
 	if (enable) {
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		mdelay(3);
-#endif
 		rc = mdss_dsi_request_gpios(ctrl_pdata);
 		if (rc) {
 			pr_err("gpio request failed\n");
@@ -263,15 +257,12 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		}
 #endif
 
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-#else
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
 				if (pdata->panel_info.rst_seq[++i])
 					usleep(pinfo->rst_seq[i] * 1000);
 			}
-#endif
 		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
@@ -286,24 +277,22 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
-#if defined(CONFIG_GN_Q_BSP_LCD_RESET_SUPPORT)
-		mdelay(1);
-		gpio_set_value((ctrl_pdata->rst_gpio), 1);
-		mdelay(3);
-#endif
 	} else {
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		
 #if defined(CONFIG_GN_Q_BSP_LCD_TPS65132_SUPPORT)
 		mdelay(10); // add for IC request
 		if (gpio_is_valid(ctrl_pdata->tps_en_gpio))
 			gpio_set_value((ctrl_pdata->tps_en_gpio), 0);
 		mdelay(1);
 #endif
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
+			gpio_free(ctrl_pdata->disp_en_gpio);
+		}
+		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		gpio_free(ctrl_pdata->rst_gpio);
+		if (gpio_is_valid(ctrl_pdata->mode_gpio))
+			gpio_free(ctrl_pdata->mode_gpio);
 	}
-}
 	return rc;
 #if defined(CONFIG_GN_Q_BSP_BACKLIGHT_LM3630_SUPPORT)
 void mdss_dsi_panel_lm3630(unsigned int bl_level)
