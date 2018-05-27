@@ -1578,13 +1578,13 @@
 		/* Off */
 		<26 512 0 0>, <89 604 0 0>,
 		/* Sub-SVS / SVS */
-		<26 512 0 1600000>, <89 604 0 3200000>,
+		<26 512 1200000 2456000>, <89 604 0 3200000>,
 		/* SVS */
-		<26 512 0 2456000>, <89 604 0 3200000>,
+		<26 512 1200000 2456000>, <89 604 0 3200000>,
 		/* low Nominal / SVS */
 		<26 512 0 3680000>, <89 604 0 3200000>,
 		/* SVS / low Nominal */
-		<26 512 0 2456000>, <89 604 0 5280000>,
+		<26 512 1200000 2456000>, <89 604 0 5280000>,
 		/* low Nominal / low Nominal */
 		<26 512 0 3680000>, <89 604 0 5280000>,
 		/* Nominal / low Nominal */
@@ -1593,12 +1593,12 @@
 		<26 512 0 3680000>, <89 604 0 6224000>,
 		/* Nominal / Nominal */
 		<26 512 0 4912000>, <89 604 0 6224000>,
-		/* low Turbo / Nominal */
-		<26 512 0 6400000>, <89 604 0 6224000>,
+		/* Turbo / Nominal */
+		<26 512 0 7464000>, <89 604 0 6224000>,
+		/* low Nominal / low Turbo */
+		<26 512 0 3680000>, <89 604 0 7398000>,
 		/* Nominal / low Turbo */
 		<26 512 0 4912000>, <89 604 0 7398000>,
-		/* low Turbo / low Turbo */
-		<26 512 0 6400000>, <89 604 0 7398000>,
 		/* Turbo / low Turbo */
 		<26 512 0 7464000>, <89 604 0 7398000>,
 		/* Nominal / Turbo */
@@ -1722,6 +1722,10 @@
 		<3240000 1600000>,
 		<4048000 1600000>,
 		<4264000 1600000>;
+    /*
+     * Performance is guaranteed only upto POR specification. Anything
+     * above that specification is best effort and might even be rejected.
+     */
 	qcom,max-hw-load = <1281600>; /* max(4k X 2304 @ 24, 4k X 2160 @ 30) + 1080p @ 30 */
 	qcom,buffer-type-tz-usage-table = <0x241 0x1>,
 					<0x106 0x2>,
@@ -1749,7 +1753,8 @@
 
 &memory_hole {
 	qcom,memblock-remove = <0x05a00000 0x7800000
-				0x0fa00000 0x500000>; /* Address and size of the hole */
+				0x0fa00000 0x500000
+				0x05900000 0x100000>; /* Address and size of the hole */
 };
 
 &gdsc_venus {
