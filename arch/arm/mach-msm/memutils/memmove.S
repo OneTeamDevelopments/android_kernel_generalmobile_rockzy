@@ -68,6 +68,7 @@ ENTRY(memmove)
 	PLD(	pld	[r1, #-516]		)
 
 3:	PLD(	pld	[r1, #-580]		)
+
 4:		ldmdb	r1!, {r3, r4, r5, r6, r7, r8, ip, lr}
 		subs	r2, r2, #32
 		stmdb	r0!, {r3, r4, r5, r6, r7, r8, ip, lr}
@@ -154,7 +155,6 @@ ENTRY(memmove)
 	PLD(	pld	[r1, #-452]		)
 	PLD(	blt	13f			)
 	PLD(	pld	[r1, #-516]		)
-
 12:	PLD(	pld	[r1, #-580]		)
 13:		ldmdb   r1!, {r7, r8, r9, ip}
 		mov     lr, r3, push #\push

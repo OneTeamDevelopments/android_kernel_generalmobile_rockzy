@@ -96,6 +96,7 @@
 	PLD(	pld	[r1, #256]		)
 	PLD(	pld	[r1, #320]		)
 2:	PLD(	subs	r2, r2, #512		)
+	/* R2 is now -800 offset from the size passed in*/
 	PLD(	pld	[r1, #384]		)
 	PLD(	blt	4f			)
 	PLD(	pld	[r1, #448]		)
@@ -202,7 +203,6 @@
 	PLD(	pld	[r1, #384]		)
 	PLD(	blt	13f			)
 	PLD(	pld	[r1, #448]		)
-
 12:	PLD(	pld	[r1, #512]		)
 13:		ldr4w	r1, r4, r5, r6, r7, abort=19f
 		mov	r3, lr, pull #\pull
