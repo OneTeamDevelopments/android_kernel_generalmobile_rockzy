@@ -285,6 +285,7 @@ config ARCH_MSM8974
 	select ARCH_WANT_KMAP_ATOMIC_FLUSH
 	select KRAIT_REGULATOR
 	select ENABLE_VMALLOC_SAVINGS
+	select HAS_MACH_MEMUTILS
 
 config ARCH_APQ8084
 	bool "APQ8084"
@@ -337,7 +338,6 @@ config ARCH_FSM9900
 	select MSM_GPIOMUX
 	select MULTI_IRQ_HANDLER
 	select PM_DEVFREQ
-	select MSM_DEVFREQ_CPUBW
 	select MSM_PIL
 	select MSM_NATIVE_RESTART
 	select MSM_RESTART_V2
@@ -1849,27 +1849,6 @@ config MSM_DALRPC_TEST
 	help
 	  Exercises DAL RPC calls to QDSP6.
 
-if CPU_FREQ_MSM
-
-config MSM_CPU_FREQ_SET_MIN_MAX
-	bool "Set Min/Max CPU frequencies."
-	default n
-	help
-	  Allow setting min and max CPU frequencies. Sysfs can be used
-	  to override these values.
-
-config MSM_CPU_FREQ_MAX
-	int "Max CPU Frequency"
-	depends on MSM_CPU_FREQ_SET_MIN_MAX
-	default 384000
-
-config MSM_CPU_FREQ_MIN
-	int "Min CPU Frequency"
-	depends on MSM_CPU_FREQ_SET_MIN_MAX
-	default 245760
-
-endif # CPU_FREQ_MSM
-
 config MSM_DEVFREQ_CPUBW
 	bool "Devfreq device for CPU<->DDR IB/AB BW voting"
 	depends on PM_DEVFREQ
@@ -3035,6 +3014,12 @@ config KRAIT_REGULATOR
 	 line from the PMIC. This supply line is powered by multiple
 	 regulators running in ganged mode inside the PMIC. Enable
 	 this option to support such configurations.
+
+config HAS_MACH_MEMUTILS
+	default n
+	bool "Motorola MSM memcpy enhancements"
+	help
+	Faster memcpy performance for Krait
 endif
 
 config KERNEL_TEXT_MPU_PROT
