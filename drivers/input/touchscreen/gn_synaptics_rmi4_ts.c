@@ -41,7 +41,7 @@
 
 #define DOUBLE_CLICK_WAKE
 
-//#define INIT_TP_WHEN_RESUME
+#define INIT_TP_WHEN_RESUME
 
 //#define NO_0D_WHILE_2D
 /*
@@ -3029,7 +3029,7 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 }
 
 #ifdef CONFIG_PM
-/**
+ /**
  * synaptics_rmi4_sensor_sleep()
  *
  * Called by synaptics_rmi4_early_suspend() and synaptics_rmi4_suspend().
@@ -3309,6 +3309,8 @@ static int synaptics_rmi4_suspend(struct device *dev)
        if (wake_switch || gesture_switch) {
            printk("tpd wanglei: synaptics_rmi4_suspend --> rmi4_data->irq = %d\n", rmi4_data->irq);
            wake_suspend_compelete = 1;
+           //TP reset first
+           gn_tp_reset(rmi4_data);
        #ifdef TP_GLOVE_SUPPORT
            if (glove_enable) {
                do {
@@ -3317,6 +3319,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
            }
        #endif
            //If TP IC is not running, disable set glove mode
+           suspend_flag = 1;
            enable_irq_wake(rmi4_data->irq);
            synaptics_rmi4_double_wakeup_enter(rmi4_data);
            return 0;
@@ -3324,6 +3327,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 #endif
 
        //If TP IC is not running, disable set glove mode
+       suspend_flag = 1;
        glove_status = 0x0f;
 
 	if (!rmi4_data->sensor_sleep) {
@@ -3448,7 +3452,7 @@ static struct i2c_driver synaptics_rmi4_driver = {
 	.id_table = synaptics_rmi4_id_table,
 };
 
-/**
+ /**
  * synaptics_rmi4_init()
  *
  * Called by the kernel during do_initcalls (if built-in)
@@ -3462,7 +3466,7 @@ static int __init synaptics_rmi4_init(void)
 	return i2c_add_driver(&synaptics_rmi4_driver);
 }
 
-/**
+ /**
  * synaptics_rmi4_exit()
  *
  * Called by the kernel when the driver is unloaded.
