@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  *
  */
-#define pr_fmt(fmt)	"%s: " fmt, __func__
+#define pr_fmt(fmt)	"CHG: %s: " fmt, __func__
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -219,9 +219,6 @@
 #define CHG_FLAGS_VCP_WA		BIT(0)
 #define BOOST_FLASH_WA			BIT(1)
 #define POWER_STAGE_WA			BIT(2)
-#undef pr_debug                                                                                                                                                               
-#define pr_debug(fmt, ...) \
-      printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
 
 struct qpnp_chg_irq {
 	int		irq;
@@ -513,11 +510,12 @@ qpnp_chg_masked_write(struct qpnp_chg_chip *chip, u16 base,
 		pr_err("spmi read failed: addr=%03X, rc=%d\n", base, rc);
 		return rc;
 	}
-	printk(KERN_DEBUG "addr = 0x%x read 0x%x\n", base, reg);
+	pr_debug("addr = 0x%x read 0x%x\n", base, reg);
+
 	reg &= ~mask;
 	reg |= val & mask;
 
-	printk(KERN_DEBUG "Writing 0x%x\n", reg);
+	pr_debug("Writing 0x%x\n", reg);
 
 	rc = qpnp_chg_write(chip, &reg, base, count);
 	if (rc) {
@@ -1061,7 +1059,7 @@ qpnp_chg_usb_iusbmax_get(struct qpnp_chg_chip *chip)
 	else
 		iusbmax_ma = iusbmax * QPNP_CHG_I_MAXSTEP_MA;
 
-	printk(KERN_DEBUG "iusbmax = 0x%02x, ma = %d\n", iusbmax, iusbmax_ma);
+	pr_debug("iusbmax = 0x%02x, ma = %d\n", iusbmax, iusbmax_ma);
 
 	return iusbmax_ma;
 }
@@ -1294,13 +1292,11 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 	u8 chg_sts = 0;
 	int rc;
 
-	pr_debug("vbatdet-lo triggered\n");
-
 	rc = qpnp_chg_read(chip, &chg_sts, INT_RT_STS(chip->chgr_base), 1);
 	if (rc)
 		pr_err("failed to read chg_sts rc=%d\n", rc);
 
-	pr_debug("chg_done chg_sts: 0x%x triggered\n", chg_sts);
+	pr_info("chg_done chg_sts: 0x%x triggered\n", chg_sts);
 	if (!chip->charging_disabled && (chg_sts & FAST_CHG_ON_IRQ)) {
 		schedule_delayed_work(&chip->eoc_work,
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
@@ -1334,7 +1330,8 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 	if (rc)
 		pr_err("failed to read usb_chgpth_sts rc=%d\n", rc);
 
-	pr_debug("chg_gone triggered\n");
+	pr_info("chg_gone triggered\n");
+
 	if ((qpnp_chg_is_usb_chg_plugged_in(chip)
 			|| qpnp_chg_is_dc_chg_plugged_in(chip))
 			&& (usb_sts & CHG_GONE_IRQ)) {
@@ -1630,7 +1627,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 
 	usb_present = qpnp_chg_is_usb_chg_plugged_in(chip);
 	host_mode = qpnp_chg_is_otg_en_set(chip);
-	pr_debug("usbin-valid triggered: %d host_mode: %d\n",
+	pr_info("usbin-valid triggered: %d host_mode: %d\n",
 		usb_present, host_mode);
 
 	/* In host mode notifications cmoe from USB supply */
@@ -1755,7 +1752,7 @@ qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 	int batt_present, batt_temp_good, rc;
 
 	batt_present = qpnp_chg_is_batt_present(chip);
-	pr_debug("batt-pres triggered: %d\n", batt_present);
+	pr_info("batt-pres triggered: %d\n", batt_present);
 
 	if (chip->batt_present ^ batt_present) {
 		if (batt_present) {
@@ -1880,7 +1877,7 @@ qpnp_chg_chgr_chg_failed_irq_handler(int irq, void *_chip)
 	struct qpnp_chg_chip *chip = _chip;
 	int rc;
 
-	pr_debug("chg_failed triggered\n");
+	pr_info("chg_failed triggered\n");
 
 	rc = qpnp_chg_masked_write(chip,
 		chip->chgr_base + CHGR_CHG_FAILED,
@@ -1907,7 +1904,7 @@ qpnp_chg_chgr_chg_trklchg_irq_handler(int irq, void *_chip)
 {
 	struct qpnp_chg_chip *chip = _chip;
 
-	pr_debug("TRKL IRQ triggered\n");
+	pr_info("TRKL IRQ triggered\n");
 
 	chip->chg_done = false;
 	if (chip->bat_if_base) {
@@ -1965,7 +1962,7 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 
 	fastchg_on = qpnp_chg_is_fastchg_on(chip);
 
-	pr_debug("FAST_CHG IRQ triggered, fastchg_on: %d\n", fastchg_on);
+	pr_info("FAST_CHG IRQ triggered, fastchg_on: %d\n", fastchg_on);
 
 	if (chip->fastchg_on ^ fastchg_on) {
 		chip->fastchg_on = fastchg_on;
@@ -2233,7 +2230,7 @@ module_param(charger_monitor, int, 0644);
 static int ext_ovp_present;
 module_param(ext_ovp_present, int, 0444);
 
-#define OVP_USB_WALL_TRSH_MA	200
+#define OVP_USB_WALL_TRSH_MA   200
 static int
 qpnp_power_get_property_mains(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -2494,9 +2491,6 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 {
 	union power_supply_propval ret = {0,};
 	int battery_status, bms_status, soc, charger_in;
-#if defined(CONFIG_GN_Q_BSP_OPTIMIZE_SOC_SUPPORT)
-	static int last_soc = 50;
-#endif
 
 	if (chip->fake_battery_soc >= 0)
 		return chip->fake_battery_soc;
@@ -2535,21 +2529,6 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 				&& !qpnp_chg_is_usb_chg_plugged_in(chip))
 				pr_warn_ratelimited("Battery 0, CHG absent\n");
 		}
-
-#if defined(CONFIG_GN_Q_BSP_OPTIMIZE_SOC_SUPPORT)
-		if(charger_in) {
-			if(soc == 100)
-			{
-				printk(KERN_INFO "capacity = 100,when charger in, soc can't drop\n");
-				last_soc = 100;
-			}	
-
-			if((last_soc == 100) && (soc >= 95))
-				soc = 100;
-		} else {
-			last_soc = 50;
-		}
-#endif
 		return soc;
 	} else {
 		pr_debug("No BMS supply registered return 50\n");
@@ -2871,6 +2850,7 @@ qpnp_chg_ibatmax_set(struct qpnp_chg_chip *chip, int chg_current)
 		pr_err("bad mA=%d asked to set\n", chg_current);
 		return -EINVAL;
 	}
+	pr_debug("setting ibatmax = %dmA\n", chg_current);
 	temp = chg_current / QPNP_CHG_I_STEP_MA;
 	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_IBAT_MAX,
 			QPNP_CHG_I_MASK, temp, 1);
