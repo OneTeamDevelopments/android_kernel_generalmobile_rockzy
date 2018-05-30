@@ -106,8 +106,8 @@ MODULE_VERSION("1.0");
 static const char longname[] = "Gadget Android";
 
 #ifdef CONFIG_GN_Q_BSP_SUPPORT
-#define GN_PRODUCT_MODEL "GN715"
-#define GN_PRODUCT_MANUFACTURER "GiONEE"
+#define GN_PRODUCT_MODEL "U810"
+#define GN_PRODUCT_MANUFACTURER "IUNI"
 #endif
 
 /* Default vendor and product IDs, overridden by userspace */
