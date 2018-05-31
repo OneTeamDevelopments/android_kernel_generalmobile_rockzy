@@ -18,7 +18,6 @@
 #include <linux/usb/hcd.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
-#include <linux/boot_mode.h>
 #include <linux/kthread.h>
 #ifdef CONFIG_FORCE_FAST_CHARGE
 #include <linux/fastchg.h>
