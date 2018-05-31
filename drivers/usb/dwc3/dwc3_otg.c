@@ -18,6 +18,11 @@
 #include <linux/usb/hcd.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/boot_mode.h>
+#include <linux/kthread.h>
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#endif
 
 #include "core.h"
 #include "dwc3_otg.h"
@@ -25,11 +30,7 @@
 #include "xhci.h"
 
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
-#if defined(CONFIG_GN_Q_BSP_PM_NON_STANDARD_CHARGER_SUPPORT)
-#define MAX_INVALID_CHRGR_RETRY 0
-#else
 #define MAX_INVALID_CHRGR_RETRY 3
-#endif
 static int max_chgr_retry_count = MAX_INVALID_CHRGR_RETRY;
 module_param(max_chgr_retry_count, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(max_chgr_retry_count, "Max invalid charger retry count");
@@ -93,6 +94,17 @@ static int dwc3_otg_set_suspend(struct usb_phy *phy, int suspend)
 		pm_runtime_get_noresume(phy->dev);
 		pm_runtime_resume(phy->dev);
 	}
+
+	return 0;
+}
+
+static void dwc3_otg_set_hsphy_auto_suspend(struct dwc3_otg *dotg, bool susp);
+static int dwc3_otg_set_autosuspend(struct usb_phy *phy, int enable_autosuspend)
+{
+	struct usb_otg *otg = phy->otg;
+	struct dwc3_otg *dotg = container_of(otg, struct dwc3_otg, otg);
+
+	dwc3_otg_set_hsphy_auto_suspend(dotg, enable_autosuspend);
 
 	return 0;
 }
@@ -201,6 +213,14 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 	if (on) {
 		dev_dbg(otg->phy->dev, "%s: turn on host\n", __func__);
 
+		dwc3_otg_notify_host_mode(otg, on);
+		ret = regulator_enable(dotg->vbus_otg);
+		if (ret) {
+			dev_err(otg->phy->dev, "unable to enable vbus_otg\n");
+			dwc3_otg_notify_host_mode(otg, 0);
+			return ret;
+		}
+
 		/*
 		 * This should be revisited for more testing post-silicon.
 		 * In worst case we may need to disconnect the root hub
@@ -226,14 +246,8 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 			dev_err(otg->phy->dev,
 				"%s: failed to add XHCI pdev ret=%d\n",
 				__func__, ret);
-			return ret;
-		}
-
-		dwc3_otg_notify_host_mode(otg, on);
-		ret = regulator_enable(dotg->vbus_otg);
-		if (ret) {
-			dev_err(otg->phy->dev, "unable to enable vbus_otg\n");
-			platform_device_del(dwc->xhci);
+			regulator_disable(dotg->vbus_otg);
+			dwc3_otg_notify_host_mode(otg, 0);
 			return ret;
 		}
 
@@ -539,31 +553,31 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 		power_supply_type = POWER_SUPPLY_TYPE_USB;
 	else if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_CDP;
-#if defined(CONFIG_GN_Q_BSP_PM_NON_STANDARD_CHARGER_SUPPORT)
 	else if (dotg->charger->chg_type == DWC3_DCP_CHARGER ||
-			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER  ||
-			dotg->charger->chg_type == DWC3_FLOATED_CHARGER)
-#else
-	else if (dotg->charger->chg_type == DWC3_DCP_CHARGER ||
-			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER)
-#endif
+			dotg->charger->chg_type == DWC3_PROPRIETARY_CHARGER
+			)
 		power_supply_type = POWER_SUPPLY_TYPE_USB_DCP;
 	else
-		power_supply_type = POWER_SUPPLY_TYPE_BATTERY;
+		power_supply_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
 	power_supply_set_supply_type(dotg->psy, power_supply_type);
 
-	if ((dotg->charger->chg_type == DWC3_CDP_CHARGER) && mA > 2)
+	if (dotg->charger->chg_type == DWC3_CDP_CHARGER)
 		mA = DWC3_IDEV_CHG_MAX;
-#if defined(CONFIG_GN_Q_BSP_PM_NON_STANDARD_CHARGER_SUPPORT)
-	if ((dotg->charger->chg_type == DWC3_FLOATED_CHARGER) && mA == 0)
-        mA = 1000; 
-#endif
+
 	if (dotg->charger->max_power == mA)
 		return 0;
 
-	dev_info(phy->dev, "Avail curr from USB = %u,charger type = %d\n", mA,dotg->charger->chg_type);
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge > 0 && mA > 0) {
+		mA = DWC3_IDEV_CHG_MAX;
+		pr_info("USB fast charging is ON\n");
+	} else {
+		pr_info("USB fast charging is OFF\n");
+	}
+#endif
 
+	dev_info(phy->dev, "Avail curr from USB = %u\n", mA);
 	if (dotg->charger->max_power <= 2 && mA > 2) {
 		/* Enable charging */
 		if (power_supply_set_online(dotg->psy, true))
@@ -796,7 +810,15 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					 */
 					if (dotg->charger_retry_count ==
 						max_chgr_retry_count) {
-						dwc3_otg_set_power(phy, 0);
+						/*
+						 * Modified set_power current
+						 * by Jeff Chen@2015/06/16.
+						 * For non-standard charger,
+						 * treat it as FLOATED CHARGER
+						 * and set max charging current to
+						 * 500mA instead of 0.
+						 */
+						dwc3_otg_set_power(phy, 500);
 						pm_runtime_put_sync(phy->dev);
 						break;
 					}
@@ -1009,6 +1031,7 @@ int dwc3_otg_init(struct dwc3 *dwc)
 	dotg->otg.phy->dev = dwc->dev;
 	dotg->otg.phy->set_power = dwc3_otg_set_power;
 	dotg->otg.phy->set_suspend = dwc3_otg_set_suspend;
+	dotg->otg.phy->set_phy_autosuspend = dwc3_otg_set_autosuspend;
 
 	ret = usb_set_transceiver(dotg->otg.phy);
 	if (ret) {

@@ -231,6 +231,7 @@ static const struct debugfs_reg32 dwc3_regs[] = {
 	dump_register(GEVNTCOUNT(0)),
 
 	dump_register(GHWPARAMS8),
+	dump_register(GFLADJ),
 	dump_register(DCFG),
 	dump_register(DCTL),
 	dump_register(DEVTEN),
@@ -660,7 +661,7 @@ static ssize_t dwc3_store_ep_num(struct file *file, const char __user *ubuf,
 	struct seq_file		*s = file->private_data;
 	struct dwc3		*dwc = s->private;
 	char			kbuf[10];
-	unsigned int		num, dir;
+	unsigned int		num, dir, temp;
 	unsigned long		flags;
 
 	memset(kbuf, 0, 10);
@@ -671,8 +672,15 @@ static ssize_t dwc3_store_ep_num(struct file *file, const char __user *ubuf,
 	if (sscanf(kbuf, "%u %u", &num, &dir) != 2)
 		return -EINVAL;
 
+	if (dir != 0 && dir != 1)
+		return -EINVAL;
+
+	temp = (num << 1) + dir;
+	if (temp >= DWC3_ENDPOINTS_NUM)
+		return -EINVAL;
+
 	spin_lock_irqsave(&dwc->lock, flags);
-	ep_num = (num << 1) + dir;
+	ep_num = temp;
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return count;
@@ -794,9 +802,9 @@ const struct file_operations dwc3_ep_trb_list_fops = {
 	.release		= single_release,
 };
 
-static unsigned int ep_addr_rxdbg_mask;
+static unsigned int ep_addr_rxdbg_mask = 1;
 module_param(ep_addr_rxdbg_mask, uint, S_IRUGO | S_IWUSR);
-static unsigned int ep_addr_txdbg_mask;
+static unsigned int ep_addr_txdbg_mask = 1;
 module_param(ep_addr_txdbg_mask, uint, S_IRUGO | S_IWUSR);
 
 /* Maximum debug message length */
