@@ -3552,7 +3552,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	return 0;
 }
 
-#ifndef CONFIG_FB
+#ifdef CONFIG_FB
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
@@ -3579,12 +3579,10 @@ static struct i2c_driver synaptics_rmi4_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = rmi4_match_table,
 #ifdef CONFIG_PM
-#ifndef CONFIG_FB
 		.pm = &synaptics_rmi4_dev_pm_ops,
 #endif
-#endif
-		.of_match_table = rmi4_match_table,
 	},
 	.probe = synaptics_rmi4_probe,
 	.remove = __devexit_p(synaptics_rmi4_remove),
