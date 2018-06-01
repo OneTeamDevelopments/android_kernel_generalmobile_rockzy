@@ -617,6 +617,7 @@ static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
 	return;
 }
 #endif
+#endif
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
