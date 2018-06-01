@@ -228,7 +228,19 @@ static struct i2c_driver lm3630_driver = {
 	.id_table	= lm3630_id,
 };
 
-module_i2c_driver(&lm3630_driver);
+static int __init lm3630_init(void)
+{
+	printk("lm3630 registered on i2c!\n");
+	return i2c_add_driver(&lm3630_driver);
+}
+
+static void __exit lm3630_exit(void)
+{
+	i2c_del_driver(&lm3630_driver);
+}
+
+module_init(lm3630_init);
+module_exit(lm3630_exit);
 
 MODULE_AUTHOR("www.gionee.com");
 MODULE_DESCRIPTION("lm3630 backlight driver");

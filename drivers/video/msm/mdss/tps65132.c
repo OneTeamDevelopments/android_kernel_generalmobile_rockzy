@@ -126,7 +126,18 @@ static struct i2c_driver tps65132_driver = {
 	.id_table	= tps65132_id,
 };
 
-module_i2c_driver(&tps65132_driver);
+static int __init tps65132_init(void)
+{
+	return i2c_add_driver(&tps65132_driver);
+}
+
+static void __exit tps65132_exit(void)
+{
+	i2c_del_driver(&tps65132_driver);
+}
+
+module_init(tps65132_init);
+module_exit(tps65132_exit);
 
 MODULE_AUTHOR("www.gionee.com");
 MODULE_DESCRIPTION("tps65132 backlight driver");
