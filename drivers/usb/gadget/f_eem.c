@@ -568,3 +568,4 @@ int __init eem_bind_config(struct usb_configuration *c)
 		kfree(eem);
 	return status;
 }
+

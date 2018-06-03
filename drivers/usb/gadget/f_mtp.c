@@ -563,6 +563,9 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 
 	DBG(cdev, "mtp_read(%d)\n", count);
 
+	if (!dev->ep_out)
+		return -EINVAL;
+
 	len = ALIGN(count, dev->ep_out->maxpacket);
 
 	if (len > mtp_rx_req_len)
@@ -652,6 +655,9 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 	int ret;
 
 	DBG(cdev, "mtp_write(%d)\n", count);
+
+	if (!dev->ep_in)
+		return -EINVAL;
 
 	spin_lock_irq(&dev->lock);
 	if (dev->state == STATE_CANCELED) {
@@ -752,6 +758,11 @@ static void send_file_work(struct work_struct *data)
 	filp = dev->xfer_file;
 	offset = dev->xfer_file_offset;
 	count = dev->xfer_file_length;
+
+	if (count < 0) {
+		dev->xfer_result = -EINVAL;
+		return;
+	}
 
 	DBG(cdev, "send_file_work(%lld %lld)\n", offset, count);
 
@@ -855,6 +866,11 @@ static void receive_file_work(struct work_struct *data)
 	offset = dev->xfer_file_offset;
 	count = dev->xfer_file_length;
 
+	if (count < 0) {
+		dev->xfer_result = -EINVAL;
+		return;
+	}
+
 	DBG(cdev, "receive_file_work(%lld)\n", count);
 	if (!IS_ALIGNED(count, dev->ep_out->maxpacket))
 		DBG(cdev, "%s- count(%lld) not multiple of mtu(%d)\n", __func__,
@@ -911,6 +927,12 @@ static void receive_file_work(struct work_struct *data)
 			if (count < read_req->length)
 				read_req->actual = (read_req->actual > count ?
 						count : read_req->actual);
+
+			if (read_req->status) {
+				r = read_req->status;
+				break;
+			}
+
 			/* if xfer_file_length is 0xFFFFFFFF, then we read until
 			 * we get a zero length packet
 			 */

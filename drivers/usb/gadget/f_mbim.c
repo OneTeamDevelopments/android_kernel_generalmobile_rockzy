@@ -634,24 +634,24 @@ static void fmbim_ctrl_response_available(struct f_mbim *dev)
 	unsigned long			flags;
 	int				ret;
 
-	pr_debug("dev:%p portno#%d\n", dev, dev->port_num);
+	pr_debug("dev:%pK portno#%d\n", dev, dev->port_num);
 
 	spin_lock_irqsave(&dev->lock, flags);
 
 	if (!atomic_read(&dev->online)) {
-		pr_err("dev:%p is not online\n", dev);
+		pr_err("dev:%pK is not online\n", dev);
 		spin_unlock_irqrestore(&dev->lock, flags);
 		return;
 	}
 
 	if (!req) {
-		pr_err("dev:%p req is NULL\n", dev);
+		pr_err("dev:%pK req is NULL\n", dev);
 		spin_unlock_irqrestore(&dev->lock, flags);
 		return;
 	}
 
 	if (!req->buf) {
-		pr_err("dev:%p req->buf is NULL\n", dev);
+		pr_err("dev:%pK req->buf is NULL\n", dev);
 		spin_unlock_irqrestore(&dev->lock, flags);
 		return;
 	}
@@ -690,21 +690,21 @@ fmbim_send_cpkt_response(struct f_mbim *gr, struct ctrl_pkt *cpkt)
 	unsigned long	flags;
 
 	if (!gr || !cpkt) {
-		pr_err("Invalid cpkt, dev:%p cpkt:%p\n",
+		pr_err("Invalid cpkt, dev:%pK cpkt:%pK\n",
 				gr, cpkt);
 		return -ENODEV;
 	}
 
-	pr_debug("dev:%p port_num#%d\n", dev, dev->port_num);
+	pr_debug("dev:%pK port_num#%d\n", dev, dev->port_num);
 
 	if (!atomic_read(&dev->online)) {
-		pr_err("dev:%p is not connected\n", dev);
+		pr_err("dev:%pK is not connected\n", dev);
 		mbim_free_ctrl_pkt(cpkt);
 		return 0;
 	}
 
 	if (dev->not_port.notify_state != MBIM_NOTIFY_RESPONSE_AVAILABLE) {
-		pr_err("dev:%p state=%d, recover!!\n", dev,
+		pr_err("dev:%pK state=%d, recover!!\n", dev,
 			dev->not_port.notify_state);
 		mbim_free_ctrl_pkt(cpkt);
 		return 0;
@@ -767,7 +767,7 @@ static int mbim_bam_connect(struct f_mbim *dev)
 	enum peer_bam bam_name = (dev->xport == USB_GADGET_XPORT_BAM2BAM_IPA) ?
 							IPA_P_BAM : A2_P_BAM;
 
-	pr_info("dev:%p portno:%d\n", dev, dev->port_num);
+	pr_info("dev:%pK portno:%d\n", dev, dev->port_num);
 
 	src_connection_idx = usb_bam_get_connection_idx(gadget->name, bam_name,
 					USB_TO_PEER_PERIPHERAL, dev->port_num);
@@ -794,7 +794,7 @@ static int mbim_bam_connect(struct f_mbim *dev)
 
 static int mbim_bam_disconnect(struct f_mbim *dev)
 {
-	pr_info("dev:%p port:%d. Do nothing.\n",
+	pr_info("dev:%pK port:%d. Do nothing.\n",
 			dev, dev->port_num);
 
 	bam_data_disconnect(&dev->bam_port, dev->port_num);
@@ -931,7 +931,7 @@ static void mbim_notify_complete(struct usb_ep *ep, struct usb_request *req)
 	struct f_mbim			*mbim = req->context;
 	struct usb_cdc_notification	*event = req->buf;
 
-	pr_debug("dev:%p\n", mbim);
+	pr_debug("dev:%pK\n", mbim);
 
 	spin_lock(&mbim->lock);
 	switch (req->status) {
@@ -961,7 +961,7 @@ static void mbim_notify_complete(struct usb_ep *ep, struct usb_request *req)
 	mbim_do_notify(mbim);
 	spin_unlock(&mbim->lock);
 
-	pr_debug("dev:%p Exit\n", mbim);
+	pr_debug("dev:%pK Exit\n", mbim);
 }
 
 static void mbim_ep0out_complete(struct usb_ep *ep, struct usb_request *req)
@@ -972,7 +972,7 @@ static void mbim_ep0out_complete(struct usb_ep *ep, struct usb_request *req)
 	struct f_mbim		*mbim = func_to_mbim(f);
 	struct mbim_ntb_input_size *ntb = NULL;
 
-	pr_debug("dev:%p\n", mbim);
+	pr_debug("dev:%pK\n", mbim);
 
 	req->context = NULL;
 	if (req->status || req->actual != req->length) {
@@ -1010,7 +1010,7 @@ static void mbim_ep0out_complete(struct usb_ep *ep, struct usb_request *req)
 invalid:
 	usb_ep_set_halt(ep);
 
-	pr_err("dev:%p Failed\n", mbim);
+	pr_err("dev:%pK Failed\n", mbim);
 
 	return;
 }
@@ -1032,7 +1032,7 @@ fmbim_cmd_complete(struct usb_ep *ep, struct usb_request *req)
 		return;
 	}
 
-	pr_debug("dev:%p port#%d\n", dev, dev->port_num);
+	pr_debug("dev:%pK port#%d\n", dev, dev->port_num);
 
 	cpkt = mbim_alloc_ctrl_pkt(len, GFP_ATOMIC);
 	if (!cpkt) {
@@ -1382,7 +1382,7 @@ static int mbim_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 					return ret;
 				}
 
-				pr_info("Set mbim port in_desc = 0x%p",
+				pr_info("Set mbim port in_desc = 0x%pK",
 					mbim->bam_port.in->desc);
 
 				ret = config_ep_by_speed(cdev->gadget, f,
@@ -1394,7 +1394,7 @@ static int mbim_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 					return ret;
 				}
 
-				pr_info("Set mbim port out_desc = 0x%p",
+				pr_info("Set mbim port out_desc = 0x%pK",
 					mbim->bam_port.out->desc);
 
 				pr_debug("Activate mbim\n");
@@ -1769,6 +1769,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 {
 	struct f_mbim *dev = fp->private_data;
 	struct ctrl_pkt *cpkt = NULL;
+	unsigned long	flags;
 	int ret = 0;
 
 	pr_debug("Enter(%d)\n", count);
@@ -1806,8 +1807,10 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 		return -EIO;
 	}
 
+	spin_lock_irqsave(&dev->lock, flags);
 	while (list_empty(&dev->cpkt_req_q)) {
 		pr_debug("Requests list is empty. Wait.\n");
+		spin_unlock_irqrestore(&dev->lock, flags);
 		ret = wait_event_interruptible(dev->read_wq,
 			!list_empty(&dev->cpkt_req_q));
 		if (ret < 0) {
@@ -1816,11 +1819,13 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 			return -ERESTARTSYS;
 		}
 		pr_debug("Received request packet\n");
+		spin_lock_irqsave(&dev->lock, flags);
 	}
 
 	cpkt = list_first_entry(&dev->cpkt_req_q, struct ctrl_pkt,
 							list);
 	if (cpkt->len > count) {
+		spin_unlock_irqrestore(&dev->lock, flags);
 		mbim_unlock(&dev->read_excl);
 		pr_err("cpkt size too big:%d > buf size:%d\n",
 				cpkt->len, count);
@@ -1830,6 +1835,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	pr_debug("cpkt size:%d\n", cpkt->len);
 
 	list_del(&cpkt->list);
+	spin_unlock_irqrestore(&dev->lock, flags);
 	mbim_unlock(&dev->read_excl);
 
 	ret = copy_to_user(buf, cpkt->buf, cpkt->len);
