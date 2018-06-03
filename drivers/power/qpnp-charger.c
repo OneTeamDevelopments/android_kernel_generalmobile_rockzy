@@ -5739,10 +5739,9 @@ static int qpnp_chg_suspend(struct device *dev)
 			VREF_BAT_THM_ENABLED_FSM, 1);
 		if (rc)
 			pr_debug("failed to set FSM VREF_BAT_THM rc=%d\n", rc);
-#endif
-		#if defined(CONFIG_GN_Q_BSP_PM8941_CHARGER_SUPPORT)
+#if defined(CONFIG_GN_Q_BSP_PM8941_CHARGER_SUPPORT)
 		qpnp_chg_masked_write(chip, 0x12df, 0xFF, 0x00, 1);
-		#endif
+#endif
 	}
 
 	return rc;
