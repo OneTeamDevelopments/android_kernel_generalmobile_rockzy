@@ -3349,6 +3349,7 @@ qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 	} else {
 		pr_err("Unsupported level selected %d\n", lvl_sel);
 	}
+}
 /*
  * Increase the SMBB/SMBBP charger overtemp threshold to 150C while firing
  * the flash (and/or torch for PM8x26) when the bharger is used as the
