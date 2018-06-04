@@ -2959,6 +2959,8 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_register_input;
 	}
 
+	configure_sleep(rmi4_data);
+
 #ifdef INIT_TP_WHEN_RESUME
 init_break:
 #endif
@@ -3015,8 +3017,6 @@ init_break2:
 			__func__);
 		goto err_sysfs;
 	}
-
-		configure_sleep(rmi4_data);
 
 #ifdef DOUBLE_CLICK_WAKE
        retval = platform_device_register(&gn_tp_wake_device);
