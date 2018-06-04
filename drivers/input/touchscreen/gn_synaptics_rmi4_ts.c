@@ -41,7 +41,7 @@
 
 #define DOUBLE_CLICK_WAKE
 
-#define INIT_TP_WHEN_RESUME
+//#define INIT_TP_WHEN_RESUME
 
 //#define NO_0D_WHILE_2D
 /*
