@@ -2474,8 +2474,8 @@ static void gn_resume_init(struct synaptics_rmi4_data *rmi4_data)
 					EV_KEY, f1a->button_map[ii]);
 		  }
 #ifdef DOUBLE_CLICK_WAKE
-                set_bit(KEY_POWER, rmi4_data->input_dev->keybit);
-	         input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_POWER);
+                set_bit(KEY_WAKEUP, rmi4_data->input_dev->keybit);
+	         input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_WAKEUP);
                 set_bit(KEY_F13, rmi4_data->input_dev->keybit);
 	         input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_F13);
                 set_bit(KEY_F14, rmi4_data->input_dev->keybit);
@@ -2935,8 +2935,8 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 					EV_KEY, f1a->button_map[ii]);
 		}
 #ifdef DOUBLE_CLICK_WAKE
-              set_bit(KEY_POWER, rmi4_data->input_dev->keybit);
-		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_POWER);
+              set_bit(KEY_WAKEUP, rmi4_data->input_dev->keybit);
+		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_WAKEUP);
               set_bit(KEY_F13, rmi4_data->input_dev->keybit);
 	       input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_F13);
               set_bit(KEY_F14, rmi4_data->input_dev->keybit);
