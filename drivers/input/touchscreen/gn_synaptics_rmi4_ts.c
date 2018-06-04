@@ -2962,7 +2962,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 #ifdef INIT_TP_WHEN_RESUME
 init_break:
 #endif
-	configure_sleep(rmi4_data);
 
 	if (!exp_fn_inited) {
 		mutex_init(&exp_fn_list_mutex);
@@ -3016,6 +3015,8 @@ init_break2:
 			__func__);
 		goto err_sysfs;
 	}
+
+		configure_sleep(rmi4_data);
 
 #ifdef DOUBLE_CLICK_WAKE
        retval = platform_device_register(&gn_tp_wake_device);
@@ -3094,6 +3095,10 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	struct synaptics_rmi4_device_info *rmi;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
+
+#if defined(CONFIG_FB)
+	fb_unregister_client(&rmi4_data->fb_notif);
+#endif
 
 	cancel_delayed_work_sync(&rmi4_data->det_work);
 	flush_workqueue(rmi4_data->det_workqueue);
@@ -3411,7 +3416,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	return 0;
 }
 
-#ifndef CONFIG_FB
+#ifdef CONFIG_FB
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
@@ -3439,9 +3444,7 @@ static struct i2c_driver synaptics_rmi4_driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
 #ifdef CONFIG_PM
-#ifndef CONFIG_FB
 		.pm = &synaptics_rmi4_dev_pm_ops,
-#endif
 #endif
 		.of_match_table = rmi4_match_table,
 	},
