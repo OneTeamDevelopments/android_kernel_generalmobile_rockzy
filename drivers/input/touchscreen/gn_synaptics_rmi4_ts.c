@@ -3096,10 +3096,6 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
-#if defined(CONFIG_FB)
-	fb_unregister_client(&rmi4_data->fb_notif);
-#endif
-
 	cancel_delayed_work_sync(&rmi4_data->det_work);
 	flush_workqueue(rmi4_data->det_workqueue);
 	destroy_workqueue(rmi4_data->det_workqueue);
