@@ -5306,16 +5306,14 @@ static int fb_notifier_callback(struct notifier_block *self,
 
 			if (*blank == FB_BLANK_UNBLANK) {
 				/* jingchun.wang@Onlinerd.Driver, 2013/12/27  Add for auto adapt current by software. */
-					qpnp_chg_iusbmax_set(chip, 1500);
-					}
-					qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
-				} else if (*blank == FB_BLANK_POWERDOWN) {
-					/* jingchun.wang@Onlinerd.Driver, 2013/12/27  Add for auto adapt current by software. */
-					if(chip->aicl_current != 0) {
-						qpnp_chg_iusbmax_set(chip, 1500);
-					}
-					qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
-			}
+				qpnp_chg_iusbmax_set(chip, 1500);
+				}
+				qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
+			} else if (*blank == FB_BLANK_POWERDOWN) {
+				/* jingchun.wang@Onlinerd.Driver, 2013/12/27  Add for auto adapt current by software. */
+				qpnp_chg_iusbmax_set(chip, 1500);
+				}
+				qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
 	}
 
 	return 0;
