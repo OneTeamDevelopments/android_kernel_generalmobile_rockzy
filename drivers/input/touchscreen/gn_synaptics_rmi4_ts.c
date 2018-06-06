@@ -2571,8 +2571,8 @@ static int fb_notifier_callback(struct notifier_block *self,
 			if( count_resume == 0 ){
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 			count_resume = 1;
-		}
-		else if (*blank == FB_BLANK_POWERDOWN){
+		        }
+		}else if(*blank == FB_BLANK_POWERDOWN){
 			if( count_resume == 1){
 			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
 			count_resume = 0;
