@@ -5313,7 +5313,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 				/* jingchun.wang@Onlinerd.Driver, 2013/12/27  Add for auto adapt current by software. */
 				qpnp_chg_iusbmax_set(chip, 1500);
 				}
-				qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
+				qpnp_chg_ibatmax_set(chip, 2496);
 	}
 
 	return 0;
