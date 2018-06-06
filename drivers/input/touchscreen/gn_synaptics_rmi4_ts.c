@@ -3295,7 +3295,7 @@ static void synaptics_rmi4_double_wakeup_enter(struct synaptics_rmi4_data *rmi4_
 static int synaptics_rmi4_suspend(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-    int count = 0;
+//    int count = 0;
 
 #ifdef INIT_TP_WHEN_RESUME
        if (init_not_complete) {
