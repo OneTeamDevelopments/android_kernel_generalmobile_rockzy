@@ -39,7 +39,7 @@
 
 #define TYPE_B_PROTOCOL
 
-#define DOUBLE_CLICK_WAKE
+//#define DOUBLE_CLICK_WAKE
 
 #define INIT_TP_WHEN_RESUME
 
