@@ -2555,6 +2555,7 @@ int gn_tp_reset(struct synaptics_rmi4_data *rmi4_data)
 }
 
 #if defined(CONFIG_FB)
+static int count_resume = 1;
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
@@ -2566,12 +2567,18 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
 		rmi4_data && rmi4_data->i2c_client) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK)
+		if (*blank == FB_BLANK_UNBLANK){
+			if( count_resume == 0 ){
 			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-		else if (*blank == FB_BLANK_POWERDOWN)
+			count_resume = 1;
+		}
+		else if (*blank == FB_BLANK_POWERDOWN){
+			if( count_resume == 1){
 			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+			count_resume = 0;
+			}
+		}
 	}
-
 	return 0;
 }
 #endif
