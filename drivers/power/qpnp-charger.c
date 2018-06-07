@@ -32,8 +32,6 @@
 #include <linux/qpnp-revid.h>
 #include <linux/alarmtimer.h>
 #include <linux/spinlock.h>
-#include <linux/fb.h>
-#include <linux/notifier.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/qpnp/pin.h>
@@ -403,7 +401,6 @@ struct qpnp_chg_chip {
 	unsigned int			ext_ovp_isns_gpio;
 	unsigned int			usb_trim_default;
 	u8				chg_temp_thresh_default;
-	struct notifier_block		fb_notif;
 };
 
 static void
@@ -5282,44 +5279,6 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
-#if defined(CONFIG_FB)
-/* jingchun.wang@Onlinerd.Driver, 2013/12/14  Add for reset charge current when screen is off */
-static int fb_notifier_callback(struct notifier_block *self,
-				 unsigned long event, void *data)
-{
-	struct fb_event *evdata = data;
-	int *blank;
-	struct qpnp_chg_chip *chip =
-	container_of(self, struct qpnp_chg_chip, fb_notif);
-	union power_supply_propval ret = {0,};
-
-	if (evdata && evdata->data && chip) {
-		if (event == FB_EVENT_BLANK) {
-			blank = evdata->data;
-			chip->usb_psy->get_property(chip->usb_psy,
-			  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
-			/* jingchun.wang@Onlinerd.Driver, 2013/12/30  Add for recognize dcp use 2000mA */
-			if(ret.intval / 1000 != 2000) {
-				//not DCP charger, don't care
-				return 0;
-			}
-
-			if (*blank == FB_BLANK_UNBLANK) {
-				/* jingchun.wang@Onlinerd.Driver, 2013/12/27  Add for auto adapt current by software. */
-				qpnp_chg_iusbmax_set(chip, 1500);
-				}
-				qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
-			} else if (*blank == FB_BLANK_POWERDOWN) {
-				/* jingchun.wang@Onlinerd.Driver, 2013/12/27  Add for auto adapt current by software. */
-				qpnp_chg_iusbmax_set(chip, 1500);
-				}
-				qpnp_chg_ibatmax_set(chip, 2496);
-	}
-
-	return 0;
-}
-#endif /*CONFIG_FB*/
-
 static int __devinit
 qpnp_charger_probe(struct spmi_device *spmi)
 {
@@ -5694,15 +5653,6 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	schedule_delayed_work(&chip->aicl_check_work,
 		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
-#ifdef CONFIG_FB
-	/* jingchun.wang@Onlinerd.Driver, 2013/12/14  Add for reset charge current when screen is off */
-	chip->fb_notif.notifier_call = fb_notifier_callback;
-
-	rc = fb_register_client(&chip->fb_notif);
-
-	if (rc)
-		pr_err("Unable to register fb_notifier: %d\n", rc);
-#endif
 	pr_info("success chg_dis = %d, bpd = %d, usb = %d, dc = %d b_health = %d batt_present = %d\n",
 			chip->charging_disabled,
 			chip->bpd_detection,
@@ -5753,11 +5703,6 @@ qpnp_charger_remove(struct spmi_device *spmi)
 
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
-
-#ifdef CONFIG_FB
-	if (fb_unregister_client(&chip->fb_notif))
-		pr_err("Error occurred while unregistering fb_notifier.\n");
-#endif
 
 	return 0;
 }
