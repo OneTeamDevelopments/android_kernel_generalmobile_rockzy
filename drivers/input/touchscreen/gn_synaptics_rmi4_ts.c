@@ -41,6 +41,8 @@
 
 #define DOUBLE_CLICK_WAKE
 
+#define TP_GLOVE_SUPPORT
+
 #define INIT_TP_WHEN_RESUME
 
 //#define NO_0D_WHILE_2D
