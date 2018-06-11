@@ -27,6 +27,7 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/qpnp/power-on.h>
 #include <linux/of_batterydata.h>
+#include <linux/wakelock.h>
 
 /* BMS Register Offsets */
 #define REVISION1			0x0
@@ -439,6 +440,12 @@ static int lock_output_data(struct qpnp_bms_chip *chip)
 		pr_err("couldnt lock bms output rc = %d\n", rc);
 		return rc;
 	}
+	/*
+	 * Sleep for at least 60 microseconds here to make sure there has
+	 * been at least two cycles of the sleep clock so that the registers
+	 * are correctly locked.
+	 */
+	usleep_range(60, 2000);
 	return 0;
 }
 
@@ -1091,7 +1098,7 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 	}
 
 	rc = read_cc_raw(chip, &raw->cc, CC);
-	rc = read_cc_raw(chip, &raw->shdw_cc, SHDW_CC);
+	rc |= read_cc_raw(chip, &raw->shdw_cc, SHDW_CC);
 	if (rc) {
 		pr_err("Failed to read raw cc data, rc = %d\n", rc);
 		goto param_err;
@@ -1102,10 +1109,11 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 
 	if (chip->prev_last_good_ocv_raw == OCV_RAW_UNINITIALIZED) {
 		convert_and_store_ocv(chip, raw, batt_temp, true);
-		pr_info("PON_OCV_UV = %d, cc = %llx,ocv_raw = 0x%x\n",
-				chip->last_ocv_uv, raw->cc,raw->last_good_ocv_raw);
+		pr_info("PON_OCV_UV = %d, cc = %llx\n",
+				chip->last_ocv_uv, raw->cc);
 		warm_reset = qpnp_pon_is_warm_reset();
 		if (raw->last_good_ocv_uv < MIN_OCV_UV || warm_reset > 0) {
+			pr_info("raw->last_good_ocv_uv = %d, warm_reset = %d\n", raw->last_good_ocv_uv, warm_reset);
 			pr_info("OCV is stale or bad, estimating new OCV.\n");
 			chip->last_ocv_uv = estimate_ocv(chip, batt_temp);
 			raw->last_good_ocv_uv = chip->last_ocv_uv;
@@ -1905,6 +1913,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 				time_since_last_change_sec
 					/ SOC_CHANGE_PER_SEC);
 
+
 		if (chip->last_soc_unbound) {
 			chip->last_soc_unbound = false;
 		} else {
@@ -1915,11 +1924,14 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 			soc_change = min(1, soc_change);
 		}
 
+
 		if (soc < chip->last_soc && soc != 0)
 			soc = chip->last_soc - soc_change;
 		if (soc > chip->last_soc && soc != 100)
 			soc = chip->last_soc + soc_change;
+
 	}
+
 
 	if (chip->last_soc != soc && !chip->last_soc_unbound)
 		chip->last_soc_change_sec = last_change_sec;
@@ -1927,8 +1939,9 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
 			soc, time_since_last_change_sec);
-	
+
 	chip->last_soc = bound_soc(soc);
+
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
 	pr_debug("Reported SOC = %d\n", chip->last_soc);
 	chip->t_soc_queried = now;
@@ -2219,7 +2232,6 @@ skip_limits:
 	rc_new_uah = (params->fcc_uah * pc_new) / 100;
 	soc_new = (rc_new_uah - params->cc_uah - params->uuc_uah)*100
 					/ (params->fcc_uah - params->uuc_uah);
-	soc_new = bound_soc(soc_new);
 
 	/*
 	 * if soc_new is ZERO force it higher so that phone doesnt report soc=0
@@ -2477,6 +2489,8 @@ static int calculate_state_of_charge(struct qpnp_bms_chip *chip,
 	/* always clamp soc due to BMS hw/sw immaturities */
 	new_calculated_soc = clamp_soc_based_on_voltage(chip,
 					new_calculated_soc);
+
+	new_calculated_soc = bound_soc(new_calculated_soc);
 	/*
 	 * If the battery is full, configure the cc threshold so the system
 	 * wakes up after SoC changes
@@ -2588,7 +2602,12 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 			batt_temp = (int)result.physical;
 
 			mutex_lock(&chip->last_ocv_uv_mutex);
-			read_soc_params_raw(chip, &raw, batt_temp);
+			rc = read_soc_params_raw(chip, &raw, batt_temp);
+			if (rc) {
+				pr_err("Unable to read params, rc: %d\n", rc);
+				soc = 0;
+				goto done;
+			}
 			calculate_soc_params(chip, &raw, &params, batt_temp);
 			if (!is_battery_present(chip)) {
 				pr_debug("battery gone\n");
@@ -2602,6 +2621,7 @@ static int recalculate_raw_soc(struct qpnp_bms_chip *chip)
 				soc = calculate_raw_soc(chip, &raw,
 							&params, batt_temp);
 			}
+done:
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
@@ -2640,8 +2660,14 @@ static int recalculate_soc(struct qpnp_bms_chip *chip)
 			batt_temp = (int)result.physical;
 
 			mutex_lock(&chip->last_ocv_uv_mutex);
-			read_soc_params_raw(chip, &raw, batt_temp);
-			soc = calculate_state_of_charge(chip, &raw, batt_temp);
+			rc = read_soc_params_raw(chip, &raw, batt_temp);
+			if (rc) {
+				pr_err("Unable to read params, rc: %d\n", rc);
+				soc = chip->calculated_soc;
+			} else {
+				soc = calculate_state_of_charge(chip,
+						&raw, batt_temp);
+			}
 			mutex_unlock(&chip->last_ocv_uv_mutex);
 		}
 	}
@@ -3094,8 +3120,10 @@ static int backup_new_fcc(struct qpnp_bms_chip *chip, int fcc_mah,
 		min_cycle = chip->fcc_learning_samples[0].chargecycles;
 		for (i = 1; i < chip->min_fcc_learning_samples; i++) {
 			if (min_cycle >
-				chip->fcc_learning_samples[i].chargecycles)
+				chip->fcc_learning_samples[i].chargecycles) {
 				pos = i;
+				break;
+			}
 		}
 	} else {
 		/* find an empty location */
@@ -3335,6 +3363,8 @@ static void battery_status_check(struct qpnp_bms_chip *chip)
 		} else if (chip->battery_status
 				== POWER_SUPPLY_STATUS_FULL) {
 			pr_info("battery not full any more\n");
+			get_current_time(&(chip->last_recalc_time));
+			chip->last_soc_change_sec = chip->last_recalc_time;
 			disable_bms_irq(&chip->ocv_thr_irq);
 			disable_bms_irq(&chip->sw_cc_thr_irq);
 		}
@@ -3386,9 +3416,10 @@ static void battery_insertion_check(struct qpnp_bms_chip *chip)
 			if (present) {
 				chip->insertion_ocv_uv = insertion_ocv_uv;
 				setup_vbat_monitoring(chip);
-				chip->new_battery = true;
+					chip->new_battery = true;
 			} else {
 				reset_vbat_monitoring(chip);
+				get_current_time(&(chip->last_battery_absent_sec));
 			}
 		}
 		chip->battery_present = present;
@@ -3402,7 +3433,9 @@ static void battery_insertion_check(struct qpnp_bms_chip *chip)
 /* Returns capacity as a SoC percentage between 0 and 100 */
 static int get_prop_bms_capacity(struct qpnp_bms_chip *chip)
 {
+
 	return report_state_of_charge(chip);
+
 }
 
 static void qpnp_bms_external_power_changed(struct power_supply *psy)
@@ -3586,8 +3619,8 @@ static void load_shutdown_data(struct qpnp_bms_chip *chip)
 	calculated_soc = recalculate_raw_soc(chip);
 	shutdown_soc_out_of_limit = (abs(shutdown_soc - calculated_soc)
 			> chip->shutdown_soc_valid_limit);
-	pr_info("calculated_soc = %d, shutdown_soc = %d, valid_limit = %d\n",
-			calculated_soc, shutdown_soc, chip->shutdown_soc_valid_limit);
+	pr_info("calculated_soc = %d, valid_limit = %d\n",
+			calculated_soc, chip->shutdown_soc_valid_limit);
 
 	/*
 	 * Check if the battery has been replaced while the system was powered
@@ -3611,12 +3644,13 @@ static void load_shutdown_data(struct qpnp_bms_chip *chip)
 		chip->shutdown_soc = shutdown_soc;
 	}
 
-	pr_info("raw_soc = %d shutdown_soc = %d shutdown_iavg = %d shutdown_soc_invalid = %d, battery_removed = %d\n",
+	pr_info("raw_soc = %d shutdown_soc = %d shutdown_iavg = %d shutdown_soc_invalid = %d, battery_removed = %d, offmode = %d\n",
 			calculated_soc,
 			chip->shutdown_soc,
 			chip->shutdown_iavg_ma,
 			chip->shutdown_soc_invalid,
-			chip->battery_removed);
+			chip->battery_removed,
+			offmode_battery_replaced);
 }
 
 static irqreturn_t bms_ocv_thr_irq_handler(int irq, void *_chip)
