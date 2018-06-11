@@ -3419,7 +3419,6 @@ static void battery_insertion_check(struct qpnp_bms_chip *chip)
 					chip->new_battery = true;
 			} else {
 				reset_vbat_monitoring(chip);
-				get_current_time(&(chip->last_battery_absent_sec));
 			}
 		}
 		chip->battery_present = present;
