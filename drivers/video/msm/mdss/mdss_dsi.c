@@ -683,78 +683,6 @@ error:
 	return ret;
 }
 
-static int mdss_dsi_disp_wake_thread(void *data)
-{
-	struct mdss_panel_data *pdata = data;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata =
-		container_of(pdata, typeof(*ctrl_pdata), panel_data);
-	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
-
-	sched_setscheduler(current, SCHED_FIFO, &param);
-
-	wait_event(ctrl_pdata->wake_waitq,
-		atomic_read(&ctrl_pdata->needs_wake));
-
-	/* MDSS_EVENT_UNBLANK */
-	mdss_dsi_on(pdata);
-
-	/* MDSS_EVENT_PANEL_ON */
-	ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
-	mdss_dsi_unblank(pdata);
-
-	atomic_set(&ctrl_pdata->needs_wake, 0);
-	complete_all(&ctrl_pdata->wake_comp);
-
-	return 0;
-}
-
-static void mdss_dsi_start_wake_thread(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	if (ctrl_pdata->wake_thread)
-		return;
-
-	ctrl_pdata->wake_thread = kthread_run(mdss_dsi_disp_wake_thread,
-						&ctrl_pdata->panel_data,
-						"mdss_disp_wake");
-	if (IS_ERR(ctrl_pdata->wake_thread))
-		pr_err("%s: Failed to start disp-wake thread, rc=%ld\n",
-				__func__, PTR_ERR(ctrl_pdata->wake_thread));
-}
-
-static void mdss_dsi_display_wake(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	INIT_COMPLETION(ctrl_pdata->wake_comp);
-
-	/* Make sure the thread is started since it's needed right now */
-	mdss_dsi_start_wake_thread(ctrl_pdata);
-	ctrl_pdata->wake_thread = NULL;
-
-	atomic_set(&ctrl_pdata->needs_wake, 1);
-	wake_up(&ctrl_pdata->wake_waitq);
-}
-
-static int mdss_dsi_fb_unblank_cb(struct notifier_block *nb,
-	unsigned long action, void *data)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata =
-		container_of(nb, typeof(*ctrl_pdata), wake_notif);
-	struct fb_event *evdata = data;
-	int *blank = evdata->data;
-
-	/* Parse framebuffer blank events as soon as they occur */
-	if (action != FB_EVENT_BLANK)
-		return NOTIFY_OK;
-
-	ctrl_pdata->is_unblank = *blank == FB_BLANK_UNBLANK;
-
-	if (ctrl_pdata->is_unblank)
-		mdss_dsi_display_wake(ctrl_pdata);
-	else
-		mdss_dsi_start_wake_thread(ctrl_pdata);
-
-	return NOTIFY_OK;
-}
-
 int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -934,9 +862,16 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 	switch (event) {
 	case MDSS_EVENT_UNBLANK:
-		/* The unblank notifier handles waking for unblank events */
-		if (!ctrl_pdata->is_unblank)
-			mdss_dsi_display_wake(ctrl_pdata);
+		rc = mdss_dsi_on(pdata);
+		mdss_dsi_op_mode_config(pdata->panel_info.mipi.mode,
+							pdata);
+		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE)
+			rc = mdss_dsi_unblank(pdata);
+		break;
+	case MDSS_EVENT_PANEL_ON:
+		ctrl_pdata->ctrl_state |= CTRL_STATE_MDP_ACTIVE;
+		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
+			rc = mdss_dsi_unblank(pdata);
 		break;
 	case MDSS_EVENT_BLANK:
 		power_state = (int) (unsigned long) arg;
@@ -1196,11 +1131,6 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 				&ctrl_pdata->panel_data);
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
-
-	ctrl_pdata->wake_notif.notifier_call = mdss_dsi_fb_unblank_cb;
-	ctrl_pdata->wake_notif.priority = INT_MAX - 1;
-	fb_register_client(&ctrl_pdata->wake_notif);
-
 	return 0;
 
 error_pan_node:
@@ -1549,9 +1479,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	} else {
 		pinfo->panel_power_state = MDSS_PANEL_POWER_OFF;
 	}
-
-	init_completion(&ctrl_pdata->wake_comp);
-	init_waitqueue_head(&ctrl_pdata->wake_waitq);
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));
 	if (rc) {
