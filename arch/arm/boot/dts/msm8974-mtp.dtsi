@@ -210,8 +210,7 @@
 			label = "volume_down";
 			gpios = <&pm8941_gpios 2 0x1>;
 			linux,input-type = <1>;
-			linux,code = <114>;
-			gpio-key,wakeup;
+			linux,code = <114>;	
 			debounce-interval = <15>;
 		};
 		
@@ -229,7 +228,6 @@
 			gpios = <&pm8941_gpios 5 0x1>;
 			linux,input-type = <1>;
 			linux,code = <115>;
-			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};				
 	};
