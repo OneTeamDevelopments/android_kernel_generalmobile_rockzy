@@ -164,6 +164,8 @@ static void notify_netlink_uevent(const char *iface, struct idletimer_tg *timer)
 		 timestamp_msg, uid_msg);
 	kobject_uevent_env(idletimer_tg_kobj, KOBJ_CHANGE, envp);
 	return;
+
+
 }
 
 static
@@ -200,7 +202,7 @@ static ssize_t idletimer_tg_show(struct kobject *kobj, struct attribute *attr,
 		return sprintf(buf, "%u\n",
 			       jiffies_to_msecs(expires - now) / 1000);
 
-	if (timer->send_nl_msg)
+	if (timer && timer->send_nl_msg)
 		return sprintf(buf, "0 %d\n",
 			jiffies_to_msecs(now - expires) / 1000);
 	else
@@ -378,13 +380,23 @@ static void reset_timer(const struct idletimer_tg_info *info,
  * The actual xt_tables plugin.
  */
 static unsigned int idletimer_tg_target(struct sk_buff *skb,
-		const struct xt_action_param *par)
+					 const struct xt_action_param *par)
 {
 	const struct idletimer_tg_info *info = par->targinfo;
+	unsigned long now = jiffies;
+
 	pr_debug("resetting timer %s, timeout period %u\n",
 		 info->label, info->timeout);
 
 	BUG_ON(!info->timer);
+
+	info->timer->active = true;
+
+	if (time_before(info->timer->timer.expires, now)) {
+		schedule_work(&info->timer->work);
+		pr_debug("Starting timer %s (Expired, Jiffies): %lu, %lu\n",
+			 info->label, info->timer->timer.expires, now);
+	}
 
 	/* TODO: Avoid modifying timers on each packet */
 	reset_timer(info, skb);
@@ -395,6 +407,7 @@ static int idletimer_tg_checkentry(const struct xt_tgchk_param *par)
 {
 	struct idletimer_tg_info *info = par->targinfo;
 	int ret;
+
 	pr_debug("checkentry targinfo %s\n", info->label);
 
 	if (info->timeout == 0) {
@@ -425,7 +438,9 @@ static int idletimer_tg_checkentry(const struct xt_tgchk_param *par)
 			return ret;
 		}
 	}
+
 	mutex_unlock(&list_mutex);
+
 	return 0;
 }
 

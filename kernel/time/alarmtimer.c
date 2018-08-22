@@ -256,7 +256,7 @@ static void alarmtimer_enqueue(struct alarm_base *base, struct alarm *alarm)
 }
 
 /**
- * alarmtimer_remove - Removes an alarm timer from an alarm_base timerqueue
+ * alarmtimer_dequeue - Removes an alarm timer from an alarm_base timerqueue
  * @base: pointer to the base where the timer is running
  * @alarm: pointer to alarm being removed
  *
@@ -264,7 +264,7 @@ static void alarmtimer_enqueue(struct alarm_base *base, struct alarm *alarm)
  *
  * Must hold base->lock when calling.
  */
-static void alarmtimer_remove(struct alarm_base *base, struct alarm *alarm)
+static void alarmtimer_dequeue(struct alarm_base *base, struct alarm *alarm)
 {
 	if (!(alarm->state & ALARMTIMER_STATE_ENQUEUED))
 		return;
@@ -292,7 +292,7 @@ static enum hrtimer_restart alarmtimer_fired(struct hrtimer *timer)
 	int restart = ALARMTIMER_NORESTART;
 
 	spin_lock_irqsave(&base->lock, flags);
-	alarmtimer_remove(base, alarm);
+	alarmtimer_dequeue(base, alarm);
 	spin_unlock_irqrestore(&base->lock, flags);
 
 	if (alarm->function)
@@ -575,7 +575,7 @@ int alarm_try_to_cancel(struct alarm *alarm)
 	spin_lock_irqsave(&base->lock, flags);
 	ret = hrtimer_try_to_cancel(&alarm->timer);
 	if (ret >= 0)
-		alarmtimer_remove(base, alarm);
+		alarmtimer_dequeue(base, alarm);
 	spin_unlock_irqrestore(&base->lock, flags);
 	return ret;
 }
@@ -694,7 +694,7 @@ static int alarm_clock_getres(const clockid_t which_clock, struct timespec *tp)
 	clockid_t baseid = alarm_bases[clock2alarm(which_clock)].base_clockid;
 
 	if (!alarmtimer_get_rtcdev())
-		return -ENOTSUPP;
+		return -EINVAL;
 
 	return hrtimer_get_res(baseid, tp);
 }
@@ -711,7 +711,7 @@ static int alarm_clock_get(clockid_t which_clock, struct timespec *tp)
 	struct alarm_base *base = &alarm_bases[clock2alarm(which_clock)];
 
 	if (!alarmtimer_get_rtcdev())
-		return -ENOTSUPP;
+		return -EINVAL;
 
 	*tp = ktime_to_timespec(base->gettime());
 	return 0;

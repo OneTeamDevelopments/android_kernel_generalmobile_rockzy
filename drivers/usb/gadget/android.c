@@ -61,6 +61,7 @@
 #ifdef CONFIG_SND_PCM
 #include "f_audio_source.c"
 #endif
+#include "f_fs.c"
 #include "f_mass_storage.c"
 #include "u_serial.c"
 #include "u_sdio.c"
@@ -240,6 +241,8 @@ struct android_dev {
 
 	/* A list node inside the android_dev_list */
 	struct list_head list_item;
+
+	char ffs_aliases[256];
 };
 
 struct android_configuration {
@@ -522,7 +525,7 @@ ffs_aliases_show(struct device *pdev, struct device_attribute *attr, char *buf)
 	int ret;
 
 	dev = list_first_entry(&android_dev_list, struct android_dev,
-					list_item);
+			list_item);
 
 	mutex_lock(&dev->mutex);
 	ret = sprintf(buf, "%s\n", dev->ffs_aliases);
@@ -539,7 +542,7 @@ ffs_aliases_store(struct device *pdev, struct device_attribute *attr,
 	char buff[256];
 
 	dev = list_first_entry(&android_dev_list, struct android_dev,
-					list_item);
+			list_item);
 
 	mutex_lock(&dev->mutex);
 
@@ -2655,17 +2658,18 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 
 	while (b) {
 		conf_str = strsep(&b, ":");
-		if (conf_str) {
-			/* If the next not equal to the head, take it */
-			if (curr_conf->next != &dev->configs)
-				conf = list_entry(curr_conf->next,
-						  struct android_configuration,
-						  list_item);
-			else
-				conf = alloc_android_config(dev);
+		if (!conf_str)
+			continue;
 
-			curr_conf = curr_conf->next;
-		}
+		/* If the next not equal to the head, take it */
+		if (curr_conf->next != &dev->configs)
+			conf = list_entry(curr_conf->next,
+					  struct android_configuration,
+					  list_item);
+		else
+			conf = alloc_android_config(dev);
+
+		curr_conf = curr_conf->next;
 
 		while (conf_str) {
 			name = strsep(&conf_str, ",");
@@ -2673,7 +2677,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 			is_ffs = 0;
 			strlcpy(aliases, dev->ffs_aliases, sizeof(aliases));
 			a = aliases;
-
 
 			while (a) {
 				char *alias = strsep(&a, ",");
@@ -2689,7 +2692,7 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 				err = android_enable_function(dev, conf, "ffs");
 				if (err)
 					pr_err("android_usb: Cannot enable ffs (%d)",
-						err);
+										err);
 				else
 					ffs_enabled = 1;
 				continue;

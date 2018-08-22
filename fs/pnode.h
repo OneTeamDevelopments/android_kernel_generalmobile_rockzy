@@ -25,7 +25,7 @@
 #define CL_COPY_ALL 		0x04
 #define CL_MAKE_SHARED 		0x08
 #define CL_PRIVATE 		0x10
-#define CL_SHARED_TO_SLAVE      0x20
+#define CL_SHARED_TO_SLAVE	0x20
 
 static inline void set_mnt_shared(struct mount *mnt)
 {
@@ -38,7 +38,7 @@ int propagate_mnt(struct mount *, struct dentry *, struct mount *,
 		struct list_head *);
 int propagate_umount(struct list_head *);
 int propagate_mount_busy(struct mount *, int);
-int propagate_remount(struct mount *);
+void propagate_remount(struct mount *);
 void mnt_release_group_id(struct mount *);
 int get_dominating_id(struct mount *mnt, const struct path *root);
 unsigned int mnt_get_count(struct mount *mnt);
