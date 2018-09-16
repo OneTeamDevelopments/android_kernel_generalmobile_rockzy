@@ -50,7 +50,6 @@
 #ifdef CONFIG_SND_RAWMIDI
 #include "f_midi.c"
 #endif
-#include "f_fs.c"
 #include "f_diag.c"
 #include "f_qdss.c"
 #include "f_rmnet_smd.c"
@@ -236,7 +235,6 @@ struct android_dev {
 	char pm_qos[5];
 	struct pm_qos_request pm_qos_req_dma;
 	struct work_struct work;
-	char ffs_aliases[256];
 
 	/* A list of struct android_configuration */
 	struct list_head configs;
