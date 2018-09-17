@@ -145,8 +145,7 @@
 					fsmgr_flags = "wait";
 					status = "ok";
 				};
-
-			};
+ 			};
 		};
 	};
 
