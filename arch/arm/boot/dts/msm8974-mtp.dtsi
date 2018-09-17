@@ -221,14 +221,6 @@
 			linux,code = <115>;
 			debounce-interval = <15>;
 		};
-
-		vol_down {
-			label = "volume_down";
-			gpios = <&pm8941_gpios 2 0x1>;
-			linux,input-type = <1>;
-			linux,code = <114>;
-			debounce-interval = <15>;
-		};
 	};
 
 	spi@f9923000 {
@@ -414,18 +406,15 @@
 
 	gpio@c100 { /* GPIO 2 */
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;        /* QPNP_PIN_PULL_UP_30  */
-		qcom,vin-sel = <2>;
-		qcom,src-sel = <0>;
+		qcom,pull = <0>;        /* QPNP_PIN_PULL_UP_30  */
+		qcom,master-en = <1>;
 	};
 
 	gpio@c200 { /* GPIO 3 */
-		qcom,mode = <1>;        /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;        /* QPNP_PIN_PULL_UP_30  */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <0>;        /* QPNP_PIN_PULL_UP_30  */
 		qcom,vin-sel = <2>;
-		qcom,output-type = <0>;
-		qcom,out-strength = <3>;
-		qcom,src-sel = <2>;
+		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
@@ -439,9 +428,10 @@
 
 	gpio@c400 { /* GPIO 5 */
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;        /* QPNP_PIN_PULL_UP_30  */
+		qcom,pull = <0>;        /* QPNP_PIN_PULL_UP_30  */
 		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2  */
 		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@c500 { /* GPIO 6 */
@@ -659,6 +649,12 @@
 		status = "disabled";
 	};
 
+	mpp@a100 { /* MPP 2 */
+		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,master-en = <1>;
+	};
+
 	mpp@a200 { /* MPP 3 */
 	};
 
@@ -666,9 +662,6 @@
 	};
 
 	mpp@a400 { /* MPP 5 */
-		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
-		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,master-en = <1>;
 	};
 
 	mpp@a500 { /* MPP 6 */
